@@ -96,6 +96,9 @@ As a developer using Claude Code on localhost, I want a simple event-driven orch
 - **FR-020**: System MUST provide Docker Compose configuration for Redis and PostgreSQL setup
 - **FR-021**: System MUST enforce domain.action event naming pattern (e.g., task.create, hook.pre_tool)
 - **FR-022**: System MUST use consistent Redis key pattern cb:{type}:{id} for all Redis operations
+- **FR-023**: System MUST support MCP server with Streamable HTTP transport for Claude Code connections
+- **FR-024**: System MUST handle multiple concurrent Claude Code instances without interference
+- **FR-025**: System MUST prefer async/non-blocking operations throughout to prevent interference between concurrent requests
 
 ### Key Entities *(include if feature involves data)*
 - **Event**: Represents an action or notification in the system with type, payload, and metadata
@@ -118,7 +121,7 @@ As a developer using Claude Code on localhost, I want a simple event-driven orch
 - **Existing Stack** - Built on top of current boilerplate: Bun runtime, Hono server, React frontend, TanStack Router, Turborepo
 
 ### Assumptions
-- **Single developer usage** - Localhost development tool, not multi-user system
+- **Single developer usage** - Localhost development tool, not multi-user system (but multiple Claude Code windows/instances)
 - **Low throughput environment** - ~1 event per 3 seconds typical, burst up to 3/10s
 - **Redis reliability** - Redis runs locally via Docker, no failover needed (we die together)
 - **Trust model** - No auth needed for localhost single-user scenario
@@ -127,6 +130,7 @@ As a developer using Claude Code on localhost, I want a simple event-driven orch
 - **Decorator pattern familiarity** - Developers understand how decorators auto-generate multiple interfaces
 - **Claude Code availability** - Assumes Claude Code with hook system is available
 - **Docker environment** - User has Docker running for Redis and PostgreSQL
+- **Concurrent operations** - Multiple Claude Code instances may connect simultaneously via MCP
 
 ---
 
