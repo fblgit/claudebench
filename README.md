@@ -70,3 +70,5 @@ claudebench/
 - `bun check`: Run Biome formatting and linting
 
 @CLAUDEBENCH.md
+@CLAUDE_CODE_GUIDE.md
+@MCP_SDK.md
