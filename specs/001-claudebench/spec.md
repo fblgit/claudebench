@@ -93,6 +93,9 @@ As a developer using Claude Code on localhost, I want a simple event-driven orch
 - **FR-017**: System MUST support typical localhost development patterns (1 event per 3 seconds normal, burst up to 3 events in 10 seconds)
 - **FR-018**: System MUST allow custom event workflows (e.g., "when TodoWrite updates from non-master role, broadcast to master")
 - **FR-019**: System MUST pass session/auth data through optional metadata fields that handlers can check gracefully
+- **FR-020**: System MUST provide Docker Compose configuration for Redis and PostgreSQL setup
+- **FR-021**: System MUST enforce domain.action event naming pattern (e.g., task.create, hook.pre_tool)
+- **FR-022**: System MUST use consistent Redis key pattern cb:{type}:{id} for all Redis operations
 
 ### Key Entities *(include if feature involves data)*
 - **Event**: Represents an action or notification in the system with type, payload, and metadata
@@ -110,6 +113,7 @@ As a developer using Claude Code on localhost, I want a simple event-driven orch
 - **Redis** (via Docker Compose) - Event bus, queuing, state management
 - **PostgreSQL** (via Docker Compose) - Persistent storage for handlers that need it
 - **Prisma ORM** - Database access layer
+- **Zod** - Runtime schema validation for all inputs/outputs
 - **MCP SDK** (`@modelcontextprotocol/sdk`) - MCP server implementation for Claude Code integration
 - **Existing Stack** - Built on top of current boilerplate: Bun runtime, Hono server, React frontend, TanStack Router, Turborepo
 
@@ -120,6 +124,7 @@ As a developer using Claude Code on localhost, I want a simple event-driven orch
 - **Trust model** - No auth needed for localhost single-user scenario
 - **Best-effort recovery** - System provides state retrieval but doesn't guarantee zero data loss
 - **Developer knowledge** - Users can write event handlers and understand event patterns
+- **Decorator pattern familiarity** - Developers understand how decorators auto-generate multiple interfaces
 - **Claude Code availability** - Assumes Claude Code with hook system is available
 - **Docker environment** - User has Docker running for Redis and PostgreSQL
 
