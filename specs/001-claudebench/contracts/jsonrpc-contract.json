@@ -1,0 +1,488 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ClaudeBench JSONRPC 2.0 Contract",
+  "description": "Complete JSONRPC contract for all ClaudeBench event types",
+  
+  "definitions": {
+    "jsonrpcRequest": {
+      "type": "object",
+      "required": ["jsonrpc", "method"],
+      "properties": {
+        "jsonrpc": { "const": "2.0" },
+        "method": { "type": "string" },
+        "params": { "type": "object" },
+        "id": { "type": ["string", "number", "null"] },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "sessionId": { "type": "string" },
+            "correlationId": { "type": "string" },
+            "timestamp": { "type": "number" }
+          }
+        }
+      }
+    },
+    
+    "jsonrpcResponse": {
+      "type": "object",
+      "required": ["jsonrpc"],
+      "oneOf": [
+        {
+          "required": ["result", "id"],
+          "properties": {
+            "jsonrpc": { "const": "2.0" },
+            "result": {},
+            "id": { "type": ["string", "number", "null"] }
+          }
+        },
+        {
+          "required": ["error", "id"],
+          "properties": {
+            "jsonrpc": { "const": "2.0" },
+            "error": {
+              "type": "object",
+              "required": ["code", "message"],
+              "properties": {
+                "code": { "type": "number" },
+                "message": { "type": "string" },
+                "data": {}
+              }
+            },
+            "id": { "type": ["string", "number", "null"] }
+          }
+        }
+      ]
+    }
+  },
+  
+  "events": {
+    "task.create": {
+      "request": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcRequest" }],
+        "properties": {
+          "method": { "const": "task.create" },
+          "params": {
+            "type": "object",
+            "required": ["text"],
+            "properties": {
+              "text": { "type": "string", "minLength": 1, "maxLength": 500 },
+              "priority": { "type": "number", "minimum": 0, "maximum": 100, "default": 50 }
+            }
+          }
+        }
+      },
+      "response": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcResponse" }],
+        "properties": {
+          "result": {
+            "type": "object",
+            "required": ["id", "text", "status", "priority", "createdAt"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^t-\\d+$" },
+              "text": { "type": "string" },
+              "status": { "enum": ["pending", "in_progress", "completed", "failed"] },
+              "priority": { "type": "number" },
+              "createdAt": { "type": "string", "format": "date-time" }
+            }
+          }
+        }
+      }
+    },
+    
+    "task.update": {
+      "request": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcRequest" }],
+        "properties": {
+          "method": { "const": "task.update" },
+          "params": {
+            "type": "object",
+            "required": ["id", "updates"],
+            "properties": {
+              "id": { "type": "string" },
+              "updates": {
+                "type": "object",
+                "properties": {
+                  "text": { "type": "string" },
+                  "status": { "enum": ["pending", "in_progress", "completed", "failed"] },
+                  "priority": { "type": "number" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    
+    "task.assign": {
+      "request": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcRequest" }],
+        "properties": {
+          "method": { "const": "task.assign" },
+          "params": {
+            "type": "object",
+            "required": ["taskId", "instanceId"],
+            "properties": {
+              "taskId": { "type": "string" },
+              "instanceId": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    
+    "task.complete": {
+      "request": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcRequest" }],
+        "properties": {
+          "method": { "const": "task.complete" },
+          "params": {
+            "type": "object",
+            "required": ["id"],
+            "properties": {
+              "id": { "type": "string" },
+              "result": {}
+            }
+          }
+        }
+      }
+    },
+    
+    "hook.pre_tool": {
+      "request": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcRequest" }],
+        "properties": {
+          "method": { "const": "hook.pre_tool" },
+          "params": {
+            "type": "object",
+            "required": ["tool", "params"],
+            "properties": {
+              "tool": { "type": "string" },
+              "params": {}
+            }
+          }
+        }
+      },
+      "response": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcResponse" }],
+        "properties": {
+          "result": {
+            "type": "object",
+            "required": ["allow"],
+            "properties": {
+              "allow": { "type": "boolean" },
+              "reason": { "type": "string" },
+              "modified": {}
+            }
+          }
+        }
+      }
+    },
+    
+    "hook.post_tool": {
+      "request": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcRequest" }],
+        "properties": {
+          "method": { "const": "hook.post_tool" },
+          "params": {
+            "type": "object",
+            "required": ["tool", "result"],
+            "properties": {
+              "tool": { "type": "string" },
+              "result": {}
+            }
+          }
+        }
+      },
+      "response": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcResponse" }],
+        "properties": {
+          "result": {
+            "type": "object",
+            "required": ["processed"],
+            "properties": {
+              "processed": {}
+            }
+          }
+        }
+      }
+    },
+    
+    "hook.user_prompt": {
+      "request": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcRequest" }],
+        "properties": {
+          "method": { "const": "hook.user_prompt" },
+          "params": {
+            "type": "object",
+            "required": ["prompt", "context"],
+            "properties": {
+              "prompt": { "type": "string" },
+              "context": { "type": "object" }
+            }
+          }
+        }
+      },
+      "response": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcResponse" }],
+        "properties": {
+          "result": {
+            "type": "object",
+            "properties": {
+              "modified": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    
+    "hook.todo_write": {
+      "request": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcRequest" }],
+        "properties": {
+          "method": { "const": "hook.todo_write" },
+          "params": {
+            "type": "object",
+            "required": ["todos"],
+            "properties": {
+              "todos": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["content", "status"],
+                  "properties": {
+                    "content": { "type": "string" },
+                    "status": { "enum": ["pending", "in_progress", "completed"] },
+                    "activeForm": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcResponse" }],
+        "properties": {
+          "result": {
+            "type": "object",
+            "required": ["processed"],
+            "properties": {
+              "processed": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    
+    "system.health": {
+      "request": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcRequest" }],
+        "properties": {
+          "method": { "const": "system.health" },
+          "params": { "type": "object" }
+        }
+      },
+      "response": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcResponse" }],
+        "properties": {
+          "result": {
+            "type": "object",
+            "required": ["status", "services"],
+            "properties": {
+              "status": { "enum": ["healthy", "degraded", "unhealthy"] },
+              "services": {
+                "type": "object",
+                "properties": {
+                  "redis": { "type": "boolean" },
+                  "postgres": { "type": "boolean" },
+                  "mcp": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    
+    "system.register": {
+      "request": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcRequest" }],
+        "properties": {
+          "method": { "const": "system.register" },
+          "params": {
+            "type": "object",
+            "required": ["id", "roles"],
+            "properties": {
+              "id": { "type": "string" },
+              "roles": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcResponse" }],
+        "properties": {
+          "result": {
+            "type": "object",
+            "required": ["registered"],
+            "properties": {
+              "registered": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    
+    "system.heartbeat": {
+      "request": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcRequest" }],
+        "properties": {
+          "method": { "const": "system.heartbeat" },
+          "params": {
+            "type": "object",
+            "required": ["instanceId"],
+            "properties": {
+              "instanceId": { "type": "string" }
+            }
+          }
+        }
+      },
+      "response": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcResponse" }],
+        "properties": {
+          "result": {
+            "type": "object",
+            "required": ["alive"],
+            "properties": {
+              "alive": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    
+    "system.get_state": {
+      "request": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcRequest" }],
+        "properties": {
+          "method": { "const": "system.get_state" },
+          "params": { "type": "object" }
+        }
+      },
+      "response": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcResponse" }],
+        "properties": {
+          "result": {
+            "type": "object",
+            "properties": {
+              "tasks": { "type": "array" },
+              "instances": { "type": "array" },
+              "recentEvents": { "type": "array" }
+            }
+          }
+        }
+      }
+    },
+    
+    "system.metrics": {
+      "request": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcRequest" }],
+        "properties": {
+          "method": { "const": "system.metrics" },
+          "params": { "type": "object" }
+        }
+      },
+      "response": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcResponse" }],
+        "properties": {
+          "result": {
+            "type": "object",
+            "properties": {
+              "eventsProcessed": { "type": "number" },
+              "tasksCompleted": { "type": "number" },
+              "averageLatency": { "type": "number" },
+              "memoryUsage": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+    
+    "mcp.tool.execute": {
+      "request": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcRequest" }],
+        "properties": {
+          "method": { "const": "mcp.tool.execute" },
+          "params": {
+            "type": "object",
+            "required": ["tool", "params"],
+            "properties": {
+              "tool": { "type": "string" },
+              "params": { "type": "object" }
+            }
+          }
+        }
+      },
+      "response": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcResponse" }],
+        "properties": {
+          "result": {
+            "type": "object",
+            "required": ["result"],
+            "properties": {
+              "result": {}
+            }
+          }
+        }
+      }
+    },
+    
+    "mcp.tool.list": {
+      "request": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcRequest" }],
+        "properties": {
+          "method": { "const": "mcp.tool.list" },
+          "params": { "type": "object" }
+        }
+      },
+      "response": {
+        "allOf": [{ "$ref": "#/definitions/jsonrpcResponse" }],
+        "properties": {
+          "result": {
+            "type": "object",
+            "required": ["tools"],
+            "properties": {
+              "tools": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["name", "description"],
+                  "properties": {
+                    "name": { "type": "string" },
+                    "description": { "type": "string" },
+                    "inputSchema": { "type": "object" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  
+  "errorCodes": {
+    "-32700": "Parse error",
+    "-32600": "Invalid request",
+    "-32601": "Method not found",
+    "-32602": "Invalid params",
+    "-32603": "Internal error",
+    "-32000": "Rate limit exceeded",
+    "-32001": "Circuit breaker open",
+    "-32002": "Unauthorized (role required)",
+    "-32003": "Hook blocked execution"
+  }
+}

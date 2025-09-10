@@ -132,6 +132,70 @@ When implementing the ClaudeBench architecture:
 5. Follow `domain.action` event naming (e.g., `task.create`, `hook.pre_tool`)
 6. Redis keys should follow `cb:{type}:{id}` pattern
 
+## ClaudeBench Event Handler Pattern
+
+### Creating Event Handlers
+Use the `@EventHandler` decorator to auto-generate all transport interfaces:
+
+```typescript
+import { EventHandler } from '@/core/decorator';
+import { z } from 'zod';
+
+@EventHandler({
+  event: 'domain.action',           // Event type (flat hierarchy)
+  inputSchema: z.object({ ... }),   // Zod validation
+  outputSchema: z.object({ ... }),  // Response validation
+  persist: false,                   // Explicit persistence flag
+  roles: ['worker'],               // Optional role requirements
+  rateLimit: 100                   // Events/sec (default 100)
+})
+export class DomainActionHandler {
+  async handle(input: InputType, context: EventContext) {
+    // Direct Redis/Prisma calls - no wrappers
+    await this.redis.hset(`cb:entity:${id}`, data);
+    
+    // Explicit persistence when needed
+    if (this.persist) {
+      await this.prisma.entity.create({ data });
+    }
+    
+    return output; // Validated by outputSchema
+  }
+}
+```
+
+This single decorator creates:
+- HTTP endpoint: `POST /domain/action`
+- MCP tool: `domain__action`
+- Event subscription: `domain.action`
+
+### Event Naming Conventions
+- Always use `domain.action` format
+- Domains: `task`, `hook`, `system`, `mcp`
+- Actions: `create`, `update`, `complete`, `pre_tool`, `health`
+- Examples: `task.create`, `hook.pre_tool`, `system.health`
+
+### Redis Key Patterns
+All keys follow `cb:{type}:{id}`:
+- `cb:stream:task.create` - Event streams
+- `cb:task:t-123` - Task data
+- `cb:queue:tasks` - Task queue
+- `cb:instance:worker-1` - Instance registry
+- `cb:circuit:handler` - Circuit breaker state
+
+### Testing Approach
+Follow RED-GREEN-Refactor strictly:
+1. Write failing contract test first
+2. Implement handler to pass test
+3. Add integration tests for Redis/Prisma
+4. E2E test through event emission
+
+### Recent Changes (2025-09-10)
+- Switched from SSE to Streamable HTTP transport for MCP
+- Added support for multiple concurrent Claude Code instances
+- Implemented sliding window rate limiting with Redis sorted sets
+- Chose Redis Streams over pub/sub for event persistence
+
 ## MCP SDK Reference
 
 The MCP_SDK.md file contains the TypeScript SDK documentation for implementing MCP (Model Context Protocol) servers, which will be crucial for the ClaudeBench event-driven architecture.
