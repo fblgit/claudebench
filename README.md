@@ -68,3 +68,5 @@ claudebench/
 - `bun db:push`: Push schema changes to database
 - `bun db:studio`: Open database studio UI
 - `bun check`: Run Biome formatting and linting
+
+@CLAUDEBENCH.md
