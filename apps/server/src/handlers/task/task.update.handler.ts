@@ -13,7 +13,7 @@ import { redisKey } from "@/core/redis";
 	description: "Update an existing task",
 })
 export class TaskUpdateHandler {
-	@Instrumented(60) // Cache for 1 minute - updates change task state
+	@Instrumented(0) // No caching - this operation changes state
 	@Resilient({
 		rateLimit: { limit: 20, windowMs: 60000 }, // 20 requests per minute
 		timeout: 5000, // 5 second timeout

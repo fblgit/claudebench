@@ -14,7 +14,7 @@ import { taskQueue } from "@/core/task-queue";
 	description: "Create a new task and add it to the queue",
 })
 export class TaskCreateHandler {
-	@Instrumented(120) // Cache for 2 minutes
+	@Instrumented(0) // No caching - this operation creates new resources
 	@Resilient({
 		rateLimit: { limit: 100, windowMs: 60000 }, // 100 tasks per minute (increased for testing)
 		timeout: 5000,

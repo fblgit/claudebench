@@ -46,9 +46,17 @@ export class DomainActionHandler {
 
 ### @Instrumented(ttl)
 - **ttl**: Cache time-to-live in seconds
-  - Use shorter TTL (60-120s) for frequently changing data
-  - Use longer TTL (300-600s) for stable data
-  - Consider 0 for data that should never be cached
+  - Use 0 (no caching) for:
+    - State-changing operations (create, update, delete, assign, complete)
+    - Real-time metrics and state queries
+    - Operations that must always execute
+  - Use short TTL (10-30s) for:
+    - Frequently accessed but relatively stable data (heartbeats, health checks)
+  - Use medium TTL (60-120s) for:
+    - Read operations that don't change often (user prompts, todo reads)
+  - Use longer TTL (300-600s) for:
+    - Validation operations (pre-tool hooks)
+    - Configuration or metadata reads
 
 ### @Resilient(options)
 - **rateLimit**: 
@@ -101,21 +109,21 @@ For handlers called during test setup (e.g., `system.register`, `task.create`):
 | Handler | Path | @Instrumented | @Resilient | Rate Limit | Notes |
 |---------|------|--------------|------------|------------|-------|
 | **Hook Handlers** |
-| hook.pre_tool | `/handlers/hook/hook.pre_tool.handler.ts` | ✅ 300s | ✅ 1000/min | 1000/min | Completed |
-| hook.post_tool | `/handlers/hook/hook.post_tool.handler.ts` | ✅ 60s | ✅ 1000/min | 1000/min | Completed |
-| hook.user_prompt | `/handlers/hook/hook.user_prompt.handler.ts` | ❌ | ❌ | 100/min | TODO |
-| hook.todo_write | `/handlers/hook/hook.todo_write.handler.ts` | ❌ | ❌ | 50/min | TODO |
+| hook.pre_tool | `/handlers/hook/hook.pre_tool.handler.ts` | ✅ 300s | ✅ 1000/min | 1000/min | Completed, manual metrics removed |
+| hook.post_tool | `/handlers/hook/hook.post_tool.handler.ts` | ✅ 60s | ✅ 1000/min | 1000/min | Completed, manual metrics removed |
+| hook.user_prompt | `/handlers/hook/hook.user_prompt.handler.ts` | ✅ 120s | ✅ 100/min | 100/min | Completed, manual metrics removed |
+| hook.todo_write | `/handlers/hook/hook.todo_write.handler.ts` | ✅ 60s | ✅ 50/min | 50/min | Completed, manual metrics removed |
 | **System Handlers** |
 | system.register | `/handlers/system/system.register.handler.ts` | ✅ 60s | ✅ 100/min | 100/min | Completed |
-| system.health | `/handlers/system/system.health.handler.ts` | ❌ | ❌ | 100/min | TODO |
-| system.heartbeat | `/handlers/system/system.heartbeat.handler.ts` | ❌ | ❌ | 1000/min | TODO |
-| system.metrics | `/handlers/system/system.metrics.handler.ts` | ❌ | ❌ | 20/min | TODO |
-| system.get_state | `/handlers/system/system.get_state.handler.ts` | ❌ | ❌ | 50/min | TODO |
+| system.health | `/handlers/system/system.health.handler.ts` | ✅ 30s | ✅ 100/min | 100/min | Completed |
+| system.heartbeat | `/handlers/system/system.heartbeat.handler.ts` | ✅ 10s | ✅ 1000/min | 1000/min | Completed |
+| system.metrics | `/handlers/system/system.metrics.handler.ts` | ✅ 0s | ✅ 20/min | 20/min | Completed, no cache (real-time data) |
+| system.get_state | `/handlers/system/system.get_state.handler.ts` | ✅ 0s | ✅ 50/min | 50/min | Completed, no cache (real-time data) |
 | **Task Handlers** |
-| task.create | `/handlers/task/task.create.handler.ts` | ✅ 120s | ✅ 100/min | 100/min | Completed |
-| task.assign | `/handlers/task/task.assign.handler.ts` | ❌ | ❌ | 20/min | TODO |
-| task.update | `/handlers/task/task.update.handler.ts` | ❌ | ❌ | 20/min | TODO |
-| task.complete | `/handlers/task/task.complete.handler.ts` | ❌ | ❌ | 20/min | TODO |
+| task.create | `/handlers/task/task.create.handler.ts` | ✅ 0s | ✅ 100/min | 100/min | Completed, no cache (state change) |
+| task.assign | `/handlers/task/task.assign.handler.ts` | ✅ 0s | ✅ 20/min | 20/min | Completed, no cache (state change) |
+| task.update | `/handlers/task/task.update.handler.ts` | ✅ 0s | ✅ 20/min | 20/min | Completed, no cache (state change) |
+| task.complete | `/handlers/task/task.complete.handler.ts` | ✅ 0s | ✅ 20/min | 20/min | Completed, no cache (state change) |
 
 ## Implementation Checklist
 

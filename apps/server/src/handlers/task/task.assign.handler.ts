@@ -13,7 +13,7 @@ import { redisKey } from "@/core/redis";
 	description: "Assign a task to an instance",
 })
 export class TaskAssignHandler {
-	@Instrumented(60) // Cache for 1 minute - assignments change task state
+	@Instrumented(0) // No caching - this operation changes state
 	@Resilient({
 		rateLimit: { limit: 20, windowMs: 60000 }, // 20 requests per minute
 		timeout: 5000, // 5 second timeout
@@ -77,7 +77,7 @@ export class TaskAssignHandler {
 			assignedBy: ctx.instanceId,
 		}));
 
-		// Update instance task count
+		// Update instance-specific business metrics (not cross-cutting performance metrics)
 		const instanceTasksKey = redisKey("metrics", "instance", input.instanceId);
 		await ctx.redis.stream.hincrby(instanceTasksKey, "assignedTasks", 1);
 

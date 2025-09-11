@@ -13,7 +13,7 @@ import { redisKey } from "@/core/redis";
 	description: "Get system metrics per JSONRPC contract",
 })
 export class SystemMetricsHandler {
-	@Instrumented(60) // Cache for 1 minute - metrics don't change rapidly
+	@Instrumented(0) // No caching - metrics need to be real-time
 	@Resilient({
 		rateLimit: { limit: 20, windowMs: 60000 }, // 20 requests per minute
 		timeout: 3000, // 3 second timeout

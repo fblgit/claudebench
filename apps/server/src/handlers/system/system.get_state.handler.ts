@@ -14,7 +14,7 @@ import { instanceManager } from "@/core/instance-manager";
 	description: "Get system state per JSONRPC contract",
 })
 export class SystemGetStateHandler {
-	@Instrumented(30) // Cache for 30 seconds - state changes moderately
+	@Instrumented(0) // No caching - state needs to be real-time
 	@Resilient({
 		rateLimit: { limit: 50, windowMs: 60000 }, // 50 requests per minute
 		timeout: 5000, // 5 second timeout

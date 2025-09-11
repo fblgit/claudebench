@@ -66,13 +66,13 @@ export class HookValidator {
 							}
 							await metrics.increment(`hook.validation.blocked.${group.severity}`);
 							await audit.log({
-							action: "hook.validation.blocked",
-							resource: tool,
-							result: "blocked",
-							reason: `Pattern matched: ${match}`,
-							metadata: { pattern: pattern.regex, severity: group.severity },
-							timestamp: new Date().toISOString(),
-						});
+								action: "hook.validation.blocked",
+								resource: tool,
+								result: "blocked",
+								reason: `Pattern matched: ${match}`,
+								metadata: { pattern: pattern.regex, severity: group.severity },
+								timestamp: new Date().toISOString(),
+							});
 							
 							// Cache the result based on severity
 							const ttl = hookValidation.severityConfig.cacheTTL[group.severity] || 60000;
@@ -84,13 +84,13 @@ export class HookValidator {
 							await this.recordWarning(params, pattern.message.replace("{{match}}", match));
 							await metrics.increment(`hook.validation.warned.${group.severity}`);
 							await audit.log({
-							action: "hook.validation.warned",
-							resource: tool,
-							result: "allowed",
-							reason: `Warning: ${match}`,
-							metadata: { pattern: pattern.regex, severity: group.severity },
-							timestamp: new Date().toISOString(),
-						});
+								action: "hook.validation.warned",
+								resource: tool,
+								result: "allowed",
+								reason: `Warning: ${match}`,
+								metadata: { pattern: pattern.regex, severity: group.severity },
+								timestamp: new Date().toISOString(),
+							});
 							break;
 
 						case "modify":
@@ -99,13 +99,13 @@ export class HookValidator {
 								await this.recordModification(params, modified);
 								await metrics.increment(`hook.validation.modified.${group.severity}`);
 								await audit.log({
-								action: "hook.validation.modified",
-								resource: tool,
-								result: "allowed",
-								reason: "Parameters modified",
-								metadata: { pattern: pattern.regex, severity: group.severity, replacement: pattern.replacement },
-								timestamp: new Date().toISOString(),
-							});
+									action: "hook.validation.modified",
+									resource: tool,
+									result: "allowed",
+									reason: "Parameters modified",
+									metadata: { pattern: pattern.regex, severity: group.severity, replacement: pattern.replacement },
+									timestamp: new Date().toISOString(),
+								});
 							}
 							break;
 					}

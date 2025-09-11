@@ -13,7 +13,7 @@ import { redisKey } from "@/core/redis";
 	description: "Mark a task as completed or failed",
 })
 export class TaskCompleteHandler {
-	@Instrumented(60) // Cache for 1 minute - completions are final state changes
+	@Instrumented(0) // No caching - this operation changes state
 	@Resilient({
 		rateLimit: { limit: 20, windowMs: 60000 }, // 20 requests per minute
 		timeout: 5000, // 5 second timeout
@@ -66,7 +66,8 @@ export class TaskCompleteHandler {
 		const instanceQueueKey = redisKey("queue", "instance", taskData.assignedTo);
 		await ctx.redis.stream.lrem(instanceQueueKey, 0, input.id);
 
-		// Update instance metrics
+		// Update instance-specific business metrics (not cross-cutting performance metrics)
+		// These are stored in the expected format for backward compatibility with tests
 		const instanceMetricsKey = redisKey("metrics", "instance", taskData.assignedTo);
 		await ctx.redis.stream.hincrby(instanceMetricsKey, "tasksCompleted", 1);
 		if (status === "failed") {
@@ -81,11 +82,6 @@ export class TaskCompleteHandler {
 			completedBy: taskData.assignedTo,
 			duration,
 		}));
-
-		// Update global metrics
-		const globalMetricsKey = redisKey("metrics", "global");
-		await ctx.redis.stream.hincrby(globalMetricsKey, 
-			status === "completed" ? "tasksCompleted" : "tasksFailed", 1);
 
 		// Persist to PostgreSQL if configured
 		if (ctx.persist) {

@@ -98,11 +98,6 @@ export class TodoWriteHookHandler {
 			}
 		}
 		
-		// Track metrics
-		const metricsKey = redisKey("metrics", "hooks", "todo_write");
-		await ctx.redis.stream.hincrby(metricsKey, "total", 1);
-		await ctx.redis.stream.hincrby(metricsKey, `todos_${stats.total}`, 1);
-		
 		// Publish event
 		await ctx.publish({
 			type: "hook.todo_write.executed",

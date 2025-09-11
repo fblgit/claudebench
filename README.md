@@ -88,7 +88,6 @@ claudebench/
 - specs/001-claudebench/quickstart.md (Behaviour and usage)
 - src/core/decorator.ts (Our decorator-FIRST approach: metrics, audit log, cache, rate limit, circuit breaker)
 - MCP_SDK.md (When working with MCP)
+- docs/HOWTO_INSTRUMENTED_RESILIENT.md (How to use the Decorators)
 
 Be sure to always have visited and readed these documents when working in any task.
-
-# Currently working on: @apps/server/HOWTO_INSTRUMENTED_RESILIENT.md

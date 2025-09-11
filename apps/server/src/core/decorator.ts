@@ -203,7 +203,11 @@ export function Instrumented(ttl: number = 60) {
 		// Apply in reverse order (decorators compose bottom-up)
 		Audited()(target, propertyKey, descriptor);
 		Measured()(target, propertyKey, descriptor);
-		Cached(ttl)(target, propertyKey, descriptor);
+		
+		// Only apply caching if TTL > 0
+		if (ttl > 0) {
+			Cached(ttl)(target, propertyKey, descriptor);
+		}
 		
 		return descriptor;
 	};
@@ -381,7 +385,7 @@ export interface CircuitBreakerOptions {
 	backoffMultiplier?: number; // Exponential backoff multiplier (default: 1.5)
 }
 
-type CircuitState = "closed" | "open" | "half-open";
+type CircuitState = "CLOSED" | "OPEN" | "HALF_OPEN";
 
 /**
  * Circuit breaker decorator with advanced features from the class implementation
@@ -410,12 +414,12 @@ export function CircuitBreaker(options: CircuitBreakerOptions) {
 			const rejectedKey = `cb:circuit:${eventName}:rejected`;
 			
 			// Get current state
-			const state = (await redis.get(stateKey) || "closed") as CircuitState;
+			const state = (await redis.get(stateKey) || "CLOSED") as CircuitState;
 			const errorCount = parseInt(await redis.get(errorCountKey) || "0");
 			const lastFailure = parseInt(await redis.get(lastFailureKey) || "0");
 			
-			// Check if circuit is open
-			if (state === "open") {
+			// Check if circuit is OPEN
+			if (state === "OPEN") {
 				const timeSinceFailure = Date.now() - lastFailure;
 				
 				if (timeSinceFailure < options.timeout) {
@@ -452,8 +456,8 @@ export function CircuitBreaker(options: CircuitBreakerOptions) {
 					(error as any).data = { fallback: true };
 					throw error;
 				} else {
-					// Transition to half-open
-					await redis.set(stateKey, "half-open", "EX", 3600);
+					// Transition to HALF_OPEN
+					await redis.set(stateKey, "HALF_OPEN", "EX", 3600);
 					await redis.set(allowedKey, "0"); // Reset allowed counter
 					await audit.log({
 						action: `circuit.half-open`,
@@ -465,8 +469,8 @@ export function CircuitBreaker(options: CircuitBreakerOptions) {
 				}
 			}
 			
-			// Check half-open state limits
-			if (state === "half-open") {
+			// Check HALF_OPEN state limits
+			if (state === "HALF_OPEN") {
 				const allowed = await redis.incr(allowedKey);
 				
 				if (allowed > halfOpenLimit) {
@@ -489,7 +493,7 @@ export function CircuitBreaker(options: CircuitBreakerOptions) {
 				await redis.incr(successCountKey);
 				
 				// Success - check state transitions
-				if (state === "half-open") {
+				if (state === "HALF_OPEN") {
 					const successes = parseInt(await redis.get(successCountKey) || "0");
 					if (successes >= 3) {
 						// Close circuit after successful requests
@@ -523,7 +527,7 @@ export function CircuitBreaker(options: CircuitBreakerOptions) {
 						});
 						await metrics.increment(`circuit:${eventName}:closed`);
 					}
-				} else if (state === "closed" && errorCount > 0) {
+				} else if (state === "CLOSED" && errorCount > 0) {
 					// Reset error count on success in closed state
 					await redis.del(errorCountKey);
 				}
@@ -574,12 +578,12 @@ export function CircuitBreaker(options: CircuitBreakerOptions) {
 				await redis.set(lastFailureKey, Date.now().toString(), "EX", options.resetTimeout ? options.resetTimeout / 1000 : 3600);
 				
 				// Check if we should open the circuit
-				if (newErrorCount >= options.threshold && state !== "open") {
+				if (newErrorCount >= options.threshold && state !== "OPEN") {
 					// Open circuit with backoff
 					const attempt = await redis.incr(backoffAttemptKey);
 					const backoffTimeout = options.timeout * Math.pow(backoffMultiplier, attempt - 1);
 					
-					await redis.set(stateKey, "open", "PX", backoffTimeout);
+					await redis.set(stateKey, "OPEN", "PX", backoffTimeout);
 					await redis.set(openedAtKey, Date.now().toString(), "PX", backoffTimeout);
 					
 					// Create alert
