@@ -51,7 +51,7 @@ export class TaskCreateHandler {
 					text: task.text, // Changed from title to text
 					status: task.status,
 					priority: task.priority,
-					metadata: task.metadata || undefined,
+					metadata: task.metadata as any || undefined,
 				},
 			});
 		}

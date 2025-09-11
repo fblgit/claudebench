@@ -40,32 +40,35 @@ export class PostToolHookHandler {
 		let processed: any = true;
 		
 		// Example: Extract created file paths from file operations
-		if (input.tool === "file.write" && typeof input.result === 'object') {
+		if (input.tool === "file.write" && typeof input.result === 'object' && input.result !== null) {
 			const createdFiles = redisKey("created", "files");
-			if (input.result.path) {
-				await ctx.redis.stream.sadd(createdFiles, input.result.path);
+			const result = input.result as any;
+			if (result.path) {
+				await ctx.redis.stream.sadd(createdFiles, result.path);
 			}
-			processed = { acknowledged: true, path: input.result.path };
+			processed = { acknowledged: true, path: result.path };
 		}
 		
 		// Example: Track task creation results
-		if (input.tool === "task.create" && typeof input.result === 'object') {
-			if (input.result.id) {
+		if (input.tool === "task.create" && typeof input.result === 'object' && input.result !== null) {
+			const result = input.result as any;
+			if (result.id) {
 				const tasksKey = redisKey("created", "tasks");
-				await ctx.redis.stream.sadd(tasksKey, input.result.id);
-				processed = { acknowledged: true, taskId: input.result.id };
+				await ctx.redis.stream.sadd(tasksKey, result.id);
+				processed = { acknowledged: true, taskId: result.id };
 			}
 		}
 		
 		// Example: Monitor API call results
-		if (input.tool === "api.call" && typeof input.result === 'object') {
+		if (input.tool === "api.call" && typeof input.result === 'object' && input.result !== null) {
 			const apiStatsKey = redisKey("stats", "api");
-			if (input.result.status) {
-				await ctx.redis.stream.hincrby(apiStatsKey, `status_${input.result.status}`, 1);
+			const result = input.result as any;
+			if (result.status) {
+				await ctx.redis.stream.hincrby(apiStatsKey, `status_${result.status}`, 1);
 			}
 			processed = { 
 				acknowledged: true, 
-				status: input.result.status,
+				status: result.status,
 				cached: false
 			};
 		}

@@ -26,8 +26,8 @@ export class PreToolHookHandler {
 		
 		// Check if this is a bash/command execution tool
 		if (input.tool === "bash" || input.tool === "command" || input.tool === "shell") {
-			const command = typeof input.params === 'object' && input.params?.command 
-				? String(input.params.command).toLowerCase() 
+			const command = typeof input.params === 'object' && input.params !== null && 'command' in input.params
+				? String((input.params as any).command).toLowerCase() 
 				: String(input.params).toLowerCase();
 			
 			// Check for dangerous patterns
@@ -52,8 +52,8 @@ export class PreToolHookHandler {
 		
 		// Check for file system operations on system directories
 		if (input.tool === "file.write" || input.tool === "file.delete") {
-			const path = typeof input.params === 'object' && input.params?.path 
-				? String(input.params.path) 
+			const path = typeof input.params === 'object' && input.params !== null && 'path' in input.params
+				? String((input.params as any).path) 
 				: String(input.params);
 			
 			const systemPaths = ['/etc/', '/sys/', '/boot/', 'C:\\Windows\\', 'C:\\System'];
@@ -73,10 +73,11 @@ export class PreToolHookHandler {
 		
 		// Example: Add timeout to long-running operations
 		let modified = undefined;
-		if (input.tool === "bash" && typeof input.params === 'object') {
-			if (!input.params.timeout) {
+		if (input.tool === "bash" && typeof input.params === 'object' && input.params !== null) {
+			const params = input.params as any;
+			if (!params.timeout) {
 				modified = {
-					...input.params,
+					...params,
 					timeout: 30000, // Default 30 second timeout
 				};
 			}
