@@ -27,8 +27,8 @@ describe("Contract Validation: hook.post_tool", () => {
 
 		it("should match contract input schema", () => {
 			// Contract requires: tool (string), result (any)
-			expect(contractInput.tool).toBe("string");
-			expect(contractInput.result).toBe("any");
+			expect(contractInput.tool).toEqual({ type: "string" });
+			expect(contractInput.result).toEqual({}); // Empty object means any type
 		});
 
 		it("should accept valid input with tool and result", () => {
@@ -109,8 +109,8 @@ describe("Contract Validation: hook.post_tool", () => {
 		const contractOutput = contractSpec.events["hook.post_tool"].response.properties.result.properties;
 
 		it("should match contract output schema", () => {
-			// Contract requires: processed (any)
-			expect(contractOutput.processed).toBe("any");
+			// Contract requires: processed (any) - empty object {} means any type
+			expect(contractOutput.processed).toEqual({});
 		});
 
 		it("should validate output with processed as boolean", () => {
@@ -225,7 +225,9 @@ describe("Contract Validation: hook.post_tool", () => {
 		it("should register hook.post_tool handler", () => {
 			const handler = registry.getHandler("hook.post_tool");
 			expect(handler).toBeDefined();
-			expect(handler?.metadata.event).toBe("hook.post_tool");
+			if (handler) {
+				expect(handler.event).toBe("hook.post_tool");
+			}
 		});
 	});
 });

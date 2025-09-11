@@ -40,8 +40,8 @@ describe("Contract Validation: system.get_state", () => {
 		it("should have empty input per contract", () => {
 			// Contract specifies params as just "type": "object" with no properties
 			expect(contractParams.type).toBe("object");
-			expect(contractParams.required).toBeUndefined();
-			expect(contractParams.properties).toBeUndefined();
+			expect((contractParams as any).required).toBeUndefined();
+			expect((contractParams as any).properties).toBeUndefined();
 			
 			// Our schema should accept empty object
 			const result = systemGetStateInput.safeParse({});
@@ -60,7 +60,7 @@ describe("Contract Validation: system.get_state", () => {
 			expect(contractResult.recentEvents.type).toBe("array");
 			
 			// No required fields - all are optional
-			const requiredFields = contractEvent.response.properties.result.required;
+			const requiredFields = (contractEvent.response.properties.result as any).required;
 			expect(requiredFields).toBeUndefined();
 		});
 		

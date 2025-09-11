@@ -12,7 +12,7 @@ export const TaskStatus = z.enum([
 export const taskCreateInput = z.object({
 	text: z.string().min(1).max(500), // Changed from title to text, max 500 per contract
 	priority: z.number().int().min(0).max(100).default(50), // Changed to 0-100, default 50
-	metadata: z.record(z.string(), z.any()).optional(),
+	metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const taskCreateOutput = z.object({
@@ -25,12 +25,12 @@ export const taskCreateOutput = z.object({
 
 // task.update
 export const taskUpdateInput = z.object({
-	id: z.string(),
+	id: z.string().min(1), // min(1) to reject empty strings
 	updates: z.object({
 		text: z.string().min(1).max(500).optional(),
 		status: TaskStatus.optional(),
 		priority: z.number().int().min(0).max(100).optional(),
-		metadata: z.record(z.string(), z.any()).optional(),
+		metadata: z.record(z.string(), z.unknown()).optional(),
 	}),
 });
 
@@ -46,8 +46,8 @@ export const taskUpdateOutput = z.object({
 
 // task.assign
 export const taskAssignInput = z.object({
-	taskId: z.string(),
-	instanceId: z.string(),
+	taskId: z.string().min(1), // min(1) to reject empty strings
+	instanceId: z.string().min(1), // min(1) to reject empty strings
 });
 
 // Contract doesn't specify output format
@@ -59,8 +59,8 @@ export const taskAssignOutput = z.object({
 
 // task.complete
 export const taskCompleteInput = z.object({
-	id: z.string(),
-	result: z.any().optional(),
+	id: z.string().min(1), // min(1) to reject empty strings
+	result: z.unknown().optional(),
 });
 
 // Contract doesn't specify output format

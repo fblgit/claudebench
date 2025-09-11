@@ -27,8 +27,8 @@ describe("Contract Validation: hook.user_prompt", () => {
 
 		it("should match contract input schema", () => {
 			// Contract requires: prompt (string), context (object)
-			expect(contractInput.prompt).toBe("string");
-			expect(contractInput.context).toBe("object");
+			expect(contractInput.prompt).toEqual({ type: "string" });
+			expect(contractInput.context).toEqual({ type: "object" });
 		});
 
 		it("should accept valid input with prompt and context", () => {
@@ -118,7 +118,7 @@ describe("Contract Validation: hook.user_prompt", () => {
 
 		it("should match contract output schema", () => {
 			// Contract requires: modified (string optional)
-			expect(contractOutput.modified).toBe("string?");
+			expect(contractOutput.modified).toEqual({ type: "string" });
 		});
 
 		it("should validate output with modified string", () => {
@@ -222,7 +222,9 @@ describe("Contract Validation: hook.user_prompt", () => {
 		it("should register hook.user_prompt handler", () => {
 			const handler = registry.getHandler("hook.user_prompt");
 			expect(handler).toBeDefined();
-			expect(handler?.metadata.event).toBe("hook.user_prompt");
+			if (handler) {
+				expect(handler.event).toBe("hook.user_prompt");
+			}
 		});
 	});
 });

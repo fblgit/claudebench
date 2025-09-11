@@ -27,8 +27,8 @@ describe("Contract Validation: hook.pre_tool", () => {
 
 		it("should match contract input schema", () => {
 			// Contract requires: tool (string), params (any)
-			expect(contractInput.tool).toBe("string");
-			expect(contractInput.params).toBe("any");
+			expect(contractInput.tool).toEqual({ type: "string" });
+			expect(contractInput.params).toEqual({}); // Empty object means any type
 		});
 
 		it("should accept valid input with tool and params", () => {
@@ -100,9 +100,9 @@ describe("Contract Validation: hook.pre_tool", () => {
 
 		it("should match contract output schema", () => {
 			// Contract requires: allow (boolean), reason (string optional), modified (any optional)
-			expect(contractOutput.allow).toBe("boolean");
-			expect(contractOutput.reason).toBe("string?");
-			expect(contractOutput.modified).toBe("any?");
+			expect(contractOutput.allow).toEqual({ type: "boolean" });
+			expect(contractOutput.reason).toEqual({ type: "string" });
+			expect(contractOutput.modified).toEqual({}); // Empty object means any type
 		});
 
 		it("should validate output with allow and reason", () => {
@@ -208,7 +208,9 @@ describe("Contract Validation: hook.pre_tool", () => {
 		it("should register hook.pre_tool handler", () => {
 			const handler = registry.getHandler("hook.pre_tool");
 			expect(handler).toBeDefined();
-			expect(handler?.metadata.event).toBe("hook.pre_tool");
+			if (handler) {
+				expect(handler.event).toBe("hook.pre_tool");
+			}
 		});
 	});
 });

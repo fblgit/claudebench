@@ -27,7 +27,7 @@ describe("Contract Validation: hook.todo_write", () => {
 
 		it("should match contract input schema", () => {
 			// Contract requires: todos (array of TodoItem)
-			expect(contractInput.todos).toBe("TodoItem[]");
+			expect(contractInput.todos.type).toBe("array");
 		});
 
 		it("should accept valid todos array", () => {
@@ -153,7 +153,7 @@ describe("Contract Validation: hook.todo_write", () => {
 
 		it("should match contract output schema", () => {
 			// Contract requires: processed (boolean)
-			expect(contractOutput.processed).toBe("boolean");
+			expect(contractOutput.processed).toEqual({ type: "boolean" });
 		});
 
 		it("should validate output with processed boolean", () => {
@@ -347,7 +347,9 @@ describe("Contract Validation: hook.todo_write", () => {
 		it("should register hook.todo_write handler", () => {
 			const handler = registry.getHandler("hook.todo_write");
 			expect(handler).toBeDefined();
-			expect(handler?.metadata.event).toBe("hook.todo_write");
+			if (handler) {
+				expect(handler.event).toBe("hook.todo_write");
+			}
 		});
 	});
 });

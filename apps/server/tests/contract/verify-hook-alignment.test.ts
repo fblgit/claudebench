@@ -113,8 +113,8 @@ describe("Hook Domain Contract Alignment Verification", () => {
 			expect(result.modified.type).toBe("string");
 			
 			// No required fields in response
-			const required = contract.response.properties.result.required;
-			expect(required).toBeUndefined();
+			const resultSpec = contract.response.properties.result as any;
+			expect(resultSpec.required).toBeUndefined();
 		});
 		
 		it("should validate schema matches contract", () => {

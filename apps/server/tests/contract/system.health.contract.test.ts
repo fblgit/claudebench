@@ -28,7 +28,7 @@ describe("Contract Validation: system.health", () => {
 		it("should have empty input per contract", () => {
 			// Contract specifies params as just "type": "object" with no required fields
 			expect(contractParams.type).toBe("object");
-			expect(contractParams.required).toBeUndefined();
+			expect((contractParams as any).required).toBeUndefined();
 			
 			// Our schema should accept empty object
 			const result = systemHealthInput.safeParse({});

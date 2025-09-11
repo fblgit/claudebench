@@ -2,29 +2,35 @@ import { z } from "zod";
 
 // hook.pre_tool - Contract aligned
 export const hookPreToolInput = z.object({
-	tool: z.string(), // Changed from toolName to match contract
-	params: z.any(), // Changed from toolParams to params, any type per contract
+	tool: z.string().min(1), // Changed from toolName to match contract, min(1) to reject empty
+	params: z.unknown(), // Changed from toolParams to params, unknown to require field but accept any type
+}).refine(data => 'params' in data, {
+	message: "params field is required"
 });
 
 export const hookPreToolOutput = z.object({
 	allow: z.boolean(), // Changed from allowed to allow per contract
 	reason: z.string().optional(),
-	modified: z.any().optional(), // Changed from modifiedParams to modified
+	modified: z.unknown().optional(), // Changed from modifiedParams to modified, unknown for any type
 });
 
 // hook.post_tool - Contract aligned
 export const hookPostToolInput = z.object({
-	tool: z.string(), // Changed from toolName to match contract
-	result: z.any(), // Changed from toolResult to result per contract
+	tool: z.string().min(1), // Changed from toolName to match contract, min(1) to reject empty
+	result: z.unknown(), // Changed from toolResult to result, unknown to require field but accept any type
+}).refine(data => 'result' in data, {
+	message: "result field is required"
 });
 
 export const hookPostToolOutput = z.object({
-	processed: z.any(), // Contract specifies processed can be any type
+	processed: z.unknown(), // Contract specifies processed can be any type, unknown to require field
+}).refine(data => 'processed' in data, {
+	message: "processed field is required"
 });
 
 // hook.user_prompt - Contract aligned
 export const hookUserPromptInput = z.object({
-	prompt: z.string(),
+	prompt: z.string().min(1), // min(1) to reject empty strings
 	context: z.object({}).passthrough(), // Contract requires context as object
 });
 
@@ -34,9 +40,9 @@ export const hookUserPromptOutput = z.object({
 
 // hook.todo_write - Contract aligned
 const todoItem = z.object({
-	content: z.string(),
+	content: z.string().min(1), // min(1) to reject empty strings
 	status: z.enum(["pending", "in_progress", "completed"]),
-	activeForm: z.string().optional(), // Contract shows activeForm is optional
+	activeForm: z.string().min(1).optional(), // Contract shows activeForm is optional
 });
 
 export const hookTodoWriteInput = z.object({
