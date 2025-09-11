@@ -18,6 +18,7 @@
     "db:down": "docker compose down"
   },
   "dependencies": {
+    "@hono/node-server": "^1.13.9",
     "@modelcontextprotocol/sdk": "^1.17.5",
     "@prisma/client": "^6.15.0",
     "dotenv": "^17.2.1",

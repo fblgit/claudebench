@@ -84,3 +84,22 @@ export const getRedis = (options?: RedisOptions) => RedisConnection.getInstance(
 
 // Export key helper
 export const redisKey = RedisConnection.key;
+
+// Export connection management functions
+export async function connectRedis(options?: RedisOptions): Promise<void> {
+	const redis = RedisConnection.getInstance(options);
+	// Wait for connection to be ready
+	const maxRetries = 10;
+	for (let i = 0; i < maxRetries; i++) {
+		if (await redis.ping()) {
+			return;
+		}
+		await new Promise(resolve => setTimeout(resolve, 500));
+	}
+	throw new Error("Failed to connect to Redis");
+}
+
+export async function disconnectRedis(): Promise<void> {
+	const redis = RedisConnection.getInstance();
+	await redis.disconnect();
+}

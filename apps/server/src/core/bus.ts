@@ -12,9 +12,37 @@ export interface Event {
 export class EventBus {
 	private redis: ReturnType<typeof getRedis>;
 	private subscribers: Map<string, Set<(event: Event) => Promise<void>>> = new Map();
+	private initialized = false;
 
 	constructor() {
 		this.redis = getRedis();
+	}
+
+	async initialize(): Promise<void> {
+		if (this.initialized) return;
+		
+		// Ensure Redis connections are ready
+		const maxRetries = 10;
+		for (let i = 0; i < maxRetries; i++) {
+			if (await this.redis.ping()) {
+				this.initialized = true;
+				return;
+			}
+			await new Promise(resolve => setTimeout(resolve, 500));
+		}
+		throw new Error("Failed to initialize EventBus - Redis not available");
+	}
+
+	async close(): Promise<void> {
+		// Unsubscribe from all channels
+		const channels = Array.from(this.subscribers.keys());
+		if (channels.length > 0) {
+			await this.redis.sub.unsubscribe(...channels);
+		}
+		
+		// Clear local subscribers
+		this.subscribers.clear();
+		this.initialized = false;
 	}
 
 	async publish(event: Event): Promise<string> {
