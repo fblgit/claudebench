@@ -1,4 +1,4 @@
-import { EventHandler } from "@/core/decorator";
+import { EventHandler, Instrumented, Resilient } from "@/core/decorator";
 import type { EventContext } from "@/core/context";
 import { systemHealthInput, systemHealthOutput } from "@/schemas/system.schema";
 import type { SystemHealthInput, SystemHealthOutput } from "@/schemas/system.schema";
@@ -12,6 +12,23 @@ import type { SystemHealthInput, SystemHealthOutput } from "@/schemas/system.sch
 	description: "Check system health status per JSONRPC contract",
 })
 export class SystemHealthHandler {
+	@Instrumented(30) // Cache for 30 seconds - health checks are frequent
+	@Resilient({
+		rateLimit: { limit: 100, windowMs: 60000 }, // 100 requests per minute
+		timeout: 3000, // 3 second timeout
+		circuitBreaker: { 
+			threshold: 10, 
+			timeout: 30000,
+			fallback: () => ({ 
+				status: "degraded",
+				services: {
+					redis: false,
+					postgres: false,
+					mcp: true, // MCP is running if this executes
+				}
+			})
+		}
+	})
 	async handle(input: SystemHealthInput, ctx: EventContext): Promise<SystemHealthOutput> {
 		// Check Redis connection
 		let redisHealthy = false;

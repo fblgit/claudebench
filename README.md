@@ -80,10 +80,15 @@ claudebench/
 - specs/001-claudebench/CONTRACT-DRIVEN-DEVELOPMENT.md
 - specs/001-claudebench/data-model.md (Data Modeling FUNDAMENTAL ADHERENCE)
 - specs/001-claudebench/contracts/jsonrpc-contract.json (FULL ADHERENCE)
+- specs/001-claudebench/contracts/hook-transport-contract.json (FULL ADHERENCE)
+- CLAUDE_CODE_GUIDE.md (Claude Code with ClaudeBench)
+- specs/001-claudebench/contracts/claudecode-contract.json (FULL ADHERENCE)
 - specs/001-claudebench/research.md (Research)
 - specs/001-claudebench/plan.md (Roadmap Plan)
 - specs/001-claudebench/quickstart.md (Behaviour and usage)
+- src/core/decorator.ts (Our decorator-FIRST approach: metrics, audit log, cache, rate limit, circuit breaker)
 - MCP_SDK.md (When working with MCP)
-- CLAUDE_CODE_GUIDE.md (Claude Code with ClaudeBench)
 
 Be sure to always have visited and readed these documents when working in any task.
+
+# Currently working on: @apps/server/HOWTO_INSTRUMENTED_RESILIENT.md

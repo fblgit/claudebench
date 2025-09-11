@@ -1,4 +1,4 @@
-import { EventHandler } from "@/core/decorator";
+import { EventHandler, Instrumented, Resilient } from "@/core/decorator";
 import type { EventContext } from "@/core/context";
 import { taskUpdateInput, taskUpdateOutput } from "@/schemas/task.schema";
 import type { TaskUpdateInput, TaskUpdateOutput } from "@/schemas/task.schema";
@@ -13,6 +13,18 @@ import { redisKey } from "@/core/redis";
 	description: "Update an existing task",
 })
 export class TaskUpdateHandler {
+	@Instrumented(60) // Cache for 1 minute - updates change task state
+	@Resilient({
+		rateLimit: { limit: 20, windowMs: 60000 }, // 20 requests per minute
+		timeout: 5000, // 5 second timeout
+		circuitBreaker: { 
+			threshold: 5, 
+			timeout: 30000,
+			fallback: () => {
+				throw new Error("Task update service temporarily unavailable");
+			}
+		}
+	})
 	async handle(input: TaskUpdateInput, ctx: EventContext): Promise<TaskUpdateOutput> {
 		const taskKey = redisKey("task", input.id);
 		

@@ -1,4 +1,4 @@
-import { EventHandler } from "@/core/decorator";
+import { EventHandler, Instrumented, Resilient } from "@/core/decorator";
 import type { EventContext } from "@/core/context";
 import { taskAssignInput, taskAssignOutput } from "@/schemas/task.schema";
 import type { TaskAssignInput, TaskAssignOutput } from "@/schemas/task.schema";
@@ -13,6 +13,18 @@ import { redisKey } from "@/core/redis";
 	description: "Assign a task to an instance",
 })
 export class TaskAssignHandler {
+	@Instrumented(60) // Cache for 1 minute - assignments change task state
+	@Resilient({
+		rateLimit: { limit: 20, windowMs: 60000 }, // 20 requests per minute
+		timeout: 5000, // 5 second timeout
+		circuitBreaker: { 
+			threshold: 5, 
+			timeout: 30000,
+			fallback: () => {
+				throw new Error("Task assignment service temporarily unavailable");
+			}
+		}
+	})
 	async handle(input: TaskAssignInput, ctx: EventContext): Promise<TaskAssignOutput> {
 		const taskKey = redisKey("task", input.taskId);
 		const instanceKey = redisKey("instance", input.instanceId);

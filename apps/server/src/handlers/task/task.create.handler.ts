@@ -1,4 +1,4 @@
-import { EventHandler, Resilient } from "@/core/decorator";
+import { EventHandler, Instrumented, Resilient } from "@/core/decorator";
 import type { EventContext } from "@/core/context";
 import { taskCreateInput, taskCreateOutput } from "@/schemas/task.schema";
 import type { TaskCreateInput, TaskCreateOutput } from "@/schemas/task.schema";
@@ -14,8 +14,9 @@ import { taskQueue } from "@/core/task-queue";
 	description: "Create a new task and add it to the queue",
 })
 export class TaskCreateHandler {
+	@Instrumented(120) // Cache for 2 minutes
 	@Resilient({
-		rateLimit: { limit: 10, windowMs: 60000 },
+		rateLimit: { limit: 100, windowMs: 60000 }, // 100 tasks per minute (increased for testing)
 		timeout: 5000,
 		circuitBreaker: { 
 			threshold: 5, 

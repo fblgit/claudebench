@@ -1,4 +1,4 @@
-import { EventHandler } from "@/core/decorator";
+import { EventHandler, Instrumented, Resilient } from "@/core/decorator";
 import type { EventContext } from "@/core/context";
 import { hookPostToolInput, hookPostToolOutput } from "@/schemas/hook.schema";
 import type { HookPostToolInput, HookPostToolOutput } from "@/schemas/hook.schema";
@@ -13,6 +13,18 @@ import { redisKey } from "@/core/redis";
 	description: "Process tool execution results",
 })
 export class PostToolHookHandler {
+	@Instrumented(60) // Cache for 1 minute - post-tool results change frequently
+	@Resilient({
+		rateLimit: { limit: 1000, windowMs: 60000 }, // 1000 requests per minute
+		timeout: 5000, // 5 second timeout
+		circuitBreaker: { 
+			threshold: 10, 
+			timeout: 30000,
+			fallback: () => ({ 
+				processed: true // Mark as processed even if circuit is open
+			})
+		}
+	})
 	async handle(input: HookPostToolInput, ctx: EventContext): Promise<HookPostToolOutput> {
 		// Log tool execution result
 		const logKey = redisKey("log", "tool", input.tool, Date.now().toString());

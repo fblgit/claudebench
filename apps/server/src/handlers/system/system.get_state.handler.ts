@@ -1,4 +1,4 @@
-import { EventHandler } from "@/core/decorator";
+import { EventHandler, Instrumented, Resilient } from "@/core/decorator";
 import type { EventContext } from "@/core/context";
 import { systemGetStateInput, systemGetStateOutput } from "@/schemas/system.schema";
 import type { SystemGetStateInput, SystemGetStateOutput } from "@/schemas/system.schema";
@@ -14,6 +14,21 @@ import { instanceManager } from "@/core/instance-manager";
 	description: "Get system state per JSONRPC contract",
 })
 export class SystemGetStateHandler {
+	@Instrumented(30) // Cache for 30 seconds - state changes moderately
+	@Resilient({
+		rateLimit: { limit: 50, windowMs: 60000 }, // 50 requests per minute
+		timeout: 5000, // 5 second timeout
+		circuitBreaker: { 
+			threshold: 5, 
+			timeout: 30000,
+			fallback: () => ({ 
+				// Return empty state if circuit is open
+				tasks: undefined,
+				instances: undefined,
+				recentEvents: undefined,
+			})
+		}
+	})
 	async handle(input: SystemGetStateInput, ctx: EventContext): Promise<SystemGetStateOutput> {
 		// Use instance manager to get centralized system state
 		const state = await instanceManager.getSystemState();

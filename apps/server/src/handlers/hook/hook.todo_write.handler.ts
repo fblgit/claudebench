@@ -1,4 +1,4 @@
-import { EventHandler } from "@/core/decorator";
+import { EventHandler, Instrumented, Resilient } from "@/core/decorator";
 import type { EventContext } from "@/core/context";
 import { hookTodoWriteInput, hookTodoWriteOutput } from "@/schemas/hook.schema";
 import type { HookTodoWriteInput, HookTodoWriteOutput } from "@/schemas/hook.schema";
@@ -13,6 +13,18 @@ import { redisKey } from "@/core/redis";
 	description: "Process TodoWrite events",
 })
 export class TodoWriteHookHandler {
+	@Instrumented(60) // Cache for 1 minute - todos change frequently
+	@Resilient({
+		rateLimit: { limit: 50, windowMs: 60000 }, // 50 requests per minute
+		timeout: 5000, // 5 second timeout for DB writes
+		circuitBreaker: { 
+			threshold: 5, 
+			timeout: 30000,
+			fallback: () => ({ 
+				processed: true // Always mark as processed
+			})
+		}
+	})
 	async handle(input: HookTodoWriteInput, ctx: EventContext): Promise<HookTodoWriteOutput> {
 		// Store current todo state
 		const stateKey = redisKey("todos", "current", ctx.instanceId || "default");

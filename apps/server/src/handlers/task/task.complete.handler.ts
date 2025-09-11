@@ -1,4 +1,4 @@
-import { EventHandler } from "@/core/decorator";
+import { EventHandler, Instrumented, Resilient } from "@/core/decorator";
 import type { EventContext } from "@/core/context";
 import { taskCompleteInput, taskCompleteOutput } from "@/schemas/task.schema";
 import type { TaskCompleteInput, TaskCompleteOutput } from "@/schemas/task.schema";
@@ -13,6 +13,18 @@ import { redisKey } from "@/core/redis";
 	description: "Mark a task as completed or failed",
 })
 export class TaskCompleteHandler {
+	@Instrumented(60) // Cache for 1 minute - completions are final state changes
+	@Resilient({
+		rateLimit: { limit: 20, windowMs: 60000 }, // 20 requests per minute
+		timeout: 5000, // 5 second timeout
+		circuitBreaker: { 
+			threshold: 5, 
+			timeout: 30000,
+			fallback: () => {
+				throw new Error("Task completion service temporarily unavailable");
+			}
+		}
+	})
 	async handle(input: TaskCompleteInput, ctx: EventContext): Promise<TaskCompleteOutput> {
 		const taskKey = redisKey("task", input.id);
 		

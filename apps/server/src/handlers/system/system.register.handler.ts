@@ -1,4 +1,4 @@
-import { EventHandler } from "@/core/decorator";
+import { EventHandler, Instrumented, Resilient } from "@/core/decorator";
 import type { EventContext } from "@/core/context";
 import { systemRegisterInput, systemRegisterOutput } from "@/schemas/system.schema";
 import type { SystemRegisterInput, SystemRegisterOutput } from "@/schemas/system.schema";
@@ -15,6 +15,18 @@ import { taskQueue } from "@/core/task-queue";
 	description: "Register an instance per JSONRPC contract",
 })
 export class SystemRegisterHandler {
+	@Instrumented(60) // Cache for 1 minute - instance registration changes frequently
+	@Resilient({
+		rateLimit: { limit: 100, windowMs: 60000 }, // 100 registrations per minute (increased for testing)
+		timeout: 5000, // 5 second timeout
+		circuitBreaker: { 
+			threshold: 5, 
+			timeout: 30000,
+			fallback: () => ({ 
+				registered: false // Fail registration if circuit is open
+			})
+		}
+	})
 	async handle(input: SystemRegisterInput, ctx: EventContext): Promise<SystemRegisterOutput> {
 		// Use instance manager for centralized registration
 		const registered = await instanceManager.register(input.id, input.roles);

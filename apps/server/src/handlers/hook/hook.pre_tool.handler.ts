@@ -1,4 +1,4 @@
-import { EventHandler, Instrumented } from "@/core/decorator";
+import { EventHandler, Instrumented, Resilient } from "@/core/decorator";
 import type { EventContext } from "@/core/context";
 import { hookPreToolInput, hookPreToolOutput } from "@/schemas/hook.schema";
 import type { HookPreToolInput, HookPreToolOutput } from "@/schemas/hook.schema";
@@ -14,17 +14,29 @@ import { hookValidator } from "@/core/hook-validator";
 })
 export class PreToolHookHandler {
 	@Instrumented(300) // Cache for 5 minutes - handles caching, metrics, and audit
+	@Resilient({
+		rateLimit: { limit: 1000, windowMs: 60000 }, // 1000 requests per minute
+		timeout: 3000, // 3 second timeout for hook validation
+		circuitBreaker: { 
+			threshold: 10, // Open after 10 failures
+			timeout: 30000, // Try again after 30 seconds
+			fallback: () => ({ 
+				allow: true, // Allow by default if circuit is open
+				reason: "Hook validation circuit breaker open - allowing by default"
+			})
+		}
+	})
 	async handle(input: HookPreToolInput, ctx: EventContext): Promise<HookPreToolOutput> {
 		// Use the configurable hook validator
 		const result = await hookValidator.validate({
 			tool: input.tool,
 			params: input.params,
-			sessionId: ctx.sessionId,
+			sessionId: ctx.metadata?.sessionId,
 			instanceId: ctx.instanceId,
 		});
 
 		// Return the validation result
-		// The decorator handles caching, metrics, and audit logging
+		// The decorators handle caching, metrics, audit logging, rate limiting, timeout, and circuit breaker
 		return result;
 	}
 }

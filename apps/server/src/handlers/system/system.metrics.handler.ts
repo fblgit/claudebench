@@ -1,4 +1,4 @@
-import { EventHandler } from "@/core/decorator";
+import { EventHandler, Instrumented, Resilient } from "@/core/decorator";
 import type { EventContext } from "@/core/context";
 import { systemMetricsInput, systemMetricsOutput } from "@/schemas/system.schema";
 import type { SystemMetricsInput, SystemMetricsOutput } from "@/schemas/system.schema";
@@ -13,6 +13,22 @@ import { redisKey } from "@/core/redis";
 	description: "Get system metrics per JSONRPC contract",
 })
 export class SystemMetricsHandler {
+	@Instrumented(60) // Cache for 1 minute - metrics don't change rapidly
+	@Resilient({
+		rateLimit: { limit: 20, windowMs: 60000 }, // 20 requests per minute
+		timeout: 3000, // 3 second timeout
+		circuitBreaker: { 
+			threshold: 5, 
+			timeout: 30000,
+			fallback: () => ({ 
+				// Return empty metrics if circuit is open
+				eventsProcessed: undefined,
+				tasksCompleted: undefined,
+				averageLatency: undefined,
+				memoryUsage: undefined,
+			})
+		}
+	})
 	async handle(input: SystemMetricsInput, ctx: EventContext): Promise<SystemMetricsOutput> {
 		// Get events processed count
 		const eventsKey = redisKey("metrics", "events", "total");

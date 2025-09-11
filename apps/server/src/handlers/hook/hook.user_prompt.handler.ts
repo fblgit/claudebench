@@ -1,4 +1,4 @@
-import { EventHandler } from "@/core/decorator";
+import { EventHandler, Instrumented, Resilient } from "@/core/decorator";
 import type { EventContext } from "@/core/context";
 import { hookUserPromptInput, hookUserPromptOutput } from "@/schemas/hook.schema";
 import type { HookUserPromptInput, HookUserPromptOutput } from "@/schemas/hook.schema";
@@ -13,6 +13,18 @@ import { redisKey } from "@/core/redis";
 	description: "Intercept and potentially modify user prompts",
 })
 export class UserPromptHookHandler {
+	@Instrumented(120) // Cache for 2 minutes - prompts may be repeated
+	@Resilient({
+		rateLimit: { limit: 100, windowMs: 60000 }, // 100 requests per minute
+		timeout: 3000, // 3 second timeout
+		circuitBreaker: { 
+			threshold: 5, 
+			timeout: 30000,
+			fallback: () => ({ 
+				modified: undefined // Don't modify on circuit open
+			})
+		}
+	})
 	async handle(input: HookUserPromptInput, ctx: EventContext): Promise<HookUserPromptOutput> {
 		// Track prompt for history
 		const historyKey = redisKey("history", "prompts", Date.now().toString());
@@ -60,13 +72,6 @@ export class UserPromptHookHandler {
 				const currentPrompt = modifiedPrompt || input.prompt;
 				modifiedPrompt = `${currentPrompt}\n\nContext: ${enhancements.join(", ")}`;
 			}
-		}
-		
-		// Update metrics
-		const metricsKey = redisKey("metrics", "hooks", "user_prompt");
-		await ctx.redis.stream.hincrby(metricsKey, "total", 1);
-		if (modifiedPrompt) {
-			await ctx.redis.stream.hincrby(metricsKey, "modified", 1);
 		}
 		
 		// Publish event
