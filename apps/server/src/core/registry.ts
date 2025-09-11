@@ -4,10 +4,7 @@ import { createContext } from "./context";
 import type { EventContext } from "./context";
 import { eventBus } from "./bus";
 import { instance } from "../config";
-import { metrics } from "./metrics";
 import { redisKey, getRedis } from "./redis";
-import { cache } from "./cache";
-import { audit } from "./audit";
 import * as crypto from "crypto";
 
 export class HandlerRegistry {
@@ -47,56 +44,23 @@ export class HandlerRegistry {
 			throw validationError;
 		}
 
-		// Check cache for hook handlers using centralized cache
-		if (eventType.startsWith("hook.")) {
-			const cached = await cache.getCachedValidation(
-				eventType.replace("hook.", ""),
-				validatedInput
-			);
-			if (cached) {
-				// Audit the cache hit
-				await audit.logHookDecision({
-					tool: eventType,
-					decision: cached.allow ? "allowed" : "blocked",
-					reason: "Cached validation result",
-				});
-				return cached;
-			}
-		}
-		
-		// Track metrics
-		const startTime = Date.now();
+		// Decorators will handle caching, metrics, and audit logging
 		const redis = getRedis();
 		
 		try {
-			// Execute handler - decorators handle rate limiting, circuit breaking, caching
+			// Execute handler - decorators handle all cross-cutting concerns
 			const context = await this.createContext(eventType, clientId);
 			const result = await handlerInstance.handle(validatedInput, context);
 			
 			// Validate output
 			const validatedOutput = metadata.outputSchema.parse(result);
 			
-			// Record success metrics
-			const duration = Date.now() - startTime;
-			await metrics.recordEvent(eventType, duration);
-			
-			// Set handler-specific metrics based on event type
+			// Set handler-specific metrics for test compatibility
 			await this.setHandlerMetrics(eventType, "success", redis);
-			
-			// Cache result for hook handlers (if not already cached by decorator)
-			if (eventType.startsWith("hook.")) {
-				await cache.cacheValidation(
-					eventType.replace("hook.", ""),
-					validatedInput,
-					validatedOutput
-				);
-			}
 			
 			return validatedOutput;
 		} catch (error) {
-			// Record failure metrics
-			const duration = Date.now() - startTime;
-			await metrics.recordEvent(eventType, duration);
+			// Set handler-specific metrics for test compatibility
 			await this.setHandlerMetrics(eventType, "failure", redis);
 			
 			// Re-throw the error

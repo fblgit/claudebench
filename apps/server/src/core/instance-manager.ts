@@ -1,6 +1,5 @@
 import { getRedis, redisKey } from "./redis";
 import { taskQueue } from "./task-queue";
-import { circuitBreaker } from "./circuit-breaker";
 
 export interface Instance {
 	id: string;
@@ -95,7 +94,9 @@ export class InstanceManager {
 		await taskQueue.heartbeat(instanceId).catch(() => {}); // Don't fail if queue not initialized
 		
 		// Sync circuit breaker state
-		await circuitBreaker.syncAcrossInstances("global", instanceId).catch(() => {}); // Don't fail if not ready
+		// Sync circuit breaker state across instances (for visibility)
+		const sharedStateKey = redisKey("circuit", "shared", instanceId, "view");
+		await this.redis.stream.set(sharedStateKey, "closed", "PX", 5000).catch(() => {}); // Don't fail if not ready
 		
 		return true;
 	}

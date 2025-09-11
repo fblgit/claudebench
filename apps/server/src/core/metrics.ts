@@ -113,7 +113,14 @@ export class MetricsCollector {
 		return value ? parseFloat(value) : 0;
 	}
 
-	// Increment a counter metric
+	// Increment a counter metric (public for external use)
+	async increment(key: string, by: number = 1): Promise<void> {
+		const metricsKey = redisKey("metrics", "counters");
+		await this.redis.stream.hincrby(metricsKey, key, by);
+		await this.redis.stream.expire(metricsKey, 3600); // 1 hour TTL
+	}
+	
+	// Increment a counter metric (private for internal use)
 	private async incrementMetric(key: string, by: number = 1): Promise<void> {
 		const metricsKey = redisKey("metrics", "current");
 		await this.redis.stream.hincrby(metricsKey, key, by);

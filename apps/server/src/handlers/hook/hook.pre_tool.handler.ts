@@ -2,6 +2,7 @@ import { EventHandler, Instrumented } from "@/core/decorator";
 import type { EventContext } from "@/core/context";
 import { hookPreToolInput, hookPreToolOutput } from "@/schemas/hook.schema";
 import type { HookPreToolInput, HookPreToolOutput } from "@/schemas/hook.schema";
+import { redisKey } from "@/core/redis";
 
 @EventHandler({
 	event: "hook.pre_tool",

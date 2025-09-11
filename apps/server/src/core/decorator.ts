@@ -234,7 +234,7 @@ export function RateLimited(options: RateLimitOptions) {
 		const originalMethod = descriptor.value;
 		
 		descriptor.value = async function (input: any, ctx: EventContext, ...rest: any[]) {
-			const redis = getRedis();
+			const redis = getRedis().stream;
 			const eventMetadata = Reflect.getMetadata("eventHandler", target.constructor);
 			const eventName = eventMetadata?.event || ctx?.eventType || `${target.constructor.name}.${propertyKey}`;
 			
@@ -315,7 +315,7 @@ export function Timeout(options: TimeoutOptions | number) {
 		const originalMethod = descriptor.value;
 		
 		descriptor.value = async function (input: any, ctx: EventContext, ...rest: any[]) {
-			const redis = getRedis();
+			const redis = getRedis().stream;
 			const eventMetadata = Reflect.getMetadata("eventHandler", target.constructor);
 			const eventName = eventMetadata?.event || ctx?.eventType || `${target.constructor.name}.${propertyKey}`;
 			
@@ -346,7 +346,7 @@ export function Timeout(options: TimeoutOptions | number) {
 						action: `timeout.exceeded`,
 						actor: ctx?.metadata?.clientId || ctx?.instanceId || "system",
 						resource: eventName,
-						result: "timeout",
+						result: "failure",
 						reason: `Execution exceeded ${config.ms}ms`,
 						timestamp: new Date().toISOString(),
 					});
@@ -395,7 +395,7 @@ export function CircuitBreaker(options: CircuitBreakerOptions) {
 		const originalMethod = descriptor.value;
 		
 		descriptor.value = async function (input: any, ctx: EventContext, ...rest: any[]) {
-			const redis = getRedis();
+			const redis = getRedis().stream;
 			const eventMetadata = Reflect.getMetadata("eventHandler", target.constructor);
 			const eventName = eventMetadata?.event || ctx?.eventType || `${target.constructor.name}.${propertyKey}`;
 			
@@ -459,7 +459,7 @@ export function CircuitBreaker(options: CircuitBreakerOptions) {
 						action: `circuit.half-open`,
 						actor: ctx?.metadata?.clientId || ctx?.instanceId || "system",
 						resource: eventName,
-						result: "attempting",
+						result: "allowed",
 						timestamp: new Date().toISOString(),
 					});
 				}
@@ -518,7 +518,7 @@ export function CircuitBreaker(options: CircuitBreakerOptions) {
 							action: `circuit.closed`,
 							actor: ctx?.metadata?.clientId || ctx?.instanceId || "system",
 							resource: eventName,
-							result: "recovered",
+							result: "success",
 							timestamp: new Date().toISOString(),
 						});
 						await metrics.increment(`circuit:${eventName}:closed`);
@@ -602,7 +602,7 @@ export function CircuitBreaker(options: CircuitBreakerOptions) {
 						action: `circuit.opened`,
 						actor: ctx?.metadata?.clientId || ctx?.instanceId || "system",
 						resource: eventName,
-						result: "opened",
+						result: "failure",
 						reason: `Error threshold reached: ${newErrorCount}/${options.threshold}`,
 						timestamp: new Date().toISOString(),
 					});
