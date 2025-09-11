@@ -47,25 +47,31 @@ describe("Contract Validation: task.complete", () => {
 	});
 
 	afterAll(async () => {
-		// Clean up test data
-		const keys = [
-			`cb:task:${assignedTaskId}`,
-			`cb:task:${unassignedTaskId}`,
-			`cb:instance:${testInstanceId}`,
-			`cb:queue:instance:${testInstanceId}`,
-			`cb:metrics:instance:${testInstanceId}`,
-			`cb:metrics:global`,
-		];
-		const existingKeys = [];
-		for (const key of keys) {
-			if (await redis.stream.exists(key)) {
-				existingKeys.push(key);
+		// Try to clean up test data
+		try {
+			const keys = [
+				`cb:task:${assignedTaskId}`,
+				`cb:task:${unassignedTaskId}`,
+				`cb:instance:${testInstanceId}`,
+				`cb:queue:instance:${testInstanceId}`,
+				`cb:metrics:instance:${testInstanceId}`,
+				`cb:metrics:global`,
+			];
+			const existingKeys = [];
+			for (const key of keys) {
+				if (await redis.stream.exists(key)) {
+					existingKeys.push(key);
+				}
 			}
+			if (existingKeys.length > 0) {
+				await redis.stream.del(...existingKeys);
+			}
+		} catch {
+			// Ignore cleanup errors
 		}
-		if (existingKeys.length > 0) {
-			await redis.stream.del(...existingKeys);
-		}
-		await redis.disconnect();
+		
+		// Don't quit Redis - let the process handle cleanup on exit
+		// This prevents interference between parallel test files
 	});
 
 	describe("Schema validation against contract", () => {

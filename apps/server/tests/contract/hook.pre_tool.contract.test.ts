@@ -18,8 +18,8 @@ describe("Contract Validation: hook.pre_tool", () => {
 	});
 
 	afterAll(async () => {
-		// Cleanup
-		await redis.stream.quit();
+		// Don't quit Redis - let the process handle cleanup on exit
+		// This prevents interference between parallel test files
 	});
 
 	describe("Input Schema Contract", () => {

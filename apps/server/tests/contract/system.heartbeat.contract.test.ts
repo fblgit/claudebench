@@ -17,14 +17,19 @@ describe("Contract Validation: system.heartbeat", () => {
 	});
 	
 	afterAll(async () => {
-		await redis.disconnect();
+		// Don't quit Redis - let the process handle cleanup on exit
+		// This prevents interference between parallel test files
 	});
 	
 	beforeEach(async () => {
-		// Clean up test data
-		const keys = await redis.stream.keys("cb:instance:*");
-		if (keys.length > 0) {
-			await redis.stream.del(...keys);
+		try {
+			// Clean up test data
+			const keys = await redis.stream.keys("cb:instance:*");
+			if (keys.length > 0) {
+				await redis.stream.del(...keys);
+			}
+		} catch {
+			// Ignore cleanup errors
 		}
 	});
 	

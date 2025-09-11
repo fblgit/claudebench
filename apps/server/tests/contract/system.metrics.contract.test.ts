@@ -17,14 +17,19 @@ describe("Contract Validation: system.metrics", () => {
 	});
 	
 	afterAll(async () => {
-		await redis.disconnect();
+		// Don't quit Redis - let the process handle cleanup on exit
+		// This prevents interference between parallel test files
 	});
 	
 	beforeEach(async () => {
-		// Clean up metric keys
-		const metricKeys = await redis.stream.keys("cb:metrics:*");
-		if (metricKeys.length > 0) {
-			await redis.stream.del(...metricKeys);
+		try {
+			// Clean up metric keys
+			const metricKeys = await redis.stream.keys("cb:metrics:*");
+			if (metricKeys.length > 0) {
+				await redis.stream.del(...metricKeys);
+			}
+		} catch {
+			// Ignore cleanup errors
 		}
 	});
 	

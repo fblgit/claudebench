@@ -17,7 +17,8 @@ describe("Contract Validation: system.health", () => {
 	});
 	
 	afterAll(async () => {
-		await redis.disconnect();
+		// Don't quit Redis - let the process handle cleanup on exit
+		// This prevents interference between parallel test files
 	});
 	
 	describe("Schema validation against contract", () => {

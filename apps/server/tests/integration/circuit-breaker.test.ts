@@ -10,14 +10,19 @@ describe("Integration: Circuit Breaker", () => {
 	beforeAll(async () => {
 		redis = getRedis();
 		// Clear test data
-		const keys = await redis.stream.keys("cb:test:circuit:*");
-		if (keys.length > 0) {
-			await redis.stream.del(...keys);
+		try {
+			const keys = await redis.stream.keys("cb:test:circuit:*");
+			if (keys.length > 0) {
+				await redis.stream.del(...keys);
+			}
+		} catch {
+			// Ignore cleanup errors
 		}
 	});
 
 	afterAll(async () => {
-		await redis.disconnect();
+		// Don't quit Redis - let the process handle cleanup on exit
+		// This prevents interference between parallel test files
 	});
 
 	it("should track handler failures", async () => {

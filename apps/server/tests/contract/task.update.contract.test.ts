@@ -25,12 +25,18 @@ describe("Contract Validation: task.update", () => {
 	});
 
 	afterAll(async () => {
-		// Clean up test data
-		const keys = await redis.stream.keys(`cb:task:${testTaskId}`);
-		if (keys.length > 0) {
-			await redis.stream.del(...keys);
+		// Try to clean up test data
+		try {
+			const keys = await redis.stream.keys(`cb:task:${testTaskId}`);
+			if (keys.length > 0) {
+				await redis.stream.del(...keys);
+			}
+		} catch {
+			// Ignore cleanup errors
 		}
-		await redis.disconnect();
+		
+		// Don't quit Redis - let the process handle cleanup on exit
+		// This prevents interference between parallel test files
 	});
 
 	describe("Schema validation against contract", () => {

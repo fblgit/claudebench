@@ -17,14 +17,19 @@ describe("Contract Validation: task.create", () => {
 		await registry.discover();
 		
 		// Clear test data
-		const keys = await redis.stream.keys("cb:task:*");
-		if (keys.length > 0) {
-			await redis.stream.del(...keys);
+		try {
+			const keys = await redis.stream.keys("cb:task:*");
+			if (keys.length > 0) {
+				await redis.stream.del(...keys);
+			}
+		} catch {
+			// Ignore - Redis might not be ready yet
 		}
 	});
 
 	afterAll(async () => {
-		await redis.disconnect();
+		// Don't quit Redis - let the process handle cleanup on exit
+		// This prevents interference between parallel test files
 	});
 
 	describe("Schema validation against contract", () => {

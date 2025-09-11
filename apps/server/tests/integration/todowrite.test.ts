@@ -17,14 +17,19 @@ describe("Integration: TodoWrite Event Capture", () => {
 	beforeAll(async () => {
 		redis = getRedis();
 		// Clear test data
-		const keys = await redis.stream.keys("cb:test:todowrite:*");
-		if (keys.length > 0) {
-			await redis.stream.del(...keys);
+		try {
+			const keys = await redis.stream.keys("cb:test:todowrite:*");
+			if (keys.length > 0) {
+				await redis.stream.del(...keys);
+			}
+		} catch {
+			// Ignore cleanup errors
 		}
 	});
 
 	afterAll(async () => {
-		await redis.disconnect();
+		// Don't quit Redis - let the process handle cleanup on exit
+		// This prevents interference between parallel test files
 	});
 
 	it("should capture TodoWrite events from Claude Code", async () => {

@@ -17,18 +17,23 @@ describe("Contract Validation: system.register", () => {
 	});
 	
 	afterAll(async () => {
-		await redis.disconnect();
+		// Don't quit Redis - let the process handle cleanup on exit
+		// This prevents interference between parallel test files
 	});
 	
 	beforeEach(async () => {
-		// Clean up test data
-		const keys = await redis.stream.keys("cb:instance:*");
-		if (keys.length > 0) {
-			await redis.stream.del(...keys);
-		}
-		const roleKeys = await redis.stream.keys("cb:role:*");
-		if (roleKeys.length > 0) {
-			await redis.stream.del(...roleKeys);
+		// Try to clean up test data
+		try {
+			const keys = await redis.stream.keys("cb:instance:*");
+			if (keys.length > 0) {
+				await redis.stream.del(...keys);
+			}
+			const roleKeys = await redis.stream.keys("cb:role:*");
+			if (roleKeys.length > 0) {
+				await redis.stream.del(...roleKeys);
+			}
+		} catch {
+			// Ignore cleanup errors
 		}
 	});
 	

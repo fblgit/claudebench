@@ -18,8 +18,18 @@ describe("Contract Validation: hook.user_prompt", () => {
 	});
 
 	afterAll(async () => {
-		// Cleanup
-		await redis.stream.quit();
+		// Try to clean up test data
+		try {
+			const keys = await redis.stream.keys("cb:test:*");
+			if (keys.length > 0) {
+				await redis.stream.del(...keys);
+			}
+		} catch {
+			// Ignore cleanup errors
+		}
+		
+		// Don't quit Redis - let the process handle cleanup on exit
+		// This prevents interference between parallel test files
 	});
 
 	describe("Input Schema Contract", () => {
