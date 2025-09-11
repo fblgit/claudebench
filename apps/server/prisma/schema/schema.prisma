@@ -9,3 +9,51 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  status      TaskStatus @default(PENDING)
+  priority    Int      @default(0)
+  assignedTo  String?  // Instance ID
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  completedAt DateTime?
+  
+  @@index([status])
+  @@index([assignedTo])
+  @@index([priority])
+}
+
+model Instance {
+  id          String   @id @default(cuid())
+  name        String
+  role        String   // worker, supervisor, etc.
+  status      InstanceStatus @default(ACTIVE)
+  lastHeartbeat DateTime @default(now())
+  capabilities Json?   // What handlers this instance supports
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([status])
+  @@index([role])
+}
+
+enum TaskStatus {
+  PENDING
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum InstanceStatus {
+  ACTIVE
+  IDLE
+  BUSY
+  OFFLINE
+}
