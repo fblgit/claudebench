@@ -15,7 +15,7 @@ const systemGetStateOutputSchema = z.object({
 	scope: z.string(),
 	tasks: z.object({
 		total: z.number(),
-		byStatus: z.record(z.number()),
+		byStatus: z.record(z.string(), z.number()),
 		queue: z.array(z.object({
 			id: z.string(),
 			title: z.string(),
@@ -26,7 +26,7 @@ const systemGetStateOutputSchema = z.object({
 	}).optional(),
 	instances: z.object({
 		total: z.number(),
-		byStatus: z.record(z.number()),
+		byStatus: z.record(z.string(), z.number()),
 		list: z.array(z.object({
 			id: z.string(),
 			name: z.string(),
@@ -43,7 +43,7 @@ const systemGetStateOutputSchema = z.object({
 			timestamp: z.string().datetime(),
 			data: z.any(),
 		})),
-		byType: z.record(z.number()),
+		byType: z.record(z.string(), z.number()),
 	}).optional(),
 	metrics: z.object({
 		eventsPerSecond: z.number(),
