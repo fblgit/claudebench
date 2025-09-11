@@ -26,6 +26,25 @@ export class EventBus {
 		const maxRetries = 10;
 		for (let i = 0; i < maxRetries; i++) {
 			if (await this.redis.ping()) {
+				// Increase max listeners to handle multiple event types
+				this.redis.sub.setMaxListeners(100);
+				
+				// Attach single message listener that routes to appropriate handlers
+				if (!this.messageListenerAttached) {
+					this.redis.sub.on("message", async (channel, message) => {
+						const handlers = this.subscribers.get(channel);
+						if (handlers && handlers.size > 0) {
+							try {
+								const event = JSON.parse(message);
+								await Promise.all([...handlers].map(h => h(event)));
+							} catch (error) {
+								console.error(`Error processing message on channel ${channel}:`, error);
+							}
+						}
+					});
+					this.messageListenerAttached = true;
+				}
+				
 				this.initialized = true;
 				return;
 			}
@@ -44,6 +63,7 @@ export class EventBus {
 		// Clear local subscribers
 		this.subscribers.clear();
 		this.initialized = false;
+		this.messageListenerAttached = false;
 	}
 
 	async publish(event: Event): Promise<string> {
@@ -70,20 +90,16 @@ export class EventBus {
 	}
 
 	async subscribe(eventType: string, handler: (event: Event) => Promise<void>, subscriberId?: string): Promise<void> {
+		// Ensure EventBus is initialized (which sets up the single message listener)
+		if (!this.initialized) {
+			await this.initialize();
+		}
+		
 		if (!this.subscribers.has(eventType)) {
 			this.subscribers.set(eventType, new Set());
 			
-			// Subscribe to Redis channel
+			// Subscribe to Redis channel (message listener already attached in initialize())
 			await this.redis.sub.subscribe(eventType);
-			this.redis.sub.on("message", async (channel, message) => {
-				if (channel === eventType) {
-					const event = JSON.parse(message);
-					const handlers = this.subscribers.get(eventType);
-					if (handlers) {
-						await Promise.all([...handlers].map(h => h(event)));
-					}
-				}
-			});
 		}
 		
 		this.subscribers.get(eventType)!.add(handler);

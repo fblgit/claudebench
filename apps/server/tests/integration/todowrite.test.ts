@@ -59,33 +59,62 @@ describe("Integration: TodoWrite Event Capture", () => {
 	});
 
 	it("should convert todos to tasks automatically", async () => {
+		// Invoke handler with todos that should create tasks
+		await registry.executeHandler("hook.todo_write", {
+			todos: [
+				{ content: "Implement new feature", status: "pending", activeForm: "Implementing new feature" },
+				{ content: "Another task", status: "in_progress", activeForm: "Working on another task" },
+			]
+		});
+		
 		// After TodoWrite event, tasks should be created
 		const taskStreamKey = "cb:stream:task.create";
 		
-		// Check if tasks were created from todos (will fail without handler)
+		// Check if tasks were created from todos
 		const taskEvents = await redis.stream.xrange(taskStreamKey, "-", "+");
 		expect(taskEvents.length).toBeGreaterThan(0);
 		
 		// Verify task contains todo information
 		if (taskEvents.length > 0) {
-			const taskData = JSON.parse(taskEvents[0][1][1]);
+			const [streamId, fields] = taskEvents[0];
+			const taskData = JSON.parse(fields[1]);
 			expect(taskData.params.title).toContain("Implement");
 		}
 	});
 
 	it("should maintain todo-to-task mapping", async () => {
+		// Invoke handler with sessionId that matches the mapping key
+		await registry.executeHandler("hook.todo_write", {
+			todos: [
+				{ content: "Task for mapping", status: "pending", activeForm: "Creating task for mapping" },
+			]
+		}, "session-123"); // Pass sessionId as clientId
+		
 		const mappingKey = "cb:mapping:todo-task:session-123";
 		
-		// Check mapping exists (will fail without handler)
+		// Check mapping exists
 		const mapping = await redis.stream.hgetall(mappingKey);
 		expect(Object.keys(mapping).length).toBeGreaterThan(0);
 	});
 
 	it("should track todo status changes", async () => {
-		// Simulate status change: pending -> in_progress -> completed
+		// First call with pending todos
+		await registry.executeHandler("hook.todo_write", {
+			todos: [
+				{ content: "Status tracking task", status: "pending", activeForm: "Starting status tracking" },
+			]
+		});
+		
+		// Second call with status change to in_progress
+		await registry.executeHandler("hook.todo_write", {
+			todos: [
+				{ content: "Status tracking task", status: "in_progress", activeForm: "Working on status tracking" },
+			]
+		});
+		
 		const historyKey = "cb:history:todos:status-changes";
 		
-		// Check history is tracked (will fail without handler)
+		// Check history is tracked
 		const history = await redis.stream.lrange(historyKey, 0, -1);
 		expect(history.length).toBeGreaterThan(0);
 	});
@@ -121,27 +150,62 @@ describe("Integration: TodoWrite Event Capture", () => {
 	});
 
 	it("should emit notifications for completed todos", async () => {
+		// First call with in_progress todo
+		await registry.executeHandler("hook.todo_write", {
+			todos: [
+				{ content: "Task to complete", status: "in_progress", activeForm: "Working on task" },
+			]
+		});
+		
+		// Second call with completed status
+		await registry.executeHandler("hook.todo_write", {
+			todos: [
+				{ content: "Task to complete", status: "completed", activeForm: "Completed task" },
+			]
+		});
+		
 		const notificationKey = "cb:notifications:todos:completed";
 		
-		// Check notifications are created (will fail without handler)
+		// Check notifications are created
 		const notifications = await redis.stream.lrange(notificationKey, 0, -1);
 		expect(notifications.length).toBeGreaterThan(0);
 	});
 
 	it("should persist important todos to PostgreSQL", async () => {
+		// Invoke handler with high-priority todo
+		await registry.executeHandler("hook.todo_write", {
+			todos: [
+				{ content: "Important task to handle", status: "pending", activeForm: "Handling important task" },
+			]
+		});
+		
 		// High-priority todos should be persisted
 		const persistedKey = "cb:persisted:todos:high-priority";
 		
-		// Check persistence flag (will fail without handler)
+		// Check persistence flag
 		const persisted = await redis.stream.get(persistedKey);
 		expect(persisted).toBe("true");
 	});
 
 	it("should clean up completed todos after timeout", async () => {
+		// First call with pending todo
+		await registry.executeHandler("hook.todo_write", {
+			todos: [
+				{ content: "Task to clean up", status: "pending", activeForm: "Starting task" },
+			]
+		});
+		
+		// Second call with completed status (triggers cleanup scheduling)
+		await registry.executeHandler("hook.todo_write", {
+			todos: [
+				{ content: "Task to clean up", status: "completed", activeForm: "Completed task" },
+			]
+		});
+		
 		// Completed todos should be archived/removed after 24 hours
 		const cleanupKey = "cb:cleanup:todos:completed";
 		
-		// Check cleanup is scheduled (will fail without handler)
+		// Check cleanup is scheduled
 		const scheduled = await redis.stream.get(cleanupKey);
 		expect(scheduled).toBeTruthy();
 	});

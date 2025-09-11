@@ -135,6 +135,9 @@ export async function setupCircuitBreaker() {
  * Clean up integration test data
  */
 export async function cleanupIntegrationTest() {
+	// Close the event bus to clean up all listeners and subscriptions
+	await eventBus.close();
+	
 	// Don't quit Redis - let the process handle cleanup on exit
 	// This prevents interference between parallel test files
 }

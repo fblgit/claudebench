@@ -30,14 +30,14 @@ export class TodoWriteHookHandler {
 		const instanceId = ctx.instanceId || "default";
 		
 		// Use TodoManager for all Redis operations
-		// 1. Update state and history
+		// 1. Get previous state BEFORE updating current state
+		const previous = await todoManager.getCurrentState(instanceId);
+		const changes = todoManager.detectChanges(previous, input.todos);
+		
+		// 2. Update state and history
 		await todoManager.setState(input.todos, instanceId, sessionId);
 		await todoManager.addToHistory(input.todos, instanceId);
 		await todoManager.aggregateTodos(input.todos, instanceId);
-		
-		// 2. Get previous state and detect changes
-		const previous = await todoManager.getPreviousState(instanceId);
-		const changes = todoManager.detectChanges(previous, input.todos);
 		
 		// 3. Track changes and statistics
 		await todoManager.trackStatusChanges(changes, instanceId);
