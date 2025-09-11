@@ -50,11 +50,14 @@ export class RedisConnection {
 	}
 
 	async disconnect(): Promise<void> {
+		// Disconnect all clients gracefully
 		await Promise.all([
-			this.pubClient.quit(),
-			this.subClient.quit(),
-			this.streamClient.quit(),
+			this.pubClient.quit().catch(() => {}),
+			this.subClient.quit().catch(() => {}),
+			this.streamClient.quit().catch(() => {}),
 		]);
+		// Clear the singleton instance
+		RedisConnection.instance = null as any;
 	}
 
 	async ping(): Promise<boolean> {
@@ -64,6 +67,10 @@ export class RedisConnection {
 		} catch {
 			return false;
 		}
+	}
+
+	isConnected(): boolean {
+		return this.streamClient.status === "ready";
 	}
 
 	// Helper for Redis key namespacing
