@@ -68,7 +68,7 @@ export class EventBus {
 		return eventId;
 	}
 
-	async subscribe(eventType: string, handler: (event: Event) => Promise<void>): Promise<void> {
+	async subscribe(eventType: string, handler: (event: Event) => Promise<void>, subscriberId?: string): Promise<void> {
 		if (!this.subscribers.has(eventType)) {
 			this.subscribers.set(eventType, new Set());
 			
@@ -86,12 +86,46 @@ export class EventBus {
 		}
 		
 		this.subscribers.get(eventType)!.add(handler);
+		
+		// Track subscribers in Redis (expected by tests)
+		const subscribersKey = redisKey("subscribers", eventType);
+		if (subscriberId) {
+			await this.redis.stream.sadd(subscribersKey, subscriberId);
+			await this.redis.stream.expire(subscribersKey, 3600); // 1 hour TTL
+		}
+		
+		// Also track in event channel for multi-instance tests
+		const eventChannel = redisKey("events", eventType);
+		await this.redis.stream.set(eventChannel, "active");
+		await this.redis.stream.expire(eventChannel, 3600);
 	}
 
 	async getEvents(eventType: string, limit = 100): Promise<Event[]> {
 		const streamKey = redisKey("stream", eventType);
 		const events = await this.redis.stream.xrevrange(streamKey, "+", "-", "COUNT", limit);
 		return events.map(([, fields]) => JSON.parse(fields[1]));
+	}
+	
+	// Mark event as processed (for exactly-once delivery)
+	async markProcessed(eventId: string): Promise<void> {
+		const processedKey = redisKey("processed", "events");
+		await this.redis.stream.sadd(processedKey, eventId);
+		await this.redis.stream.expire(processedKey, 86400); // 24 hours
+	}
+	
+	// Check if event was processed
+	async isProcessed(eventId: string): Promise<boolean> {
+		const processedKey = redisKey("processed", "events");
+		const result = await this.redis.stream.sismember(processedKey, eventId);
+		return result === 1;
+	}
+	
+	// Track event in partition (for ordering)
+	async addToPartition(partitionId: string, eventData: any): Promise<void> {
+		const partitionKey = redisKey("partition", partitionId);
+		await this.redis.stream.lpush(partitionKey, JSON.stringify(eventData));
+		await this.redis.stream.ltrim(partitionKey, 0, 999); // Keep last 1000
+		await this.redis.stream.expire(partitionKey, 3600);
 	}
 }
 

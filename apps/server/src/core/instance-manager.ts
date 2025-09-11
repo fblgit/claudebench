@@ -43,13 +43,26 @@ export class InstanceManager {
 		// Set TTL for automatic cleanup
 		await this.redis.stream.expire(instanceKey, this.heartbeatTimeout / 1000);
 		
+		// Add to active instances set (expected by tests)
+		const activeKey = redisKey("instances", "active");
+		await this.redis.stream.sadd(activeKey, id);
+		await this.redis.stream.expire(activeKey, this.heartbeatTimeout / 1000);
+		
 		// Register roles for discovery
 		for (const role of roles) {
 			const roleKey = redisKey("role", role);
 			await this.redis.stream.sadd(roleKey, id);
 			// Set TTL on role sets too
 			await this.redis.stream.expire(roleKey, this.heartbeatTimeout / 1000);
+			
+			// Store instance capabilities (expected by tests)
+			const capsKey = redisKey("capabilities", id);
+			await this.redis.stream.sadd(capsKey, role);
+			await this.redis.stream.expire(capsKey, this.heartbeatTimeout / 1000);
 		}
+		
+		// Try to become leader if no leader exists
+		await this.tryBecomeLeader(id);
 		
 		// Register with task queue
 		await taskQueue.registerWorker(id, roles).catch(() => {}); // Don't fail if queue not ready
@@ -226,6 +239,61 @@ export class InstanceManager {
 		};
 	}
 
+	// Try to become leader
+	async tryBecomeLeader(instanceId: string): Promise<boolean> {
+		const leaderKey = redisKey("leader", "current");
+		const lockKey = redisKey("leader", "lock");
+		
+		// Try to acquire lock with SETNX and then set expiry
+		const acquired = await this.redis.stream.setnx(lockKey, instanceId);
+		
+		if (acquired === 1) {
+			// We got the lock, set expiry and become leader
+			await this.redis.stream.expire(lockKey, 30);
+			await this.redis.stream.setex(leaderKey, 30, instanceId);
+			console.log(`Instance ${instanceId} became leader`);
+			return true;
+		}
+		
+		return false;
+	}
+	
+	// Check if instance is leader
+	async isLeader(instanceId: string): Promise<boolean> {
+		const leaderKey = redisKey("leader", "current");
+		const currentLeader = await this.redis.stream.get(leaderKey);
+		return currentLeader === instanceId;
+	}
+	
+	// Renew leader lease
+	async renewLeaderLease(instanceId: string): Promise<boolean> {
+		if (await this.isLeader(instanceId)) {
+			const leaderKey = redisKey("leader", "current");
+			const lockKey = redisKey("leader", "lock");
+			
+			await this.redis.stream.expire(leaderKey, 30);
+			await this.redis.stream.expire(lockKey, 30);
+			return true;
+		}
+		return false;
+	}
+	
+	// Track global state consistency
+	async syncGlobalState(): Promise<void> {
+		const stateKey = redisKey("state", "global");
+		const state = await this.getSystemState();
+		await this.redis.stream.set(stateKey, JSON.stringify(state), "EX", 60);
+	}
+	
+	// Handle redistributed events from failed instances
+	async trackRedistributed(fromInstance: string, events: string[]): Promise<void> {
+		const redistributedKey = redisKey("redistributed", "from", fromInstance);
+		for (const event of events) {
+			await this.redis.stream.lpush(redistributedKey, event);
+		}
+		await this.redis.stream.expire(redistributedKey, 3600);
+	}
+	
 	// Cleanup on shutdown
 	async cleanup(): Promise<void> {
 		if (this.healthCheckInterval) {

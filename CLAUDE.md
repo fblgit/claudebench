@@ -197,6 +197,9 @@ Follow RED-GREEN-Refactor strictly:
 - Chose Redis Streams over pub/sub for event persistence
 
 ## MCP SDK Reference
-
 The MCP_SDK.md file contains the TypeScript SDK documentation for implementing MCP (Model Context Protocol) servers, which will be crucial for the ClaudeBench event-driven architecture.
+
+## Project Preferences:
+
 - Modifying the existing file is a better practice - it preserves the import paths, maintains git history, and follows the principle of evolving code rather than replacing it. This approach also ensures that any existing references continue to work.
+- Open and read README.md at the start of a new or resumed conversation, make sure this file is always present in your context.

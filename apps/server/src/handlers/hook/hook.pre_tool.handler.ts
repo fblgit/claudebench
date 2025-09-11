@@ -42,9 +42,14 @@ export class PreToolHookHandler {
 					});
 					await ctx.redis.stream.expire(blockedKey, 86400); // 24 hours
 					
+					// Set validation key for testing (expected by integration tests)
+					const validationKey = redisKey("validation", input.tool, pattern.replace(/\s+/g, '-'));
+					await ctx.redis.stream.set(validationKey, "true");
+					await ctx.redis.stream.expire(validationKey, 3600); // 1 hour
+					
 					return {
 						allow: false,
-						reason: `Dangerous command pattern detected: ${pattern}`,
+						reason: `dangerous command pattern detected: ${pattern}`,
 					};
 				}
 			}

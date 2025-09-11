@@ -1,5 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { getRedis } from "@/core/redis";
+import { registry } from "@/core/registry";
+import { taskQueue } from "@/core/task-queue";
+import { 
+	setupIntegrationTest, 
+	registerTestInstances,
+	cleanupIntegrationTest 
+} from "../helpers/integration-setup";
 
 // Task Queue Assignment Integration Test
 // Tests the complete flow of task creation, queuing, and assignment to instances
@@ -8,29 +15,47 @@ describe("Integration: Task Queue Assignment", () => {
 	let redis: ReturnType<typeof getRedis>;
 
 	beforeAll(async () => {
-		redis = getRedis();
-		// Clear test data
-		try {
-			const keys = await redis.stream.keys("cb:test:queue:*");
-			if (keys.length > 0) {
-				await redis.stream.del(...keys);
-			}
-		} catch {
-			// Ignore cleanup errors
-		}
+		redis = await setupIntegrationTest();
+		
+		// Register worker instances for task assignment
+		await registerTestInstances();
+		
+		// Create additional test instances for specific tests
+		await registry.executeHandler("system.register", {
+			id: "worker-priority",
+			roles: ["worker"]
+		});
+		await registry.executeHandler("system.register", {
+			id: "worker-limited",
+			roles: ["worker"]
+		});
+		await registry.executeHandler("system.register", {
+			id: "worker-complete",
+			roles: ["worker"]
+		});
+		
+		// Set capacity for limited worker
+		await taskQueue.setInstanceCapacity("worker-limited", 5);
 	});
 
 	afterAll(async () => {
-		// Don't quit Redis - let the process handle cleanup on exit
-		// This prevents interference between parallel test files
+		await cleanupIntegrationTest();
 	});
 
 	it("should create task and add to global queue", async () => {
 		const globalQueueKey = "cb:queue:tasks:pending";
 		
-		// Create a task (will fail without handler)
-		const taskId = "task-test-1";
-		const queueLength = await redis.stream.llen(globalQueueKey);
+		// Create a task through the handler (per JSONRPC contract)
+		const result = await registry.executeHandler("task.create", {
+			text: "Test task for queue",
+			priority: 50
+		});
+		
+		expect(result.id).toBeDefined();
+		expect(result.status).toBe("pending");
+		
+		// Check if task was added to global queue
+		const queueLength = await redis.stream.zcard(globalQueueKey);
 		expect(queueLength).toBeGreaterThan(0);
 	});
 

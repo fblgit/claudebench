@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { getRedis } from "@/core/redis";
+import { registry } from "@/core/registry";
+import { 
+	setupIntegrationTest, 
+	setupHookValidation,
+	cleanupIntegrationTest 
+} from "../helpers/integration-setup";
 
 // Pre-tool Hook Validation Integration Test
 // Tests the complete flow of tool validation and blocking via hooks
@@ -8,25 +14,28 @@ describe("Integration: Pre-tool Hook Validation", () => {
 	let redis: ReturnType<typeof getRedis>;
 
 	beforeAll(async () => {
-		redis = getRedis();
-		// Clear test data
-		try {
-			const keys = await redis.stream.keys("cb:test:hook:*");
-			if (keys.length > 0) {
-				await redis.stream.del(...keys);
-			}
-		} catch {
-			// Ignore cleanup errors
-		}
+		redis = await setupIntegrationTest();
+		
+		// Setup hook validation data
+		await setupHookValidation();
 	});
 
 	afterAll(async () => {
-		// Don't quit Redis - let the process handle cleanup on exit
-		// This prevents interference between parallel test files
+		await cleanupIntegrationTest();
 	});
 
 	it("should intercept dangerous bash commands", async () => {
-		// Simulate dangerous command attempt
+		// Call hook.pre_tool handler to validate dangerous command
+		const result = await registry.executeHandler("hook.pre_tool", {
+			tool: "bash",
+			params: { command: "rm -rf /" }
+		});
+		
+		// Should block dangerous command
+		expect(result.allow).toBe(false);
+		expect(result.reason).toContain("dangerous");
+		
+		// Check validation was recorded
 		const validationKey = "cb:validation:bash:rm-rf";
 		const hookEvent = {
 			toolName: "Bash",
@@ -185,10 +194,11 @@ describe("Integration: Pre-tool Hook Validation", () => {
 		
 		// Each entry should have decision details
 		if (auditLog.length > 0) {
-			const entry = JSON.parse(auditLog[0][1][1]);
-			expect(entry.toolName).toBeTruthy();
-			expect(entry.decision).toBeTruthy();
-			expect(entry.timestamp).toBeTruthy();
+			// Redis stream returns [id, [field1, value1, field2, value2, ...]]
+			const fields = auditLog[0][1];
+			expect(fields).toContain("tool");
+			expect(fields).toContain("decision");
+			expect(fields).toContain("timestamp");
 		}
 	});
 

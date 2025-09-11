@@ -1,5 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { getRedis } from "@/core/redis";
+import { 
+	setupIntegrationTest, 
+	registerTestInstances,
+	createTestTasks,
+	setupEventSubscriptions,
+	cleanupIntegrationTest 
+} from "../helpers/integration-setup";
 
 // Multi-Instance Event Distribution Integration Test
 // Tests the complete flow of events distributed across multiple Claude Code instances
@@ -8,21 +15,20 @@ describe("Integration: Multi-Instance Event Distribution", () => {
 	let redis: ReturnType<typeof getRedis>;
 
 	beforeAll(async () => {
-		redis = getRedis();
-		// Clear test data
-		try {
-			const keys = await redis.stream.keys("cb:test:multi:*");
-			if (keys.length > 0) {
-				await redis.stream.del(...keys);
-			}
-		} catch {
-			// Ignore cleanup errors
-		}
+		redis = await setupIntegrationTest();
+		
+		// Register instances through the system.register handler
+		await registerTestInstances();
+		
+		// Create tasks through the task.create handler
+		await createTestTasks();
+		
+		// Setup event subscriptions
+		await setupEventSubscriptions();
 	});
 
 	afterAll(async () => {
-		// Don't quit Redis - let the process handle cleanup on exit
-		// This prevents interference between parallel test files
+		await cleanupIntegrationTest();
 	});
 
 	it("should register multiple instances", async () => {
