@@ -69,7 +69,7 @@ claudebench/
 - `bun db:studio`: Open database studio UI
 - `bun check`: Run Biome formatting and linting
 
-@specs/001-claudebench/specs.md
+@specs/001-claudebench/spec.md
 @specs/001-claudebench/CONTRACT-DRIVEN-DEVELOPMENT.md
 @specs/001-claudebench/data-models.md
 

@@ -2,34 +2,22 @@ import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { z } from "zod";
 import { taskCreateInput, taskCreateOutput } from "@/schemas/task.schema";
 import { registry } from "@/core/registry";
-import { getRedis } from "@/core/redis";
+import type { Redis } from "ioredis";
+import { setupContractTest, cleanupContractTest } from "../helpers/test-setup";
 import contractSpec from "../../../../specs/001-claudebench/contracts/jsonrpc-contract.json";
 
 // Import all handlers to register them
 import "@/handlers";
 
 describe("Contract Validation: task.create", () => {
-	let redis: ReturnType<typeof getRedis>;
+	let redis: any; // Redis client type
 
 	beforeAll(async () => {
-		redis = getRedis();
-		// Initialize registry
-		await registry.discover();
-		
-		// Clear test data
-		try {
-			const keys = await redis.stream.keys("cb:task:*");
-			if (keys.length > 0) {
-				await redis.stream.del(...keys);
-			}
-		} catch {
-			// Ignore - Redis might not be ready yet
-		}
+		redis = await setupContractTest();
 	});
 
 	afterAll(async () => {
-		// Don't quit Redis - let the process handle cleanup on exit
-		// This prevents interference between parallel test files
+		await cleanupContractTest();
 	});
 
 	describe("Schema validation against contract", () => {

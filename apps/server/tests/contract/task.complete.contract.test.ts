@@ -1,22 +1,20 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { taskCompleteInput, taskCompleteOutput } from "@/schemas/task.schema";
 import { registry } from "@/core/registry";
-import { getRedis } from "@/core/redis";
+import { setupContractTest, cleanupContractTest } from "../helpers/test-setup";
 import contractSpec from "../../../../specs/001-claudebench/contracts/jsonrpc-contract.json";
 
 // Import all handlers to register them
 import "@/handlers";
 
 describe("Contract Validation: task.complete", () => {
-	let redis: ReturnType<typeof getRedis>;
+	let redis: any;
 	let assignedTaskId: string;
 	let unassignedTaskId: string;
 	let testInstanceId: string = "worker-complete-test";
 
 	beforeAll(async () => {
-		redis = getRedis();
-		// Initialize registry
-		await registry.discover();
+		redis = await setupContractTest();
 		
 		// Register a test instance
 		await redis.stream.hset(`cb:instance:${testInstanceId}`, {
@@ -47,31 +45,7 @@ describe("Contract Validation: task.complete", () => {
 	});
 
 	afterAll(async () => {
-		// Try to clean up test data
-		try {
-			const keys = [
-				`cb:task:${assignedTaskId}`,
-				`cb:task:${unassignedTaskId}`,
-				`cb:instance:${testInstanceId}`,
-				`cb:queue:instance:${testInstanceId}`,
-				`cb:metrics:instance:${testInstanceId}`,
-				`cb:metrics:global`,
-			];
-			const existingKeys = [];
-			for (const key of keys) {
-				if (await redis.stream.exists(key)) {
-					existingKeys.push(key);
-				}
-			}
-			if (existingKeys.length > 0) {
-				await redis.stream.del(...existingKeys);
-			}
-		} catch {
-			// Ignore cleanup errors
-		}
-		
-		// Don't quit Redis - let the process handle cleanup on exit
-		// This prevents interference between parallel test files
+		await cleanupContractTest();
 	});
 
 	describe("Schema validation against contract", () => {

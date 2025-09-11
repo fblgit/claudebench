@@ -3,6 +3,7 @@ import type { EventContext } from "@/core/context";
 import { taskCreateInput, taskCreateOutput } from "@/schemas/task.schema";
 import type { TaskCreateInput, TaskCreateOutput } from "@/schemas/task.schema";
 import { redisKey } from "@/core/redis";
+import { taskQueue } from "@/core/task-queue";
 
 @EventHandler({
 	event: "task.create",
@@ -37,9 +38,10 @@ export class TaskCreateHandler {
 			metadata: JSON.stringify(task.metadata),
 		});
 
-		// Add to task queue (sorted by priority)
-		const queueKey = redisKey("queue", "tasks", "pending");
-		await ctx.redis.stream.zadd(queueKey, -task.priority, taskId); // Negative for descending order
+		// Add to task queue using task queue manager
+		await taskQueue.enqueueTask(taskId, task.priority);
+		
+		// Don't auto-assign - let task.assign handler or orchestrator handle assignment
 
 		// Persist to PostgreSQL if configured
 		if (ctx.persist) {

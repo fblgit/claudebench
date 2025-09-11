@@ -3,6 +3,7 @@ import type { EventContext } from "@/core/context";
 import { systemHeartbeatInput, systemHeartbeatOutput } from "@/schemas/system.schema";
 import type { SystemHeartbeatInput, SystemHeartbeatOutput } from "@/schemas/system.schema";
 import { redisKey } from "@/core/redis";
+import { instanceManager } from "@/core/instance-manager";
 
 @EventHandler({
 	event: "system.heartbeat",
@@ -14,24 +15,12 @@ import { redisKey } from "@/core/redis";
 })
 export class SystemHeartbeatHandler {
 	async handle(input: SystemHeartbeatInput, ctx: EventContext): Promise<SystemHeartbeatOutput> {
-		const instanceKey = redisKey("instance", input.instanceId);
-		
-		// Check if instance exists
-		const instanceExists = await ctx.redis.stream.exists(instanceKey);
-		
-		if (instanceExists) {
-			// Update last heartbeat timestamp
-			await ctx.redis.stream.hset(instanceKey, {
-				lastHeartbeat: new Date().toISOString(),
-			});
-			
-			// Refresh TTL
-			await ctx.redis.stream.expire(instanceKey, 120); // 2 minutes
-		}
+		// Use instance manager for centralized heartbeat management
+		const alive = await instanceManager.heartbeat(input.instanceId);
 		
 		// Per contract, we simply return whether the instance is alive
 		return {
-			alive: instanceExists === 1,
+			alive,
 		};
 	}
 }

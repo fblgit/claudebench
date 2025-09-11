@@ -83,12 +83,13 @@
 - [x] T028 Create rate limiter with Redis sorted sets in apps/server/src/core/rate-limiter.ts
 - [x] T029 Implement circuit breaker with Redis INCR in apps/server/src/core/circuit-breaker.ts
 
-### Schemas (~50 LOC)
+### Schemas - Your domain schemas must align with the contracts json file
 - [x] T030 [P] Define task domain schemas in apps/server/src/schemas/task.schema.ts
 - [x] T031 [P] Define hook domain schemas in apps/server/src/schemas/hook.schema.ts
 - [x] T032 [P] Define system domain schemas in apps/server/src/schemas/system.schema.ts
 - [x] T033 [P] Create common/shared schemas in apps/server/src/schemas/common.schema.ts
 
+### Event Handlers Domains - Your implementation must align with the contract and schema
 ### Event Handlers - Task Domain
 - [x] T034 [P] Implement TaskCreateHandler in apps/server/src/handlers/task/task.create.handler.ts
 - [x] T035 [P] Implement TaskUpdateHandler in apps/server/src/handlers/task/task.update.handler.ts
@@ -108,12 +109,16 @@
 - [x] T045 [P] Implement SystemGetStateHandler in apps/server/src/handlers/system/system.get_state.handler.ts
 - [x] T046 [P] Implement SystemMetricsHandler in apps/server/src/handlers/system/system.metrics.handler.ts
 
+### Checkpoint - All your contract schemas tests must be passing.
+
 ## Phase 3.4: Transport Integration
 
 ### HTTP Server (Hono)
 - [x] T047 Create JSONRPC request handler in apps/server/src/transports/http.ts
 - [x] T048 Set up Hono server with CORS and logging in apps/server/src/server.ts
 - [x] T049 Auto-generate HTTP routes from handler registry in apps/server/src/transports/http-routes.ts
+
+### Checkpoint - All your handlers related tests must be passing
 
 ### MCP Server
 - [ ] T050 Initialize MCP server with Streamable HTTP transport in apps/server/src/mcp/server.ts
@@ -123,6 +128,8 @@
 ### WebSocket/SSE
 - [ ] T053 [P] Create WebSocket event subscription handler in apps/server/src/transports/websocket.ts
 - [ ] T054 [P] Implement SSE event streaming in apps/server/src/transports/sse.ts
+
+### Checkpoint - A vast part of the integration tests must be passing
 
 ## Phase 3.5: Dashboard UI
 
