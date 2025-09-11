@@ -3,11 +3,11 @@ import type { HandlerMetadata } from "./decorator";
 import { createContext } from "./context";
 import type { EventContext } from "./context";
 import { eventBus } from "./bus";
-import { rateLimiter } from "./rate-limiter";
-import { circuitBreaker } from "./circuit-breaker";
 import { instance } from "../config";
 import { metrics } from "./metrics";
 import { redisKey, getRedis } from "./redis";
+import { cache } from "./cache";
+import { audit } from "./audit";
 import * as crypto from "crypto";
 
 export class HandlerRegistry {
@@ -38,37 +38,7 @@ export class HandlerRegistry {
 			throw new Error(`No handler registered for event: ${eventType}`);
 		}
 
-		// Check rate limit
-		if (metadata.rateLimit) {
-			const rateLimitResult = await rateLimiter.checkLimit(
-				eventType,
-				clientId || instance.id,
-				metadata.rateLimit
-			);
-			
-			if (!rateLimitResult.allowed) {
-				const error = new Error(`Rate limit exceeded for ${eventType}`);
-				(error as any).code = -32000; // Custom JSONRPC error code
-				(error as any).data = {
-					remaining: rateLimitResult.remaining,
-					resetAt: rateLimitResult.resetAt,
-				};
-				throw error;
-			}
-		}
-
-		// Check circuit breaker
-		const canExecute = await circuitBreaker.canExecute(eventType);
-		if (!canExecute) {
-			// Return fallback response
-			const fallback = await circuitBreaker.getFallbackResponse(eventType);
-			const error = new Error(fallback.error);
-			(error as any).code = -32001; // Circuit breaker open
-			(error as any).data = { fallback: true };
-			throw error;
-		}
-
-		// Validate input first (validation errors shouldn't trigger circuit breaker)
+		// Validate input first (validation errors shouldn't trigger resilience patterns)
 		let validatedInput;
 		try {
 			validatedInput = metadata.inputSchema.parse(input);
@@ -77,27 +47,30 @@ export class HandlerRegistry {
 			throw validationError;
 		}
 
-		// Check cache for hook handlers
-		const redis = getRedis();
+		// Check cache for hook handlers using centralized cache
 		if (eventType.startsWith("hook.")) {
-			const cacheKey = redisKey("hook", "cache", eventType, this.hashInput(validatedInput));
-			const cached = await redis.stream.get(cacheKey);
+			const cached = await cache.getCachedValidation(
+				eventType.replace("hook.", ""),
+				validatedInput
+			);
 			if (cached) {
-				// Track cache hit
-				await redis.stream.hincrby(redisKey("metrics", "validation", "cache"), "hits", 1);
-				await this.updateCacheHitRate(redis);
-				return JSON.parse(cached);
+				// Audit the cache hit
+				await audit.logHookDecision({
+					tool: eventType,
+					decision: cached.allow ? "allowed" : "blocked",
+					reason: "Cached validation result",
+				});
+				return cached;
 			}
-			// Track cache miss
-			await redis.stream.hincrby(redisKey("metrics", "validation", "cache"), "misses", 1);
 		}
 		
 		// Track metrics
 		const startTime = Date.now();
+		const redis = getRedis();
 		
 		try {
-			// Execute handler
-			const context = await this.createContext(eventType);
+			// Execute handler - decorators handle rate limiting, circuit breaking, caching
+			const context = await this.createContext(eventType, clientId);
 			const result = await handlerInstance.handle(validatedInput, context);
 			
 			// Validate output
@@ -105,30 +78,22 @@ export class HandlerRegistry {
 			
 			// Record success metrics
 			const duration = Date.now() - startTime;
-			await circuitBreaker.recordSuccess(eventType);
 			await metrics.recordEvent(eventType, duration);
 			
 			// Set handler-specific metrics based on event type
 			await this.setHandlerMetrics(eventType, "success", redis);
 			
-			// Cache result for hook handlers
+			// Cache result for hook handlers (if not already cached by decorator)
 			if (eventType.startsWith("hook.")) {
-				const cacheKey = redisKey("hook", "cache", eventType, this.hashInput(validatedInput));
-				await redis.stream.setex(cacheKey, 60, JSON.stringify(validatedOutput));
-				await this.updateCacheHitRate(redis);
+				await cache.cacheValidation(
+					eventType.replace("hook.", ""),
+					validatedInput,
+					validatedOutput
+				);
 			}
 			
 			return validatedOutput;
 		} catch (error) {
-			// Only record failures for actual handler errors, not validation
-			const failureType = error instanceof Error && error.message.includes("timeout")
-				? "timeout"
-				: error instanceof Error && error.message.includes("reject")
-				? "rejection"
-				: "error";
-			
-			await circuitBreaker.recordFailure(eventType, failureType);
-			
 			// Record failure metrics
 			const duration = Date.now() - startTime;
 			await metrics.recordEvent(eventType, duration);
@@ -139,10 +104,10 @@ export class HandlerRegistry {
 		}
 	}
 
-	private async createContext(eventType: string): Promise<EventContext> {
+	private async createContext(eventType: string, clientId?: string): Promise<EventContext> {
 		const metadata = this.handlers.get(eventType);
 		const eventId = `evt-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-		return createContext(eventType, eventId, metadata?.persist || false);
+		return createContext(eventType, eventId, metadata?.persist || false, { clientId });
 	}
 
 	getHandler(eventType: string): HandlerMetadata | undefined {

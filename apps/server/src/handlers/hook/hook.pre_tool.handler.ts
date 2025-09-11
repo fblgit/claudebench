@@ -1,8 +1,7 @@
-import { EventHandler } from "@/core/decorator";
+import { EventHandler, Instrumented } from "@/core/decorator";
 import type { EventContext } from "@/core/context";
 import { hookPreToolInput, hookPreToolOutput } from "@/schemas/hook.schema";
 import type { HookPreToolInput, HookPreToolOutput } from "@/schemas/hook.schema";
-import { redisKey } from "@/core/redis";
 
 @EventHandler({
 	event: "hook.pre_tool",
@@ -13,7 +12,9 @@ import { redisKey } from "@/core/redis";
 	description: "Validate tool execution before it happens",
 })
 export class PreToolHookHandler {
+	@Instrumented(300) // Cache for 5 minutes - handles caching, metrics, and audit
 	async handle(input: HookPreToolInput, ctx: EventContext): Promise<HookPreToolOutput> {
+		
 		// Simple dangerous command detection
 		const DANGEROUS_PATTERNS = [
 			"rm -rf",
@@ -33,37 +34,26 @@ export class PreToolHookHandler {
 			// Check for dangerous patterns
 			for (const pattern of DANGEROUS_PATTERNS) {
 				if (command.includes(pattern)) {
-					// Log blocked attempt
-					const blockedKey = redisKey("hook", "blocked", Date.now().toString());
-					await ctx.redis.stream.hset(blockedKey, {
-						tool: input.tool,
-						pattern: pattern,
-						timestamp: new Date().toISOString(),
-					});
-					await ctx.redis.stream.expire(blockedKey, 86400); // 24 hours
-					
-					// Set validation key for testing (expected by integration tests)
-					const validationKey = redisKey("validation", input.tool, pattern.replace(/\s+/g, '-'));
-					await ctx.redis.stream.set(validationKey, "true");
-					await ctx.redis.stream.expire(validationKey, 3600); // 1 hour
-					
+					// Decorator handles audit logging and caching
 					return {
 						allow: false,
 						reason: `dangerous command pattern detected: ${pattern}`,
 					};
 				}
 			}
+			
 		}
 		
 		// Check for file system operations on system directories
-		if (input.tool === "file.write" || input.tool === "file.delete") {
-			const path = typeof input.params === 'object' && input.params !== null && 'path' in input.params
-				? String((input.params as any).path) 
+		if (input.tool === "file.write" || input.tool === "file.delete" || input.tool === "Write") {
+			const path = typeof input.params === 'object' && input.params !== null 
+				? (input.params as any).path || (input.params as any).file_path
 				: String(input.params);
 			
 			const systemPaths = ['/etc/', '/sys/', '/boot/', 'C:\\Windows\\', 'C:\\System'];
 			for (const sysPath of systemPaths) {
-				if (path.includes(sysPath)) {
+				if (path && path.includes(sysPath)) {
+					// Decorator handles audit logging
 					return {
 						allow: false,
 						reason: `Cannot modify system directory: ${sysPath}`,
@@ -84,17 +74,7 @@ export class PreToolHookHandler {
 			}
 		}
 		
-		// Publish pre-tool event
-		await ctx.publish({
-			type: "hook.pre_tool.executed",
-			payload: {
-				tool: input.tool,
-				allowed: true,
-				modified: !!modified,
-			},
-		});
-		
-		// Allow the tool execution
+		// Decorator handles caching, metrics, and audit logging
 		return {
 			allow: true,
 			modified,

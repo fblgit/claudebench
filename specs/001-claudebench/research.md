@@ -1,5 +1,14 @@
 # ClaudeBench Technical Research
 
+## Table of Contents
+1. [Redis Pub/Sub Patterns](#1-redis-pubsub-patterns-for-event-driven-typescriptbun-applications)
+2. [MCP SDK Streamable HTTP Transport](#2-mcp-sdk-streamable-http-transport-implementation)
+3. [Multi-Instance Worker Coordination](#3-multi-instance-worker-coordination-with-redis)
+4. [Circuit Breaker Implementation](#4-circuit-breaker-pattern-for-event-handlers)
+5. [Rate Limiting Strategy](#5-rate-limiting-strategy-for-event-processing)
+6. [Hook Chain Execution](#6-hook-chain-execution-and-validation-patterns)
+7. [Cross-Cutting Concerns via Decorators](#7-cross-cutting-concerns-via-decorators-new)
+
 ## 1. Redis Pub/Sub Patterns for Event-Driven TypeScript/Bun Applications
 
 **Decision**: Use Redis Streams over traditional pub/sub for ClaudeBench event bus
@@ -431,6 +440,205 @@ app.use('*', async (c, next) => {
 });
 ```
 
+## 7. Cross-Cutting Concerns via Decorators
+
+**Decision**: Implement custom method decorators for caching, metrics, and audit logging using Redis-backed utilities
+
+**Rationale**: ClaudeBench needs cross-cutting concerns applied to all handler methods without violating DRY principles or exceeding the 500 LOC target. Method decorators provide:
+- Zero boilerplate in handler methods
+- Automatic application of caching, metrics, and audit logging
+- Leverage existing Redis-based utilities (cache.ts, audit.ts, metrics.ts)
+- Maintain the existing @EventHandler pattern for class-level decoration
+- Minimal code footprint (~50 LOC for all decorators)
+
+**Alternatives Considered**:
+- External libraries like `type-cacheable` (adds dependencies, 15KB+ bundle size)
+- NestJS-style decorators (requires complex DI system, too heavy for 500 LOC target)
+- Manual instrumentation (violates DRY, 100+ LOC per handler)
+- Aspect-Oriented Programming libraries (overkill, adds complexity)
+
+**Implementation Notes**:
+```typescript
+// Method decorators for cross-cutting concerns (decorators.ts - ~50 LOC)
+import 'reflect-metadata';
+import { cache } from './cache';
+import { audit } from './audit';
+import { metrics } from './metrics';
+
+// Cache decorator using existing CacheManager
+export function Cached(namespace?: string, ttl?: number) {
+  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    const originalMethod = descriptor.value;
+    
+    descriptor.value = async function (...args: any[]) {
+      const cacheKey = `${propertyKey}-${JSON.stringify(args)}`;
+      const ns = namespace || target.constructor.name.toLowerCase();
+      
+      // Try cache first
+      const cached = await cache.get(ns, cacheKey);
+      if (cached !== null) return cached;
+      
+      // Execute original method
+      const result = await originalMethod.apply(this, args);
+      
+      // Cache result
+      await cache.set(ns, cacheKey, result, { ttl });
+      
+      return result;
+    };
+  };
+}
+
+// Metrics decorator using existing MetricsCollector
+export function Measured(eventType?: string) {
+  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    const originalMethod = descriptor.value;
+    
+    descriptor.value = async function (...args: any[]) {
+      const startTime = Date.now();
+      const event = eventType || `${target.constructor.name}.${propertyKey}`;
+      
+      try {
+        const result = await originalMethod.apply(this, args);
+        const duration = Date.now() - startTime;
+        
+        // Record successful execution
+        await metrics.recordEvent(event, duration);
+        
+        return result;
+      } catch (error) {
+        const duration = Date.now() - startTime;
+        
+        // Record failed execution
+        await metrics.recordEvent(`${event}.error`, duration);
+        
+        throw error;
+      }
+    };
+  };
+}
+
+// Audit decorator using existing AuditLogger
+export function Audited(action?: string, resource?: string) {
+  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    const originalMethod = descriptor.value;
+    
+    descriptor.value = async function (...args: any[]) {
+      const auditAction = action || `${target.constructor.name}.${propertyKey}`;
+      const startTime = Date.now();
+      
+      try {
+        const result = await originalMethod.apply(this, args);
+        
+        // Log successful execution
+        await audit.log({
+          action: auditAction,
+          resource: resource || 'handler',
+          result: 'success',
+          metadata: { args, duration: Date.now() - startTime },
+          timestamp: new Date().toISOString()
+        });
+        
+        return result;
+      } catch (error) {
+        // Log failed execution
+        await audit.log({
+          action: auditAction,
+          resource: resource || 'handler',
+          result: 'failure',
+          reason: error.message,
+          metadata: { args, duration: Date.now() - startTime },
+          timestamp: new Date().toISOString()
+        });
+        
+        throw error;
+      }
+    };
+  };
+}
+
+// Composite decorator combining all concerns
+export function Instrumented(options?: {
+  cache?: { namespace?: string; ttl?: number };
+  metrics?: { eventType?: string };
+  audit?: { action?: string; resource?: string };
+}) {
+  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    // Apply decorators in order: cache -> metrics -> audit
+    if (options?.cache) {
+      Cached(options.cache.namespace, options.cache.ttl)(target, propertyKey, descriptor);
+    }
+    if (options?.metrics) {
+      Measured(options.metrics.eventType)(target, propertyKey, descriptor);
+    }
+    if (options?.audit) {
+      Audited(options.audit.action, options.audit.resource)(target, propertyKey, descriptor);
+    }
+  };
+}
+```
+
+**Usage in ClaudeBench handlers**:
+```typescript
+// Individual decorators for fine-grained control
+@EventHandler({
+  event: "task.create",
+  inputSchema: taskCreateInput,
+  outputSchema: taskCreateOutput,
+  persist: true
+})
+export class TaskCreateHandler {
+  @Cached("tasks", 300) // Cache for 5 minutes
+  @Measured("task.create")
+  @Audited("task.create", "task")
+  async handle(input: TaskCreateInput, ctx: EventContext): Promise<TaskCreateOutput> {
+    // Original handler logic - no instrumentation code needed
+    const taskId = `t-${Date.now()}`;
+    // ... rest of implementation
+    return result;
+  }
+}
+
+// Or use composite decorator for common patterns
+export class HookPreToolHandler {
+  @Instrumented({
+    cache: { namespace: "hooks", ttl: 60 },
+    metrics: { eventType: "hook.pre_tool" },
+    audit: { action: "hook.pre_tool", resource: "validation" }
+  })
+  async handle(input: HookPreToolInput, ctx: EventContext): Promise<HookPreToolOutput> {
+    // Clean handler logic with zero instrumentation boilerplate
+    // ... validation logic
+    return { allow: true };
+  }
+}
+```
+
+**Benefits and Trade-offs**:
+
+*Benefits*:
+- **Zero boilerplate**: Handlers focus purely on business logic
+- **Consistent instrumentation**: All handlers get same cross-cutting concerns automatically
+- **Redis-native**: Leverages existing utilities without external dependencies
+- **Minimal footprint**: ~50 LOC total for all decorators
+- **Composable**: Mix and match concerns as needed per handler
+- **Type-safe**: Full TypeScript support with proper method signatures
+- **Performance optimized**: Direct Redis operations, no abstraction overhead
+
+*Trade-offs*:
+- **Decorator order dependency**: Cache must be applied before metrics/audit
+- **Method-level only**: Cannot instrument individual code blocks within methods
+- **Reflection overhead**: Minimal but present decorator invocation cost
+- **Debug complexity**: Stack traces show decorator wrappers
+- **Legacy decorators required**: Must use experimental decorators for metadata
+
+**Integration with existing architecture**:
+- Works seamlessly with existing @EventHandler class decorator
+- Uses established Redis patterns from cache.ts, audit.ts, metrics.ts
+- Maintains 500 LOC target by reusing existing infrastructure
+- No new dependencies or external packages required
+- Compatible with ClaudeBench's Redis-first design philosophy
+
 ## Summary
 
 These research findings support ClaudeBench's Redis-first, localhost-focused architecture:
@@ -440,5 +648,6 @@ These research findings support ClaudeBench's Redis-first, localhost-focused arc
 3. **Legacy decorators** for runtime metadata and auto-generation
 4. **zod-to-openapi** for single source of truth schemas
 5. **Circuit breakers** and **rate limiting** using Redis primitives
+6. **Method decorators** for zero-boilerplate cross-cutting concerns
 
 All patterns prioritize simplicity, localhost optimization, and the 500 LOC target while maintaining enterprise-grade reliability patterns.

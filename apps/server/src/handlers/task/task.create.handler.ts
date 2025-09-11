@@ -1,4 +1,4 @@
-import { EventHandler } from "@/core/decorator";
+import { EventHandler, Resilient } from "@/core/decorator";
 import type { EventContext } from "@/core/context";
 import { taskCreateInput, taskCreateOutput } from "@/schemas/task.schema";
 import type { TaskCreateInput, TaskCreateOutput } from "@/schemas/task.schema";
@@ -14,6 +14,21 @@ import { taskQueue } from "@/core/task-queue";
 	description: "Create a new task and add it to the queue",
 })
 export class TaskCreateHandler {
+	@Resilient({
+		rateLimit: { limit: 10, windowMs: 60000 },
+		timeout: 5000,
+		circuitBreaker: { 
+			threshold: 5, 
+			timeout: 30000,
+			fallback: () => ({ 
+				id: "t-fallback",
+				text: "Service temporarily unavailable",
+				status: "pending",
+				priority: 50,
+				createdAt: new Date().toISOString()
+			})
+		}
+	})
 	async handle(input: TaskCreateInput, ctx: EventContext): Promise<TaskCreateOutput> {
 		const taskId = `t-${Date.now()}`; // Format per data model: t-{timestamp}
 		const now = new Date().toISOString();
