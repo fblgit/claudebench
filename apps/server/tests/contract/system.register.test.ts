@@ -7,7 +7,7 @@ const systemRegisterInputSchema = z.object({
 	name: z.string(),
 	role: z.string(),
 	capabilities: z.array(z.string()), // Handler names this instance supports
-	metadata: z.record(z.any()).optional(),
+	metadata: z.record(z.string(), z.any()).optional(),
 });
 
 const systemRegisterOutputSchema = z.object({

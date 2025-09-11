@@ -67,11 +67,11 @@
 - [x] T018 [P] Contract test for system.get_state event in apps/server/tests/contract/system.get_state.test.ts
 
 ### Integration Tests (from quickstart scenarios)
-- [ ] T019 [P] Integration test for TodoWrite event capture flow in apps/server/tests/integration/todowrite.test.ts
-- [ ] T020 [P] Integration test for task queue assignment in apps/server/tests/integration/task-queue.test.ts
-- [ ] T021 [P] Integration test for pre-tool hook validation in apps/server/tests/integration/hook-validation.test.ts
-- [ ] T022 [P] Integration test for circuit breaker triggering in apps/server/tests/integration/circuit-breaker.test.ts
-- [ ] T023 [P] Integration test for multi-instance event distribution in apps/server/tests/integration/multi-instance.test.ts
+- [x] T019 [P] Integration test for TodoWrite event capture flow in apps/server/tests/integration/todowrite.test.ts
+- [x] T020 [P] Integration test for task queue assignment in apps/server/tests/integration/task-queue.test.ts
+- [x] T021 [P] Integration test for pre-tool hook validation in apps/server/tests/integration/hook-validation.test.ts
+- [x] T022 [P] Integration test for circuit breaker triggering in apps/server/tests/integration/circuit-breaker.test.ts
+- [x] T023 [P] Integration test for multi-instance event distribution in apps/server/tests/integration/multi-instance.test.ts
 
 ## Phase 3.3: Core Implementation (ONLY after tests are failing)
 

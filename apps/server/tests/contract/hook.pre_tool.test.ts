@@ -5,20 +5,20 @@ import { getRedis } from "@/core/redis";
 // Hook pre_tool schemas
 const hookPreToolInputSchema = z.object({
 	toolName: z.string(),
-	toolParams: z.record(z.any()),
+	toolParams: z.record(z.string(), z.any()),
 	instanceId: z.string(),
 	sessionId: z.string(),
 	context: z.object({
 		user: z.string().optional(),
 		project: z.string().optional(),
-		metadata: z.record(z.any()).optional(),
+		metadata: z.record(z.string(), z.any()).optional(),
 	}).optional(),
 });
 
 const hookPreToolOutputSchema = z.object({
 	allowed: z.boolean(),
 	reason: z.string().optional(),
-	modifiedParams: z.record(z.any()).optional(),
+	modifiedParams: z.record(z.string(), z.any()).optional(),
 	warnings: z.array(z.string()).optional(),
 });
 

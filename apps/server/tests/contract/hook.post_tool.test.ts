@@ -5,7 +5,7 @@ import { getRedis } from "@/core/redis";
 // Hook post_tool schemas
 const hookPostToolInputSchema = z.object({
 	toolName: z.string(),
-	toolParams: z.record(z.any()),
+	toolParams: z.record(z.string(), z.any()),
 	toolResult: z.any(),
 	instanceId: z.string(),
 	sessionId: z.string(),
@@ -21,7 +21,7 @@ const hookPostToolOutputSchema = z.object({
 		type: z.enum(["info", "warning", "error"]),
 		message: z.string(),
 	})).optional(),
-	metadata: z.record(z.any()).optional(),
+	metadata: z.record(z.string(), z.any()).optional(),
 });
 
 describe("Contract: hook.post_tool", () => {

@@ -27,7 +27,7 @@ const taskCreateInputSchema = z.object({
 	title: z.string().min(1).max(255),
 	description: z.string().optional(),
 	priority: z.number().int().min(0).max(10).default(0),
-	metadata: z.record(z.any()).optional(),
+	metadata: z.record(z.string(), z.any()).optional(),
 });
 
 const taskCreateOutputSchema = z.object({
@@ -37,7 +37,7 @@ const taskCreateOutputSchema = z.object({
 	status: z.enum(["PENDING", "ASSIGNED", "IN_PROGRESS", "COMPLETED", "FAILED", "CANCELLED"]),
 	priority: z.number(),
 	assignedTo: z.string().nullable(),
-	metadata: z.record(z.any()).nullable(),
+	metadata: z.record(z.string(), z.any()).nullable(),
 	createdAt: z.string().datetime(),
 	updatedAt: z.string().datetime(),
 });
