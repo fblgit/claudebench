@@ -2,24 +2,21 @@ import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { z } from "zod";
 import { hookPreToolInput, hookPreToolOutput } from "@/schemas/hook.schema";
 import { registry } from "@/core/registry";
-import { getRedis } from "@/core/redis";
+import { setupContractTest, cleanupContractTest } from "../helpers/test-setup";
 import contractSpec from "../../../../specs/001-claudebench/contracts/jsonrpc-contract.json";
 
 // Import all handlers to register them
 import "@/handlers";
 
 describe("Contract Validation: hook.pre_tool", () => {
-	let redis: ReturnType<typeof getRedis>;
+	let redis: any;
 
 	beforeAll(async () => {
-		redis = getRedis();
-		// Initialize registry
-		await registry.discover();
+		redis = await setupContractTest();
 	});
 
 	afterAll(async () => {
-		// Don't quit Redis - let the process handle cleanup on exit
-		// This prevents interference between parallel test files
+		await cleanupContractTest();
 	});
 
 	describe("Input Schema Contract", () => {

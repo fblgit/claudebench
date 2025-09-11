@@ -1,24 +1,22 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
-import { getRedis, redisKey } from "@/core/redis";
 import { systemGetStateInput, systemGetStateOutput } from "@/schemas/system.schema";
 import { registry } from "@/core/registry";
+import { redisKey } from "@/core/redis";
+import { setupContractTest, cleanupContractTest } from "../helpers/test-setup";
 import contractSpec from "../../../../specs/001-claudebench/contracts/jsonrpc-contract.json";
 
 // Import all handlers to register them
 import "@/handlers";
 
 describe("Contract Validation: system.get_state", () => {
-	let redis: ReturnType<typeof getRedis>;
+	let redis: any;
 	
 	beforeAll(async () => {
-		redis = getRedis();
-		// Initialize registry
-		await registry.discover();
+		redis = await setupContractTest();
 	});
 	
 	afterAll(async () => {
-		// Don't quit Redis - let the process handle cleanup on exit
-		// This prevents interference between parallel test files
+		await cleanupContractTest();
 	});
 	
 	beforeEach(async () => {

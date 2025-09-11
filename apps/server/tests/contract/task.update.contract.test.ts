@@ -1,20 +1,18 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { taskUpdateInput, taskUpdateOutput } from "@/schemas/task.schema";
 import { registry } from "@/core/registry";
-import { getRedis } from "@/core/redis";
+import { setupContractTest, cleanupContractTest } from "../helpers/test-setup";
 import contractSpec from "../../../../specs/001-claudebench/contracts/jsonrpc-contract.json";
 
 // Import all handlers to register them
 import "@/handlers";
 
 describe("Contract Validation: task.update", () => {
-	let redis: ReturnType<typeof getRedis>;
+	let redis: any;
 	let testTaskId: string;
 
 	beforeAll(async () => {
-		redis = getRedis();
-		// Initialize registry
-		await registry.discover();
+		redis = await setupContractTest();
 		
 		// Create a test task to update
 		const createResult = await registry.executeHandler("task.create", {
@@ -25,18 +23,7 @@ describe("Contract Validation: task.update", () => {
 	});
 
 	afterAll(async () => {
-		// Try to clean up test data
-		try {
-			const keys = await redis.stream.keys(`cb:task:${testTaskId}`);
-			if (keys.length > 0) {
-				await redis.stream.del(...keys);
-			}
-		} catch {
-			// Ignore cleanup errors
-		}
-		
-		// Don't quit Redis - let the process handle cleanup on exit
-		// This prevents interference between parallel test files
+		await cleanupContractTest();
 	});
 
 	describe("Schema validation against contract", () => {

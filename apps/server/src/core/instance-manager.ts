@@ -227,7 +227,7 @@ export class InstanceManager {
 	}
 
 	// Cleanup on shutdown
-	async cleanup(): void {
+	async cleanup(): Promise<void> {
 		if (this.healthCheckInterval) {
 			clearInterval(this.healthCheckInterval);
 			this.healthCheckInterval = null;
