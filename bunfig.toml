@@ -1,2 +1,11 @@
 [install]
 # linker = "isolated"
+
+[test]
+# Only run tests from apps/server when in root
+preload = ["./apps/server/.env"]
+root = "./apps/server"
+# Only run TypeScript test files, exclude compiled JS
+coverage = false
+# Explicitly set test file pattern to only match .ts files
+# This prevents running compiled .js files in dist/

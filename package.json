@@ -22,7 +22,13 @@
     "db:start": "turbo -F server db:start",
     "db:watch": "turbo -F server db:watch",
     "db:stop": "turbo -F server db:stop",
-    "db:down": "turbo -F server db:down"
+    "db:down": "turbo -F server db:down",
+    "test": "(cd apps/server && bun test ./tests)",
+    "test:server": "(cd apps/server && bun test ./tests)",
+    "test:web": "(cd apps/web && bun test)",
+    "test:contract": "(cd apps/server && bun test ./tests/contract)",
+    "test:integration": "(cd apps/server && bun test ./tests/integration)",
+    "test:watch": "(cd apps/server && bun test --watch ./tests)"
   },
   "dependencies": {},
   "devDependencies": {
