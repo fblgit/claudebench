@@ -42,29 +42,29 @@
 - ClaudeBench uses web application structure per plan.md
 
 ## Phase 3.1: Setup
-- [ ] T001 Create Docker Compose configuration for Redis and PostgreSQL in apps/server/docker-compose.yml
-- [ ] T002 Add Redis and MCP SDK dependencies to apps/server/package.json
-- [ ] T003 [P] Add Zod and reflect-metadata dependencies to apps/server/package.json
-- [ ] T004 [P] Configure TypeScript for experimental decorators in apps/server/tsconfig.json
-- [ ] T005 [P] Create Prisma schema with Task and Instance models in apps/server/prisma/schema.prisma
-- [ ] T006 Initialize Redis connection module in apps/server/src/core/redis.ts
-- [ ] T007 Create environment configuration in apps/server/.env and apps/server/src/config.ts
+- [x] T001 Create Docker Compose configuration for Redis and PostgreSQL in apps/server/docker-compose.yml
+- [x] T002 Add Redis and MCP SDK dependencies to apps/server/package.json
+- [x] T003 [P] Add Zod and reflect-metadata dependencies to apps/server/package.json
+- [x] T004 [P] Configure TypeScript for experimental decorators in apps/server/tsconfig.json
+- [x] T005 [P] Create Prisma schema with Task and Instance models in apps/server/prisma/schema.prisma
+- [x] T006 Initialize Redis connection module in apps/server/src/core/redis.ts
+- [x] T007 Create environment configuration in apps/server/.env and apps/server/src/config.ts
 
 ## Phase 3.2: Tests First (TDD) ⚠️ MUST COMPLETE BEFORE 3.3
 **CRITICAL: These tests MUST be written and MUST FAIL before ANY implementation**
 
 ### Contract Tests (from JSONRPC contract)
-- [ ] T008 [P] Contract test for task.create event in apps/server/tests/contract/task.create.test.ts
-- [ ] T009 [P] Contract test for task.update event in apps/server/tests/contract/task.update.test.ts
-- [ ] T010 [P] Contract test for task.assign event in apps/server/tests/contract/task.assign.test.ts
-- [ ] T011 [P] Contract test for task.complete event in apps/server/tests/contract/task.complete.test.ts
-- [ ] T012 [P] Contract test for hook.pre_tool event in apps/server/tests/contract/hook.pre_tool.test.ts
-- [ ] T013 [P] Contract test for hook.post_tool event in apps/server/tests/contract/hook.post_tool.test.ts
-- [ ] T014 [P] Contract test for hook.todo_write event in apps/server/tests/contract/hook.todo_write.test.ts
-- [ ] T015 [P] Contract test for system.health event in apps/server/tests/contract/system.health.test.ts
-- [ ] T016 [P] Contract test for system.register event in apps/server/tests/contract/system.register.test.ts
-- [ ] T017 [P] Contract test for system.heartbeat event in apps/server/tests/contract/system.heartbeat.test.ts
-- [ ] T018 [P] Contract test for system.get_state event in apps/server/tests/contract/system.get_state.test.ts
+- [x] T008 [P] Contract test for task.create event in apps/server/tests/contract/task.create.test.ts
+- [x] T009 [P] Contract test for task.update event in apps/server/tests/contract/task.update.test.ts
+- [x] T010 [P] Contract test for task.assign event in apps/server/tests/contract/task.assign.test.ts
+- [x] T011 [P] Contract test for task.complete event in apps/server/tests/contract/task.complete.test.ts
+- [x] T012 [P] Contract test for hook.pre_tool event in apps/server/tests/contract/hook.pre_tool.test.ts
+- [x] T013 [P] Contract test for hook.post_tool event in apps/server/tests/contract/hook.post_tool.test.ts
+- [x] T014 [P] Contract test for hook.todo_write event in apps/server/tests/contract/hook.todo_write.test.ts
+- [x] T015 [P] Contract test for system.health event in apps/server/tests/contract/system.health.test.ts
+- [x] T016 [P] Contract test for system.register event in apps/server/tests/contract/system.register.test.ts
+- [x] T017 [P] Contract test for system.heartbeat event in apps/server/tests/contract/system.heartbeat.test.ts
+- [x] T018 [P] Contract test for system.get_state event in apps/server/tests/contract/system.get_state.test.ts
 
 ### Integration Tests (from quickstart scenarios)
 - [ ] T019 [P] Integration test for TodoWrite event capture flow in apps/server/tests/integration/todowrite.test.ts
