@@ -13,6 +13,7 @@ export class EventBus {
 	private redis: ReturnType<typeof getRedis>;
 	private subscribers: Map<string, Set<(event: Event) => Promise<void>>> = new Map();
 	private initialized = false;
+	private messageListenerAttached = false;
 
 	constructor() {
 		this.redis = getRedis();

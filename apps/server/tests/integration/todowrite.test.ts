@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { getRedis } from "@/core/redis";
+import { registry } from "@/core/registry";
+import { 
+	setupIntegrationTest, 
+	cleanupIntegrationTest 
+} from "../helpers/integration-setup";
 import { z } from "zod";
 
 // TodoWrite event capture integration test
@@ -15,21 +20,11 @@ describe("Integration: TodoWrite Event Capture", () => {
 	let redis: ReturnType<typeof getRedis>;
 
 	beforeAll(async () => {
-		redis = getRedis();
-		// Clear test data
-		try {
-			const keys = await redis.stream.keys("cb:test:todowrite:*");
-			if (keys.length > 0) {
-				await redis.stream.del(...keys);
-			}
-		} catch {
-			// Ignore cleanup errors
-		}
+		redis = await setupIntegrationTest();
 	});
 
 	afterAll(async () => {
-		// Don't quit Redis - let the process handle cleanup on exit
-		// This prevents interference between parallel test files
+		await cleanupIntegrationTest();
 	});
 
 	it("should capture TodoWrite events from Claude Code", async () => {
@@ -40,12 +35,27 @@ describe("Integration: TodoWrite Event Capture", () => {
 			{ content: "Update documentation", status: "pending", activeForm: "Updating documentation" },
 		];
 
-		// This would be triggered by the TodoWrite hook
-		const eventStreamKey = "cb:stream:hook.todo_write";
+		// Invoke the TodoWrite handler through the registry
+		// This simulates what happens when Claude Code uses the TodoWrite tool
+		const result = await registry.executeHandler("hook.todo_write", {
+			todos: todos
+		});
 		
-		// Check if event was captured (will fail without handler)
+		// Verify the handler processed the todos
+		expect(result.processed).toBe(true);
+		
+		// Check if event was captured in the Redis stream
+		const eventStreamKey = "cb:stream:hook.todo_write";
 		const events = await redis.stream.xrange(eventStreamKey, "-", "+", "COUNT", 1);
 		expect(events.length).toBeGreaterThan(0);
+		
+		// Verify the event structure
+		if (events.length > 0) {
+			const [streamId, fields] = events[0];
+			const eventData = JSON.parse(fields[1]);
+			expect(eventData.type).toBe("hook.todo_write");
+			expect(eventData.payload.todos).toHaveLength(3);
+		}
 	});
 
 	it("should convert todos to tasks automatically", async () => {

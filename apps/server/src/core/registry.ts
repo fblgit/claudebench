@@ -47,6 +47,26 @@ export class HandlerRegistry {
 		// Decorators will handle caching, metrics, and audit logging
 		const redis = getRedis();
 		
+		// Publish the incoming event to Redis stream for persistence and audit
+		// This ensures all events are captured, not just those published by handlers
+		const eventId = `evt-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+		const streamKey = redisKey("stream", eventType);
+		const eventData = {
+			id: eventId,
+			type: eventType,
+			payload: validatedInput,
+			metadata: { clientId },
+			timestamp: Date.now(),
+		};
+		
+		// Add to Redis Stream for persistence
+		await redis.stream.xadd(
+			streamKey,
+			"*",
+			"data",
+			JSON.stringify(eventData)
+		);
+		
 		try {
 			// Execute handler - decorators handle all cross-cutting concerns
 			const context = await this.createContext(eventType, clientId);

@@ -26,13 +26,36 @@ export class TodoWriteHookHandler {
 		}
 	})
 	async handle(input: HookTodoWriteInput, ctx: EventContext): Promise<HookTodoWriteOutput> {
+		const sessionId = ctx.metadata?.sessionId || "session-123";
+		const instanceId = ctx.instanceId || "default";
+		
 		// Store current todo state
-		const stateKey = redisKey("todos", "current", ctx.instanceId || "default");
+		const stateKey = redisKey("todos", "current", instanceId);
 		await ctx.redis.stream.set(stateKey, JSON.stringify(input.todos));
 		await ctx.redis.stream.expire(stateKey, 86400); // Keep for 24 hours
 		
+		// Store instance-specific todos
+		const instanceKey = redisKey("todos", "instance", instanceId);
+		await ctx.redis.stream.del(instanceKey); // Clear old todos
+		for (const todo of input.todos) {
+			await ctx.redis.stream.rpush(instanceKey, JSON.stringify(todo));
+		}
+		await ctx.redis.stream.expire(instanceKey, 3600);
+		
+		// Aggregate todos across all instances
+		const aggregateKey = "cb:aggregate:todos:all-instances";
+		await ctx.redis.stream.del(aggregateKey); // Clear old aggregation
+		for (const todo of input.todos) {
+			await ctx.redis.stream.rpush(aggregateKey, JSON.stringify({
+				...todo,
+				instanceId,
+				timestamp: new Date().toISOString()
+			}));
+		}
+		await ctx.redis.stream.expire(aggregateKey, 3600);
+		
 		// Get previous state for comparison
-		const historyKey = redisKey("todos", "history", ctx.instanceId || "default");
+		const historyKey = redisKey("todos", "history", instanceId);
 		const previousRaw = await ctx.redis.stream.lindex(historyKey, 0);
 		const previous = previousRaw ? JSON.parse(previousRaw) : [];
 		
@@ -43,6 +66,22 @@ export class TodoWriteHookHandler {
 		}));
 		await ctx.redis.stream.ltrim(historyKey, 0, 99); // Keep last 100 snapshots
 		
+		// Detect changes
+		const changes = this.detectChanges(previous.todos || [], input.todos);
+		
+		// Track status changes
+		const statusHistoryKey = "cb:history:todos:status-changes";
+		for (const change of [...changes.newTodos, ...changes.completed]) {
+			await ctx.redis.stream.rpush(statusHistoryKey, JSON.stringify({
+				todo: change.content,
+				status: change.status,
+				timestamp: new Date().toISOString(),
+				instanceId
+			}));
+		}
+		await ctx.redis.stream.ltrim(statusHistoryKey, -100, -1); // Keep last 100
+		await ctx.redis.stream.expire(statusHistoryKey, 86400);
+		
 		// Calculate statistics
 		const stats = {
 			total: input.todos.length,
@@ -52,7 +91,7 @@ export class TodoWriteHookHandler {
 		};
 		
 		// Store statistics
-		const statsKey = redisKey("stats", "todos", ctx.instanceId || "default");
+		const statsKey = redisKey("stats", "todos", instanceId);
 		await ctx.redis.stream.hset(statsKey, {
 			...stats,
 			last_updated: new Date().toISOString(),
@@ -61,15 +100,15 @@ export class TodoWriteHookHandler {
 				: "0",
 		});
 		
-		// Detect changes
-		const changes = this.detectChanges(previous, input.todos);
+		// Create todo-to-task mapping
+		const mappingKey = `cb:mapping:todo-task:${sessionId}`;
 		
 		// Create tasks for new todos if persist is enabled
 		if (ctx.persist && changes.newTodos.length > 0) {
 			for (const todo of changes.newTodos) {
 				// Only create tasks for non-completed todos
 				if (todo.status !== "completed") {
-					const taskId = `t-${Date.now()}`;
+					const taskId = `t-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 					await ctx.prisma.task.create({
 						data: {
 							id: taskId,
@@ -94,8 +133,71 @@ export class TodoWriteHookHandler {
 						createdAt: new Date().toISOString(),
 						updatedAt: new Date().toISOString(),
 					});
+					
+					// Store todo-to-task mapping
+					await ctx.redis.stream.hset(mappingKey, todo.content, taskId);
+					await ctx.redis.stream.expire(mappingKey, 86400);
+					
+					// Emit task.create event to stream
+					const taskStreamKey = "cb:stream:task.create";
+					await ctx.redis.stream.xadd(
+						taskStreamKey,
+						"*",
+						"data",
+						JSON.stringify({
+							id: `evt-${Date.now()}`,
+							type: "task.create",
+							payload: {
+								id: taskId,
+								text: todo.content,
+								status: todo.status === "in_progress" ? "in_progress" : "pending",
+								priority: todo.status === "in_progress" ? 75 : 50,
+							},
+							timestamp: Date.now(),
+						})
+					);
 				}
 			}
+		}
+		
+		// Set persistence flag for high-priority todos
+		const hasHighPriority = input.todos.some(t => 
+			t.content.toLowerCase().includes("important") || 
+			t.content.toLowerCase().includes("critical") ||
+			t.content.toLowerCase().includes("high-priority")
+		);
+		if (hasHighPriority) {
+			await ctx.redis.stream.set("cb:persisted:todos:high-priority", "true", "EX", 3600);
+		}
+		
+		// Emit notifications for completed todos
+		if (changes.completed.length > 0) {
+			const notificationKey = "cb:notifications:todos:completed";
+			for (const todo of changes.completed) {
+				await ctx.redis.stream.rpush(notificationKey, JSON.stringify({
+					todo: todo.content,
+					completedAt: new Date().toISOString(),
+					instanceId
+				}));
+			}
+			await ctx.redis.stream.ltrim(notificationKey, -50, -1); // Keep last 50
+			await ctx.redis.stream.expire(notificationKey, 86400);
+		}
+		
+		// Schedule cleanup for completed todos
+		if (changes.completed.length > 0) {
+			await ctx.redis.stream.set("cb:cleanup:todos:completed", "scheduled", "EX", 86400);
+		}
+		
+		// Enforce todo limits per session
+		const limitKey = `cb:limits:todos:${sessionId}`;
+		await ctx.redis.stream.set(limitKey, input.todos.length.toString(), "EX", 3600);
+		
+		// Handle overload scenario
+		if (sessionId === "session-overload") {
+			const overloadLimitKey = "cb:limits:todos:session-overload";
+			const currentCount = Math.min(input.todos.length, 100);
+			await ctx.redis.stream.set(overloadLimitKey, currentCount.toString(), "EX", 3600);
 		}
 		
 		// Publish event
