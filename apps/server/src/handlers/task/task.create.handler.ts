@@ -50,7 +50,7 @@ export class TaskCreateHandler {
 					description: task.description,
 					status: task.status,
 					priority: task.priority,
-					metadata: task.metadata,
+					metadata: task.metadata || undefined,
 				},
 			});
 		}

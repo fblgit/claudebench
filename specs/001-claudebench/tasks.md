@@ -90,23 +90,23 @@
 - [x] T033 [P] Create common/shared schemas in apps/server/src/schemas/common.schema.ts
 
 ### Event Handlers - Task Domain
-- [ ] T034 [P] Implement TaskCreateHandler in apps/server/src/handlers/task/task.create.handler.ts
-- [ ] T035 [P] Implement TaskUpdateHandler in apps/server/src/handlers/task/task.update.handler.ts
-- [ ] T036 [P] Implement TaskAssignHandler in apps/server/src/handlers/task/task.assign.handler.ts
-- [ ] T037 [P] Implement TaskCompleteHandler in apps/server/src/handlers/task/task.complete.handler.ts
+- [x] T034 [P] Implement TaskCreateHandler in apps/server/src/handlers/task/task.create.handler.ts
+- [x] T035 [P] Implement TaskUpdateHandler in apps/server/src/handlers/task/task.update.handler.ts
+- [x] T036 [P] Implement TaskAssignHandler in apps/server/src/handlers/task/task.assign.handler.ts
+- [x] T037 [P] Implement TaskCompleteHandler in apps/server/src/handlers/task/task.complete.handler.ts
 
 ### Event Handlers - Hook Domain
-- [ ] T038 [P] Implement PreToolHookHandler in apps/server/src/handlers/hook/hook.pre_tool.handler.ts
-- [ ] T039 [P] Implement PostToolHookHandler in apps/server/src/handlers/hook/hook.post_tool.handler.ts
-- [ ] T040 [P] Implement UserPromptHookHandler in apps/server/src/handlers/hook/hook.user_prompt.handler.ts
-- [ ] T041 [P] Implement TodoWriteHookHandler in apps/server/src/handlers/hook/hook.todo_write.handler.ts
+- [x] T038 [P] Implement PreToolHookHandler in apps/server/src/handlers/hook/hook.pre_tool.handler.ts
+- [x] T039 [P] Implement PostToolHookHandler in apps/server/src/handlers/hook/hook.post_tool.handler.ts
+- [x] T040 [P] Implement UserPromptHookHandler in apps/server/src/handlers/hook/hook.user_prompt.handler.ts
+- [x] T041 [P] Implement TodoWriteHookHandler in apps/server/src/handlers/hook/hook.todo_write.handler.ts
 
 ### Event Handlers - System Domain
-- [ ] T042 [P] Implement SystemHealthHandler in apps/server/src/handlers/system/system.health.handler.ts
-- [ ] T043 [P] Implement SystemRegisterHandler in apps/server/src/handlers/system/system.register.handler.ts
-- [ ] T044 [P] Implement SystemHeartbeatHandler in apps/server/src/handlers/system/system.heartbeat.handler.ts
-- [ ] T045 [P] Implement SystemGetStateHandler in apps/server/src/handlers/system/system.get_state.handler.ts
-- [ ] T046 [P] Implement SystemMetricsHandler in apps/server/src/handlers/system/system.metrics.handler.ts
+- [x] T042 [P] Implement SystemHealthHandler in apps/server/src/handlers/system/system.health.handler.ts
+- [x] T043 [P] Implement SystemRegisterHandler in apps/server/src/handlers/system/system.register.handler.ts
+- [x] T044 [P] Implement SystemHeartbeatHandler in apps/server/src/handlers/system/system.heartbeat.handler.ts
+- [x] T045 [P] Implement SystemGetStateHandler in apps/server/src/handlers/system/system.get_state.handler.ts
+- [x] T046 [P] Implement SystemMetricsHandler in apps/server/src/handlers/system/system.metrics.handler.ts
 
 ## Phase 3.4: Transport Integration
 

@@ -1,5 +1,5 @@
 import { getRedis, redisKey } from "./redis";
-import { circuitBreaker } from "../config";
+import { circuitBreaker as circuitBreakerConfig } from "../config";
 
 export enum CircuitState {
 	CLOSED = "CLOSED",
@@ -9,6 +9,9 @@ export enum CircuitState {
 
 export class CircuitBreaker {
 	private redis = getRedis();
+	private threshold = circuitBreakerConfig.threshold;
+	private timeout = circuitBreakerConfig.timeout;
+	private resetTimeout = circuitBreakerConfig.resetTimeout;
 
 	async getState(handler: string): Promise<CircuitState> {
 		const stateKey = redisKey("circuit", handler, "state");
@@ -27,15 +30,15 @@ export class CircuitBreaker {
 	async recordFailure(handler: string): Promise<CircuitState> {
 		const failureKey = redisKey("circuit", handler, "failures");
 		const failures = await this.redis.stream.incr(failureKey);
-		await this.redis.stream.expire(failureKey, circuitBreaker.resetTimeout / 1000);
+		await this.redis.stream.expire(failureKey, this.resetTimeout / 1000);
 
-		if (failures >= circuitBreaker.threshold) {
+		if (failures >= this.threshold) {
 			// Open circuit
 			const stateKey = redisKey("circuit", handler, "state");
-			await this.redis.stream.set(stateKey, CircuitState.OPEN, "PX", circuitBreaker.timeout);
+			await this.redis.stream.set(stateKey, CircuitState.OPEN, "PX", this.timeout);
 			
 			// Schedule half-open transition
-			setTimeout(() => this.transitionToHalfOpen(handler), circuitBreaker.timeout);
+			setTimeout(() => this.transitionToHalfOpen(handler), this.timeout);
 			
 			return CircuitState.OPEN;
 		}
