@@ -3,6 +3,7 @@ import type { EventContext } from "@/core/context";
 import { hookTodoWriteInput, hookTodoWriteOutput } from "@/schemas/hook.schema";
 import type { HookTodoWriteInput, HookTodoWriteOutput } from "@/schemas/hook.schema";
 import { todoManager } from "@/core/todo-manager";
+import { registry } from "@/core/registry";
 
 @EventHandler({
 	event: "hook.todo_write",
@@ -43,8 +44,8 @@ export class TodoWriteHookHandler {
 		await todoManager.trackStatusChanges(changes, instanceId);
 		const stats = await todoManager.setStatistics(input.todos, instanceId);
 		
-		// 4. Process new todos into tasks (if persist is enabled)
-		if (ctx.persist && changes.newTodos.length > 0) {
+		// 4. Process new todos into tasks (always create tasks from new todos)
+		if (changes.newTodos.length > 0) {
 			for (const todo of changes.newTodos) {
 				// Skip completed todos
 				if (todo.status === "completed") continue;
@@ -53,27 +54,27 @@ export class TodoWriteHookHandler {
 				const existingTaskId = await todoManager.getTaskForTodo(todo.content, sessionId);
 				if (existingTaskId) continue;
 				
-				// Create new task
-				const taskId = `t-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-				
-				// Persist to database via Prisma (handler responsibility)
-				await ctx.prisma.task.create({
-					data: {
-						id: taskId,
-						text: todo.content,
-						status: todo.status === "in_progress" ? "in_progress" : "pending",
+				try {
+					// Create task via the task.create handler
+					const taskResult = await registry.executeHandler("task.create", {
+						text: todo.content, // task.create expects 'text' not 'title'
 						priority: todo.status === "in_progress" ? 75 : 50,
 						metadata: {
 							source: "todo_write",
 							activeForm: todo.activeForm,
+							sessionId,
 						},
-					},
-				});
-				
-				// Use TodoManager for Redis operations
-				await todoManager.storeTask(taskId, todo);
-				await todoManager.mapTodoToTask(todo.content, taskId, sessionId);
-				await todoManager.emitTaskCreateEvent(taskId, todo);
+					});
+					
+					// Map the created task to this todo
+					await todoManager.mapTodoToTask(todo.content, taskResult.id, sessionId);
+					
+					// Also emit our own task event for tracking
+					await todoManager.emitTaskCreateEvent(taskResult.id, todo);
+				} catch (error) {
+					// Log errors but continue with other todos
+					console.error(`Failed to create task for todo "${todo.content}":`, error);
+				}
 			}
 		}
 		

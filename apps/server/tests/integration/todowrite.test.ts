@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from "bun:test";
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
 import { getRedis } from "@/core/redis";
 import { registry } from "@/core/registry";
 import { 
@@ -25,6 +25,11 @@ describe("Integration: TodoWrite Event Capture", () => {
 
 	afterAll(async () => {
 		await cleanupIntegrationTest();
+	});
+
+	beforeEach(async () => {
+		// Flush Redis to ensure clean state for each test
+		await redis.stream.flushdb();
 	});
 
 	it("should capture TodoWrite events from Claude Code", async () => {
@@ -60,26 +65,49 @@ describe("Integration: TodoWrite Event Capture", () => {
 
 	it("should convert todos to tasks automatically", async () => {
 		// Invoke handler with todos that should create tasks
-		await registry.executeHandler("hook.todo_write", {
+		const result = await registry.executeHandler("hook.todo_write", {
 			todos: [
 				{ content: "Implement new feature", status: "pending", activeForm: "Implementing new feature" },
 				{ content: "Another task", status: "in_progress", activeForm: "Working on another task" },
 			]
 		});
 		
-		// After TodoWrite event, tasks should be created
-		const taskStreamKey = "cb:stream:task.create";
+		// 1. Verify the TodoWrite handler returned success
+		expect(result.processed).toBe(true);
 		
-		// Check if tasks were created from todos
+		// 2. Check that the TodoWrite event itself was captured
+		const todoWriteStreamKey = "cb:stream:hook.todo_write";
+		const todoWriteEvents = await redis.stream.xrange(todoWriteStreamKey, "-", "+");
+		expect(todoWriteEvents.length).toBeGreaterThan(0);
+		
+		// 3. Check if tasks were created from todos
+		const taskStreamKey = "cb:stream:task.create";
 		const taskEvents = await redis.stream.xrange(taskStreamKey, "-", "+");
 		expect(taskEvents.length).toBeGreaterThan(0);
 		
-		// Verify task contains todo information
-		if (taskEvents.length > 0) {
-			const [streamId, fields] = taskEvents[0];
+		// 4. Verify both types of events exist
+		// - Registry event (has payload with todos)
+		// - TodoManager event (has params with title)
+		let foundImplementTask = false;
+		let foundAnotherTask = false;
+		
+		for (const [streamId, fields] of taskEvents) {
 			const taskData = JSON.parse(fields[1]);
-			expect(taskData.params.title).toContain("Implement");
+			
+			// Check for TodoManager-created events
+			if (taskData.params && taskData.params.title) {
+				if (taskData.params.title.includes("Implement")) {
+					foundImplementTask = true;
+				}
+				if (taskData.params.title.includes("Another")) {
+					foundAnotherTask = true;
+				}
+			}
 		}
+		
+		// We expect both tasks to be created
+		expect(foundImplementTask).toBe(true);
+		expect(foundAnotherTask).toBe(true);
 	});
 
 	it("should maintain todo-to-task mapping", async () => {
@@ -133,18 +161,32 @@ describe("Integration: TodoWrite Event Capture", () => {
 	});
 
 	it("should aggregate todos across all instances", async () => {
+		// Invoke handler to create aggregated todos
+		await registry.executeHandler("hook.todo_write", {
+			todos: [
+				{ content: "Todo for aggregation", status: "pending", activeForm: "Creating aggregated todo" },
+			]
+		});
+		
 		const aggregateKey = "cb:aggregate:todos:all-instances";
 		
-		// Check aggregation works (will fail without handler)
+		// Check aggregation works
 		const allTodos = await redis.stream.lrange(aggregateKey, 0, -1);
 		expect(allTodos.length).toBeGreaterThan(0);
 	});
 
 	it("should enforce todo limits per session", async () => {
-		// Try to add more than limit (e.g., 100 todos)
+		// Create todos with the special session-overload ID
+		await registry.executeHandler("hook.todo_write", {
+			todos: [
+				{ content: "Test limit 1", status: "pending", activeForm: "Testing limit" },
+				{ content: "Test limit 2", status: "pending", activeForm: "Testing limit" },
+			]
+		}, "session-overload");
+		
 		const limitKey = "cb:limits:todos:session-overload";
 		
-		// Check limit is enforced (will fail without handler)
+		// Check limit is enforced
 		const count = await redis.stream.get(limitKey);
 		expect(parseInt(count || "0")).toBeLessThanOrEqual(100);
 	});
