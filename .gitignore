@@ -3,3 +3,5 @@ node_modules
 .alchemy
 .env
 plans/logs*
+tmp/
+apps/server/tmp
