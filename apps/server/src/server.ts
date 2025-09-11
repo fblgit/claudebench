@@ -12,15 +12,21 @@ import "./handlers";
 import { registry } from "./core/registry";
 import { eventBus } from "./core/bus";
 import { connectRedis, disconnectRedis } from "./core/redis";
+import { metrics } from "./core/metrics";
+import { instanceManager } from "./core/instance-manager";
 
 // Import transport handlers
 import { handleJsonRpcRequest, handleJsonRpcBatch } from "./transports/http";
 import { registerHttpRoutes } from "./transports/http-routes";
 
+// Import Prometheus middleware
+import { prometheusMiddleware, getMetrics } from "./middleware/prometheus";
+
 const app = new Hono();
 
 // Middleware setup
 app.use(logger());
+app.use(prometheusMiddleware()); // Add Prometheus metrics to all requests
 app.use(
 	"/*",
 	cors({
@@ -41,6 +47,13 @@ app.get("/", (c) => {
 	});
 });
 
+// Prometheus metrics endpoint
+app.get("/metrics", async (c) => {
+	const metrics = await getMetrics();
+	c.header("Content-Type", "text/plain; version=0.0.4");
+	return c.text(metrics);
+});
+
 // JSONRPC endpoint
 app.post("/rpc", handleJsonRpcRequest);
 app.post("/rpc/batch", handleJsonRpcBatch);
@@ -57,6 +70,11 @@ async function initialize() {
 		// Initialize event bus
 		console.log("🚌 Initializing event bus...");
 		await eventBus.initialize();
+		
+		// Initialize metrics collection
+		console.log("📊 Initializing metrics collector...");
+		await metrics.initialize();
+		metrics.startCollection(5000); // Collect every 5 seconds
 		
 		// Discover and register handlers
 		console.log("🔍 Discovering handlers...");
@@ -91,6 +109,12 @@ async function shutdown() {
 	console.log("\n📴 Shutting down gracefully...");
 	
 	try {
+		// Stop metrics collection
+		metrics.stopCollection();
+		
+		// Cleanup instance manager
+		await instanceManager.cleanup();
+		
 		// Close event bus subscriptions
 		await eventBus.close();
 		

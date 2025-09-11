@@ -24,10 +24,7 @@ export class TaskQueueManager {
 		// Use negative priority for descending order (higher priority first)
 		await this.redis.stream.zadd(globalQueueKey, -priority, taskId);
 		
-		// Track metrics
-		const metricsKey = redisKey("metrics", "queues");
-		await this.redis.stream.hincrby(metricsKey, "totalTasks", 1);
-		await this.redis.stream.expire(metricsKey, 3600);
+		// Metrics are now tracked centrally in Registry
 	}
 
 	// Assign tasks to available workers
@@ -164,9 +161,7 @@ export class TaskQueueManager {
 		const taskKey = redisKey("task", taskId);
 		await this.redis.stream.hset(taskKey, "status", "COMPLETED");
 		
-		// Update metrics
-		const metricsKey = redisKey("metrics", "queues");
-		await this.redis.stream.hincrby(metricsKey, "tasksCompleted", 1);
+		// Metrics are now tracked centrally in Registry when task.complete is called
 	}
 
 	// Check for duplicate assignments
@@ -196,14 +191,19 @@ export class TaskQueueManager {
 		return loads;
 	}
 
-	// Get queue metrics
+	// Get queue metrics (now reads from centralized metrics)
 	async getMetrics(): Promise<any> {
 		const metricsKey = redisKey("metrics", "queues");
 		const metrics = await this.redis.stream.hgetall(metricsKey);
 		
-		// Calculate average wait time (simplified)
+		// Get current queue depth
+		const globalQueueKey = redisKey("queue", "tasks", "pending");
+		const currentDepth = await this.redis.stream.zcard(globalQueueKey);
+		
+		// Calculate derived metrics
 		const totalTasks = parseInt(metrics.totalTasks || "0");
 		const tasksCompleted = parseInt(metrics.tasksCompleted || "0");
+		const tasksPending = currentDepth;
 		const avgWaitTime = totalTasks > 0 ? ((totalTasks - tasksCompleted) * 1000) / totalTasks : 0;
 		
 		// Calculate throughput
@@ -212,6 +212,7 @@ export class TaskQueueManager {
 		return {
 			totalTasks,
 			tasksCompleted,
+			tasksPending,
 			avgWaitTime: avgWaitTime.toFixed(2),
 			throughput: throughput.toFixed(2),
 		};

@@ -72,10 +72,6 @@ export class PreToolHookHandler {
 			}
 		}
 		
-		// Track tool usage metrics
-		const metricsKey = redisKey("metrics", "tools", input.tool);
-		await ctx.redis.stream.hincrby(metricsKey, "pre_hook_calls", 1);
-		
 		// Example: Add timeout to long-running operations
 		let modified = undefined;
 		if (input.tool === "bash" && typeof input.params === 'object' && input.params !== null) {

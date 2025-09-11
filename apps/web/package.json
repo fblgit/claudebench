@@ -8,7 +8,8 @@
     "build": "vite build",
     "serve": "vite preview",
     "start": "vite",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "test": "echo 'No tests configured for web app yet'"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",

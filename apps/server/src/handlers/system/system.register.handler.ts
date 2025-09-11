@@ -4,6 +4,7 @@ import { systemRegisterInput, systemRegisterOutput } from "@/schemas/system.sche
 import type { SystemRegisterInput, SystemRegisterOutput } from "@/schemas/system.schema";
 import { redisKey } from "@/core/redis";
 import { instanceManager } from "@/core/instance-manager";
+import { taskQueue } from "@/core/task-queue";
 
 @EventHandler({
 	event: "system.register",
@@ -28,6 +29,21 @@ export class SystemRegisterHandler {
 					timestamp: Date.now(),
 				},
 			});
+			
+			// AUTO-ASSIGN TASKS: When a worker registers, assign pending tasks
+			if (input.roles.includes("worker")) {
+				// Register worker in task queue system
+				await taskQueue.registerWorker(input.id, input.roles);
+				
+				// Trigger automatic task assignment to all workers
+				await taskQueue.assignTasksToWorkers();
+				
+				// Log task assignment for debugging
+				const assignedCount = await ctx.redis.stream.llen(redisKey("queue", "instance", input.id));
+				if (assignedCount > 0) {
+					console.log(`[SystemRegister] Assigned ${assignedCount} tasks to worker ${input.id}`);
+				}
+			}
 		}
 		
 		// Per contract, we simply return whether registration succeeded
