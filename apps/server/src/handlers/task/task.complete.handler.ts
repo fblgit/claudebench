@@ -28,7 +28,7 @@ export class TaskCompleteHandler {
 		}
 
 		// Verify task is not already completed
-		if (taskData.status === "COMPLETED" || taskData.status === "FAILED") {
+		if (taskData.status === "completed" || taskData.status === "failed") {
 			throw new Error(`Task ${input.id} is already ${taskData.status}`);
 		}
 
@@ -37,8 +37,8 @@ export class TaskCompleteHandler {
 		const now = Date.now();
 		const duration = now - createdAt;
 
-		// Determine final status
-		const status = input.error ? "FAILED" : "COMPLETED";
+		// Determine final status based on result presence
+		const status = input.result ? "completed" : "failed";
 		const completedAt = new Date().toISOString();
 
 		// Update task in Redis
@@ -47,7 +47,6 @@ export class TaskCompleteHandler {
 			completedAt,
 			updatedAt: completedAt,
 			result: input.result ? JSON.stringify(input.result) : null,
-			error: input.error || null,
 			duration: duration.toString(),
 		});
 
@@ -58,7 +57,7 @@ export class TaskCompleteHandler {
 		// Update instance metrics
 		const instanceMetricsKey = redisKey("metrics", "instance", taskData.assignedTo);
 		await ctx.redis.stream.hincrby(instanceMetricsKey, "tasksCompleted", 1);
-		if (status === "FAILED") {
+		if (status === "failed") {
 			await ctx.redis.stream.hincrby(instanceMetricsKey, "tasksFailed", 1);
 		}
 
@@ -74,7 +73,7 @@ export class TaskCompleteHandler {
 		// Update global metrics
 		const globalMetricsKey = redisKey("metrics", "global");
 		await ctx.redis.stream.hincrby(globalMetricsKey, 
-			status === "COMPLETED" ? "tasksCompleted" : "tasksFailed", 1);
+			status === "completed" ? "tasksCompleted" : "tasksFailed", 1);
 
 		// Persist to PostgreSQL if configured
 		if (ctx.persist) {
@@ -86,7 +85,6 @@ export class TaskCompleteHandler {
 					metadata: {
 						...(taskData.metadata ? JSON.parse(taskData.metadata) : {}),
 						result: input.result,
-						error: input.error,
 						duration,
 					},
 				},
@@ -106,15 +104,11 @@ export class TaskCompleteHandler {
 			},
 		});
 
+		// Return simplified output per contract
 		return {
 			id: input.id,
-			title: taskData.title as string,
-			status: status as "COMPLETED" | "FAILED",
-			result: input.result || null,
-			error: input.error || null,
+			status: status as "completed" | "failed",
 			completedAt,
-			completedBy: taskData.assignedTo as string,
-			duration,
 		};
 	}
 }

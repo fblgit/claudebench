@@ -30,27 +30,27 @@ export class TaskUpdateHandler {
 			updatedAt: new Date().toISOString(),
 		};
 
-		if (input.title !== undefined) updates.title = input.title;
-		if (input.description !== undefined) updates.description = input.description || null;
-		if (input.status !== undefined) {
-			updates.status = input.status;
+		// Apply updates from the nested updates object
+		if (input.updates.text !== undefined) updates.text = input.updates.text;
+		if (input.updates.status !== undefined) {
+			updates.status = input.updates.status;
 			// If completing, set completedAt
-			if (input.status === "COMPLETED" || input.status === "FAILED") {
+			if (input.updates.status === "completed" || input.updates.status === "failed") {
 				updates.completedAt = new Date().toISOString();
 			}
 		}
-		if (input.priority !== undefined) {
-			updates.priority = input.priority;
+		if (input.updates.priority !== undefined) {
+			updates.priority = input.updates.priority;
 			
 			// Update queue position if still pending
-			if (existingData.status === "PENDING") {
+			if (existingData.status === "pending") {
 				const queueKey = redisKey("queue", "tasks", "pending");
 				await ctx.redis.stream.zrem(queueKey, input.id);
-				await ctx.redis.stream.zadd(queueKey, -input.priority, input.id);
+				await ctx.redis.stream.zadd(queueKey, -input.updates.priority, input.id);
 			}
 		}
-		if (input.metadata !== undefined) {
-			updates.metadata = JSON.stringify({ ...existingMetadata, ...input.metadata });
+		if (input.updates.metadata !== undefined) {
+			updates.metadata = JSON.stringify({ ...existingMetadata, ...input.updates.metadata });
 		}
 
 		// Update in Redis
@@ -60,12 +60,12 @@ export class TaskUpdateHandler {
 		const updatedData = await ctx.redis.stream.hgetall(taskKey);
 		const task = {
 			id: input.id,
-			title: updatedData.title as string,
-			description: updatedData.description || null,
+			text: updatedData.text as string,
 			status: updatedData.status as any,
 			priority: parseInt(updatedData.priority as string),
 			assignedTo: updatedData.assignedTo || null,
-			metadata: updatedData.metadata ? JSON.parse(updatedData.metadata) : null,
+			result: updatedData.result ? JSON.parse(updatedData.result) : null,
+			error: updatedData.error || null,
 			createdAt: updatedData.createdAt as string,
 			updatedAt: updatedData.updatedAt as string,
 			completedAt: updatedData.completedAt || null,
@@ -76,11 +76,10 @@ export class TaskUpdateHandler {
 			await ctx.prisma.task.update({
 				where: { id: input.id },
 				data: {
-					title: task.title,
-					description: task.description,
+					text: task.text,
 					status: task.status,
 					priority: task.priority,
-					metadata: task.metadata,
+					metadata: updates.metadata ? JSON.parse(updates.metadata) : undefined,
 					completedAt: task.completedAt ? new Date(task.completedAt) : null,
 				},
 			});
@@ -92,10 +91,18 @@ export class TaskUpdateHandler {
 			payload: task,
 			metadata: {
 				updatedBy: ctx.instanceId,
-				changes: Object.keys(updates),
+				changes: Object.keys(input.updates),
 			},
 		});
 
-		return task;
+		// Return the full updated task for contract compliance
+		return {
+			id: task.id,
+			text: task.text,
+			status: task.status,
+			priority: task.priority,
+			updatedAt: task.updatedAt,
+			createdAt: task.createdAt,
+		};
 	}
 }

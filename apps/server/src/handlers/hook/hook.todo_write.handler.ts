@@ -132,10 +132,9 @@ export class TodoWriteHookHandler {
 				await ctx.prisma.task.create({
 					data: {
 						id: taskId,
-						title: `TodoWrite: ${input.todos.find(t => t.status === "in_progress")?.content || "Task"}`,
-						description: `Auto-created from TodoWrite event`,
-						status: "PENDING",
-						priority: 5,
+						text: `TodoWrite: ${input.todos.find(t => t.status === "in_progress")?.content || "Task"}`,
+						status: "pending",
+						priority: 50, // Default priority per contract
 						metadata: {
 							source: "todo_write",
 							sessionId: input.sessionId,
@@ -227,9 +226,9 @@ export class TodoWriteHookHandler {
 		const taskKey = redisKey("task", taskId);
 		await ctx.redis.stream.hset(taskKey, {
 			id: taskId,
-			title: todo.content,
+			text: todo.content,
 			description: `Auto-created from TodoWrite: ${todo.activeForm}`,
-			status: todo.status === "in_progress" ? "IN_PROGRESS" : "PENDING",
+			status: todo.status === "in_progress" ? "in_progress" : "pending",
 			priority: todo.status === "in_progress" ? 10 : 5,
 			source: "todo_write",
 			sessionId: input.sessionId,
@@ -369,7 +368,7 @@ export class TodoWriteHookHandler {
 		switch (todoStatus) {
 			case "in_progress": return "IN_PROGRESS";
 			case "completed": return "COMPLETED";
-			default: return "PENDING";
+			default: return "pending";
 		}
 	}
 	

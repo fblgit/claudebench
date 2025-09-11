@@ -111,9 +111,9 @@
 ## Phase 3.4: Transport Integration
 
 ### HTTP Server (Hono)
-- [ ] T047 Create JSONRPC request handler in apps/server/src/transports/http.ts
-- [ ] T048 Set up Hono server with CORS and logging in apps/server/src/server.ts
-- [ ] T049 Auto-generate HTTP routes from handler registry in apps/server/src/transports/http-routes.ts
+- [x] T047 Create JSONRPC request handler in apps/server/src/transports/http.ts
+- [x] T048 Set up Hono server with CORS and logging in apps/server/src/server.ts
+- [x] T049 Auto-generate HTTP routes from handler registry in apps/server/src/transports/http-routes.ts
 
 ### MCP Server
 - [ ] T050 Initialize MCP server with Streamable HTTP transport in apps/server/src/mcp/server.ts

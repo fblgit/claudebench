@@ -35,15 +35,11 @@ export class TaskAssignHandler {
 
 		// Check if task is already assigned
 		const previousAssignment = taskData.assignedTo || null;
-		if (previousAssignment && !input.force) {
-			throw new Error(`Task ${input.taskId} is already assigned to ${previousAssignment}. Use force=true to reassign.`);
+		if (previousAssignment) {
+			throw new Error(`Task ${input.taskId} is already assigned to ${previousAssignment}.`);
 		}
 
-		// Remove from old instance queue if reassigning
-		if (previousAssignment && previousAssignment !== input.instanceId) {
-			const oldQueueKey = redisKey("queue", "instance", previousAssignment);
-			await ctx.redis.stream.lrem(oldQueueKey, 0, input.taskId);
-		}
+		// No reassignment logic needed since we throw error above
 
 		// Remove from pending queue
 		const pendingQueueKey = redisKey("queue", "tasks", "pending");
@@ -53,11 +49,11 @@ export class TaskAssignHandler {
 		const instanceQueueKey = redisKey("queue", "instance", input.instanceId);
 		await ctx.redis.stream.rpush(instanceQueueKey, input.taskId);
 
-		// Update task assignment
+		// Update task assignment - status stays "pending" per contract
 		const now = new Date().toISOString();
 		await ctx.redis.stream.hset(taskKey, {
 			assignedTo: input.instanceId,
-			status: "ASSIGNED",
+			status: "pending", // Contract only allows pending/in_progress/completed/failed
 			updatedAt: now,
 		});
 
@@ -79,7 +75,7 @@ export class TaskAssignHandler {
 				where: { id: input.taskId },
 				data: {
 					assignedTo: input.instanceId,
-					status: "ASSIGNED",
+					status: "pending",
 				},
 			});
 		}
@@ -97,11 +93,11 @@ export class TaskAssignHandler {
 			},
 		});
 
+		// Return simplified output per contract
 		return {
 			taskId: input.taskId,
 			instanceId: input.instanceId,
 			assignedAt: now,
-			previousAssignment,
 		};
 	}
 }

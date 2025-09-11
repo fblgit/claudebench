@@ -69,6 +69,19 @@ claudebench/
 - `bun db:studio`: Open database studio UI
 - `bun check`: Run Biome formatting and linting
 
-@CLAUDEBENCH.md
-@CLAUDE_CODE_GUIDE.md
-@MCP_SDK.md
+@specs/001-claudebench/specs.md
+@specs/001-claudebench/CONTRACT-DRIVEN-DEVELOPMENT.md
+@specs/001-claudebench/data-models.md
+
+# **IMPORTANT CRUCIAL READINGS**: Read these always when u start a conversation or after compaction / resuming:
+
+- CLAUDEBENCH.md (What is ClaudeBench and how it Works)
+- CLAUDE_CODE_GUIDE.md (How to code into ClaudeBench)
+- specs/001-claudebench/specs.md (Specifications of ClaudeBench)
+- specs/001-claudebench/data-models.md (Data Modeling FUNDAMENTAL ADHERENCE)
+- specs/001-claudebench/contracts/jsonrpc-contract.json (FULL ADHERENCE)
+- specs/001-claudebench/research.md (Research)
+- specs/001-claudebench/plan.md (Roadmap Plan)
+- MCP_SDK.md 
+
+Be sure to always have visited and readed these documents when working in any task.

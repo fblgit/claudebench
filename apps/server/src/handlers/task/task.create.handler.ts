@@ -14,20 +14,20 @@ import { redisKey } from "@/core/redis";
 })
 export class TaskCreateHandler {
 	async handle(input: TaskCreateInput, ctx: EventContext): Promise<TaskCreateOutput> {
-		const taskId = `task-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+		const taskId = `t-${Date.now()}`; // Format per data model: t-{timestamp}
 		const now = new Date().toISOString();
 		
 		const task = {
 			id: taskId,
-			title: input.title,
-			description: input.description || null,
-			status: "PENDING" as const,
-			priority: input.priority || 0,
+			text: input.text, // Changed from title to text
+			status: "pending" as const, // Lowercase per contract
+			priority: input.priority || 50, // Default 50 per contract
 			assignedTo: null,
+			result: null,
+			error: null,
 			metadata: input.metadata || null,
 			createdAt: now,
 			updatedAt: now,
-			completedAt: null,
 		};
 
 		// Store in Redis
@@ -46,8 +46,7 @@ export class TaskCreateHandler {
 			await ctx.prisma.task.create({
 				data: {
 					id: taskId,
-					title: task.title,
-					description: task.description,
+					text: task.text, // Changed from title to text
 					status: task.status,
 					priority: task.priority,
 					metadata: task.metadata || undefined,
@@ -66,14 +65,10 @@ export class TaskCreateHandler {
 
 		return {
 			id: task.id,
-			title: task.title,
-			description: task.description,
+			text: task.text,
 			status: task.status,
 			priority: task.priority,
-			assignedTo: task.assignedTo,
-			metadata: task.metadata,
 			createdAt: task.createdAt,
-			updatedAt: task.updatedAt,
 		};
 	}
 }

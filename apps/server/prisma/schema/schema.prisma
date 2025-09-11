@@ -11,12 +11,13 @@ datasource db {
 }
 
 model Task {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  status      TaskStatus @default(PENDING)
-  priority    Int      @default(0)
+  id          String   @id // Format: t-{timestamp}
+  text        String   // Changed from title to text
+  status      TaskStatus @default(pending)
+  priority    Int      @default(50) // Changed default from 0 to 50
   assignedTo  String?  // Instance ID
+  result      Json?    // Task completion result
+  error       String?  // Error message if failed
   metadata    Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -43,12 +44,12 @@ model Instance {
 }
 
 enum TaskStatus {
-  PENDING
-  ASSIGNED
-  IN_PROGRESS
-  COMPLETED
-  FAILED
-  CANCELLED
+  pending
+  assigned
+  in_progress
+  completed
+  failed
+  cancelled
 }
 
 enum InstanceStatus {

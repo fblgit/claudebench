@@ -1,80 +1,73 @@
 import { z } from "zod";
 
-// Task status enum
+// Task status enum (lowercase per contract)
 export const TaskStatus = z.enum([
-	"PENDING",
-	"ASSIGNED",
-	"IN_PROGRESS",
-	"COMPLETED",
-	"FAILED",
-	"CANCELLED",
+	"pending",
+	"in_progress",
+	"completed",
+	"failed",
 ]);
 
 // task.create
 export const taskCreateInput = z.object({
-	title: z.string().min(1).max(255),
-	description: z.string().optional(),
-	priority: z.number().int().min(0).max(10).default(0),
+	text: z.string().min(1).max(500), // Changed from title to text, max 500 per contract
+	priority: z.number().int().min(0).max(100).default(50), // Changed to 0-100, default 50
 	metadata: z.record(z.string(), z.any()).optional(),
 });
 
 export const taskCreateOutput = z.object({
 	id: z.string(),
-	title: z.string(),
-	description: z.string().nullable(),
+	text: z.string(),
 	status: TaskStatus,
 	priority: z.number(),
-	assignedTo: z.string().nullable(),
-	metadata: z.record(z.string(), z.any()).nullable(),
 	createdAt: z.string().datetime(),
-	updatedAt: z.string().datetime(),
 });
 
 // task.update
 export const taskUpdateInput = z.object({
 	id: z.string(),
-	title: z.string().min(1).max(255).optional(),
-	description: z.string().optional(),
-	status: TaskStatus.optional(),
-	priority: z.number().int().min(0).max(10).optional(),
-	metadata: z.record(z.string(), z.any()).optional(),
+	updates: z.object({
+		text: z.string().min(1).max(500).optional(),
+		status: TaskStatus.optional(),
+		priority: z.number().int().min(0).max(100).optional(),
+		metadata: z.record(z.string(), z.any()).optional(),
+	}),
 });
 
-export const taskUpdateOutput = taskCreateOutput.extend({
-	completedAt: z.string().datetime().nullable(),
+// Contract doesn't specify output, but returning updated task for consistency
+export const taskUpdateOutput = z.object({
+	id: z.string(),
+	text: z.string(),
+	status: TaskStatus,
+	priority: z.number(),
+	createdAt: z.string().datetime(),
+	updatedAt: z.string().datetime(),
 });
 
 // task.assign
 export const taskAssignInput = z.object({
 	taskId: z.string(),
 	instanceId: z.string(),
-	force: z.boolean().optional().default(false),
 });
 
+// Contract doesn't specify output format
 export const taskAssignOutput = z.object({
 	taskId: z.string(),
 	instanceId: z.string(),
 	assignedAt: z.string().datetime(),
-	previousAssignment: z.string().nullable(),
 });
 
 // task.complete
 export const taskCompleteInput = z.object({
 	id: z.string(),
 	result: z.any().optional(),
-	error: z.string().optional(),
-	metadata: z.record(z.string(), z.any()).optional(),
 });
 
+// Contract doesn't specify output format
 export const taskCompleteOutput = z.object({
 	id: z.string(),
-	title: z.string(),
-	status: z.literal("COMPLETED").or(z.literal("FAILED")),
-	result: z.any().nullable(),
-	error: z.string().nullable(),
+	status: z.literal("completed").or(z.literal("failed")),
 	completedAt: z.string().datetime(),
-	completedBy: z.string(),
-	duration: z.number(),
 });
 
 export type TaskCreateInput = z.infer<typeof taskCreateInput>;
