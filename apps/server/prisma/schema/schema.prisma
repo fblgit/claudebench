@@ -45,11 +45,9 @@ model Instance {
 
 enum TaskStatus {
   pending
-  assigned
   in_progress
   completed
   failed
-  cancelled
 }
 
 enum InstanceStatus {

@@ -420,16 +420,16 @@ This table tracks the alignment status of all event handlers with their JSONRPC 
 | `task.assign` | ✅ | ✅ | ✅ | ✅ | **COMPLETE** | Aligned: taskId/instanceId, returns assignment info, prevents double assignment |
 | `task.complete` | ✅ | ✅ | ✅ | ✅ | **COMPLETE** | Aligned: id/optional result, status based on result presence, tracks duration |
 | **Hook Domain** |
-| `hook.pre_tool` | ❌ | ❌ | ❌ | N/A | NOT STARTED | |
-| `hook.post_tool` | ❌ | ❌ | ❌ | N/A | NOT STARTED | |
-| `hook.user_prompt` | ❌ | ❌ | ❌ | N/A | NOT STARTED | |
-| `hook.todo_write` | ❌ | ❌ | ❌ | N/A | NOT STARTED | |
+| `hook.pre_tool` | ✅ | ✅ | ✅ | N/A | **COMPLETE** | Aligned: tool/params→allow/reason/modified, validates dangerous commands |
+| `hook.post_tool` | ✅ | ✅ | ✅ | N/A | **COMPLETE** | Aligned: tool/result→processed (any type), tracks metrics and errors |
+| `hook.user_prompt` | ✅ | ✅ | ✅ | N/A | **COMPLETE** | Aligned: prompt/context→modified (optional string), enhances prompts |
+| `hook.todo_write` | ✅ | ✅ | ✅ | N/A | **COMPLETE** | Aligned: todos array→processed (boolean), content not text, lowercase status |
 | **System Domain** |
-| `system.health` | ✅ | ❌ | ✅ | N/A | **PARTIAL** | Simplified: empty input → status + service booleans |
-| `system.register` | ✅ | ❌ | ✅ | N/A | **PARTIAL** | Simplified: id/roles → registered boolean |
+| `system.health` | ✅ | ✅ | ✅ | N/A | **COMPLETE** | Simplified: empty input → status + service booleans |
+| `system.register` | ✅ | ✅ | ✅ | N/A | **COMPLETE** | Simplified: id/roles → registered boolean |
 | `system.heartbeat` | ✅ | ✅ | ✅ | N/A | **COMPLETE** | Simplified: instanceId → alive boolean only |
-| `system.get_state` | ✅ | ❌ | ✅ | N/A | **PARTIAL** | Simplified: empty input → optional arrays |
-| `system.metrics` | ✅ | ❌ | ✅ | N/A | **PARTIAL** | Simplified: empty input → optional numeric metrics |
+| `system.get_state` | ✅ | ✅ | ✅ | N/A | **COMPLETE** | Simplified: empty input → optional arrays |
+| `system.metrics` | ✅ | ✅ | ✅ | N/A | **COMPLETE** | Simplified: empty input → optional numeric metrics |
 | **MCP Domain** |
 | `mcp.tool.execute` | ❌ | ❌ | ❌ | N/A | NOT STARTED | |
 | `mcp.tool.list` | ❌ | ❌ | ❌ | N/A | NOT STARTED | |
