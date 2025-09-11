@@ -76,18 +76,18 @@
 ## Phase 3.3: Core Implementation (ONLY after tests are failing)
 
 ### Core Infrastructure (~150 LOC)
-- [ ] T024 Create event bus with Redis Streams in apps/server/src/core/bus.ts
-- [ ] T025 Implement EventHandler decorator with metadata reflection in apps/server/src/core/decorator.ts
-- [ ] T026 Create handler registry and discovery system in apps/server/src/core/registry.ts
-- [ ] T027 Implement event context with Redis/Prisma access in apps/server/src/core/context.ts
-- [ ] T028 Create rate limiter with Redis sorted sets in apps/server/src/core/rate-limiter.ts
-- [ ] T029 Implement circuit breaker with Redis INCR in apps/server/src/core/circuit-breaker.ts
+- [x] T024 Create event bus with Redis Streams in apps/server/src/core/bus.ts
+- [x] T025 Implement EventHandler decorator with metadata reflection in apps/server/src/core/decorator.ts
+- [x] T026 Create handler registry and discovery system in apps/server/src/core/registry.ts
+- [x] T027 Implement event context with Redis/Prisma access in apps/server/src/core/context.ts
+- [x] T028 Create rate limiter with Redis sorted sets in apps/server/src/core/rate-limiter.ts
+- [x] T029 Implement circuit breaker with Redis INCR in apps/server/src/core/circuit-breaker.ts
 
 ### Schemas (~50 LOC)
-- [ ] T030 [P] Define task domain schemas in apps/server/src/schemas/task.schema.ts
-- [ ] T031 [P] Define hook domain schemas in apps/server/src/schemas/hook.schema.ts
-- [ ] T032 [P] Define system domain schemas in apps/server/src/schemas/system.schema.ts
-- [ ] T033 [P] Create common/shared schemas in apps/server/src/schemas/common.schema.ts
+- [x] T030 [P] Define task domain schemas in apps/server/src/schemas/task.schema.ts
+- [x] T031 [P] Define hook domain schemas in apps/server/src/schemas/hook.schema.ts
+- [x] T032 [P] Define system domain schemas in apps/server/src/schemas/system.schema.ts
+- [x] T033 [P] Create common/shared schemas in apps/server/src/schemas/common.schema.ts
 
 ### Event Handlers - Task Domain
 - [ ] T034 [P] Implement TaskCreateHandler in apps/server/src/handlers/task/task.create.handler.ts
