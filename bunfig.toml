@@ -4,8 +4,9 @@
 [test]
 # Only run tests from apps/server when in root
 preload = ["./apps/server/.env"]
-root = "./apps/server"
+root = "./apps/server/tests"
 # Only run TypeScript test files, exclude compiled JS
 coverage = false
-# Explicitly set test file pattern to only match .ts files
-# This prevents running compiled .js files in dist/
+# Explicitly exclude dist directories from test discovery
+# This prevents running compiled .js files
+smol = true

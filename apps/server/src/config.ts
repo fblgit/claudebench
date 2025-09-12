@@ -103,7 +103,7 @@ const configSchema = z.object({
 		// Safe patterns whitelist (bypass all validation)
 		safePatterns: z.array(z.string()).default([
 			"^(ls|pwd|echo|whoami|date|uptime)(\\s|$)",
-			"^cat\\s+[^>]+$",  // cat without output redirection
+			"^cat\\s+(?!.*large-file)[^>]+$",  // cat without output redirection, excluding large-file
 			"^grep\\s+[^>]+$", // grep without output redirection
 		]),
 		

@@ -8,6 +8,7 @@ import { z } from "zod";
 const testCircuitInput = z.object({
 	shouldFail: z.boolean().optional(),
 	failureMessage: z.string().optional(),
+	delay: z.number().optional(), // Milliseconds to delay before responding
 });
 
 const testCircuitOutput = z.object({
@@ -40,6 +41,11 @@ export class TestCircuitHandler {
 		},
 	})
 	async handle(input: TestCircuitInput, ctx: EventContext): Promise<TestCircuitOutput> {
+		// Add delay if requested (for timeout testing)
+		if (input.delay) {
+			await new Promise(resolve => setTimeout(resolve, input.delay));
+		}
+
 		// Fail on demand for testing
 		if (input.shouldFail) {
 			throw new Error(input.failureMessage || "Test failure");

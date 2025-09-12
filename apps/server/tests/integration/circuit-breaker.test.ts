@@ -11,6 +11,10 @@ describe("Integration: Circuit Breaker", () => {
 
 	beforeAll(async () => {
 		redis = getRedis();
+		
+		// Ensure handler is discovered
+		await registry.discover();
+		
 		// Clear test data
 		try {
 			const keys = await redis.stream.keys("cb:test:circuit:*");
@@ -32,9 +36,10 @@ describe("Integration: Circuit Breaker", () => {
 		
 		// Trigger a failure by calling handler with shouldFail=true
 		try {
-			await registry.executeHandler("test.circuit", { shouldFail: true });
-		} catch (error) {
-			// Expected to fail
+			const result = await registry.executeHandler("test.circuit", { shouldFail: true });
+			console.log("Unexpected success:", result);
+		} catch (error: any) {
+			console.log("Expected failure:", error.message);
 		}
 		
 		const failures = await redis.stream.get(failureKey);
