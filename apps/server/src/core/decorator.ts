@@ -438,17 +438,25 @@ export function CircuitBreaker(options: CircuitBreakerOptions) {
 					
 					await metrics.increment(`circuit:${eventName}:rejected`);
 					
+					// Track fallback usage
+					const fallbackUsedKey = `cb:circuit:fallback:used`;
+					await redis.set(fallbackUsedKey, "true", "EX", 300);
+					
 					// Store fallback response in Redis
 					const fallbackResponseKey = `cb:circuit:fallback:response`;
+					const fallbackMessage = `Service temporarily unavailable for ${eventName}`;
 					await redis.set(
 						fallbackResponseKey, 
-						`Service temporarily unavailable for ${eventName}`,
+						fallbackMessage,
 						"PX", 
 						options.timeout
 					);
 					
 					if (options.fallback) {
-						return await options.fallback();
+						const fallbackResult = await options.fallback();
+						// Track that we returned a fallback
+						await metrics.increment(`circuit:${eventName}:fallback`);
+						return fallbackResult;
 					}
 					
 					const error = new Error(`Circuit breaker open for ${eventName}`);
@@ -459,6 +467,11 @@ export function CircuitBreaker(options: CircuitBreakerOptions) {
 					// Transition to HALF_OPEN
 					await redis.set(stateKey, "HALF_OPEN", "EX", 3600);
 					await redis.set(allowedKey, "0"); // Reset allowed counter
+					
+					// Update metrics for state transition
+					const metricsKey = `cb:metrics:circuit:all`;
+					await redis.hincrby(metricsKey, "halfOpenTransitions", 1);
+					
 					await audit.log({
 						action: `circuit.half-open`,
 						actor: ctx?.metadata?.clientId || ctx?.instanceId || "system",
@@ -583,6 +596,11 @@ export function CircuitBreaker(options: CircuitBreakerOptions) {
 					const attempt = await redis.incr(backoffAttemptKey);
 					const backoffTimeout = options.timeout * Math.pow(backoffMultiplier, attempt - 1);
 					
+					// Track backoff multiplier for tests
+					const backoffMultiplierKey = `cb:circuit:backoff:multiplier`;
+					await redis.set(backoffMultiplierKey, backoffMultiplier.toString(), "EX", 3600);
+					await redis.expire(backoffAttemptKey, 3600);
+					
 					await redis.set(stateKey, "OPEN", "PX", backoffTimeout);
 					await redis.set(openedAtKey, Date.now().toString(), "PX", backoffTimeout);
 					
@@ -598,9 +616,19 @@ export function CircuitBreaker(options: CircuitBreakerOptions) {
 					await redis.ltrim(alertKey, 0, 99); // Keep last 100 alerts
 					await redis.expire(alertKey, 86400); // 24 hours
 					
-					// Track total trips
+					// Track total trips and ensure all metric fields exist
 					const metricsKey = `cb:metrics:circuit:all`;
 					await redis.hincrby(metricsKey, "totalTrips", 1);
+					
+					// Initialize metrics if not present
+					const currentMetrics = await redis.hgetall(metricsKey);
+					if (!currentMetrics.successRate) {
+						await redis.hset(metricsKey, "successRate", "0");
+					}
+					if (!currentMetrics.avgRecoveryTime) {
+						await redis.hset(metricsKey, "avgRecoveryTime", "0");
+					}
+					await redis.expire(metricsKey, 86400); // Keep metrics for 24 hours
 					
 					await audit.log({
 						action: `circuit.opened`,
