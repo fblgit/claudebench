@@ -206,6 +206,111 @@ export class RedisScriptExecutor {
 			version: result[1],
 		};
 	}
+	
+	/**
+	 * Creates task atomically with queue addition
+	 */
+	async createTask(
+		taskId: string,
+		text: string,
+		priority: number,
+		status: string,
+		createdAt: string,
+		metadata: any
+	): Promise<{ success: boolean; taskId: string | null; error?: string }> {
+		const result = await this.redis.stream.eval(
+			scripts.TASK_CREATE,
+			2,
+			redisKey("task", taskId),
+			redisKey("queue", "tasks", "pending"),
+			taskId,
+			text,
+			priority.toString(),
+			status,
+			createdAt,
+			JSON.stringify(metadata || {})
+		) as [number, string];
+		
+		return {
+			success: result[0] === 1,
+			taskId: result[0] === 1 ? result[1] : null,
+			error: result[0] === 0 ? result[1] : undefined,
+		};
+	}
+	
+	/**
+	 * Worker claims next available task
+	 */
+	async claimTask(
+		workerId: string
+	): Promise<{ claimed: boolean; taskId: string | null; task: any }> {
+		const result = await this.redis.stream.eval(
+			scripts.TASK_CLAIM,
+			3,
+			redisKey("queue", "tasks", "pending"),
+			redisKey("queue", "instance", workerId),
+			redisKey("history", "assignments"),
+			workerId,
+			Date.now().toString()
+		) as [number, string | null, string | null];
+		
+		return {
+			claimed: result[0] === 1,
+			taskId: result[1],
+			task: result[2] ? JSON.parse(result[2]) : null,
+		};
+	}
+	
+	/**
+	 * Completes task with cleanup
+	 */
+	async completeTask(
+		taskId: string,
+		result: any,
+		completedAt: string,
+		duration: number
+	): Promise<{ success: boolean; status: string; error?: string }> {
+		const response = await this.redis.stream.eval(
+			scripts.TASK_COMPLETE,
+			1,
+			redisKey("task", taskId),
+			taskId,
+			JSON.stringify(result || null),
+			completedAt,
+			duration.toString()
+		) as [number, string];
+		
+		return {
+			success: response[0] === 1,
+			status: response[0] === 1 ? response[1] : "failed",
+			error: response[0] === 0 ? response[1] : undefined,
+		};
+	}
+	
+	/**
+	 * Updates task with queue repositioning
+	 */
+	async updateTask(
+		taskId: string,
+		updates: any,
+		updatedAt: string
+	): Promise<{ success: boolean; taskId: string | null; error?: string }> {
+		const result = await this.redis.stream.eval(
+			scripts.TASK_UPDATE,
+			2,
+			redisKey("task", taskId),
+			redisKey("queue", "tasks", "pending"),
+			taskId,
+			JSON.stringify(updates),
+			updatedAt
+		) as [number, string];
+		
+		return {
+			success: result[0] === 1,
+			taskId: result[0] === 1 ? result[1] : null,
+			error: result[0] === 0 ? result[1] : undefined,
+		};
+	}
 }
 
 export const redisScripts = new RedisScriptExecutor();

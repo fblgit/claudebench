@@ -2,6 +2,7 @@ import { EventHandler, Instrumented, Resilient } from "@/core/decorator";
 import type { EventContext } from "@/core/context";
 import { taskUpdateInput, taskUpdateOutput } from "@/schemas/task.schema";
 import type { TaskUpdateInput, TaskUpdateOutput } from "@/schemas/task.schema";
+import { redisScripts } from "@/core/redis-scripts";
 import { redisKey } from "@/core/redis";
 
 @EventHandler({
@@ -26,63 +27,45 @@ export class TaskUpdateHandler {
 		}
 	})
 	async handle(input: TaskUpdateInput, ctx: EventContext): Promise<TaskUpdateOutput> {
-		const taskKey = redisKey("task", input.id);
+		const now = new Date().toISOString();
 		
-		// Get existing task
-		const existingData = await ctx.redis.stream.hgetall(taskKey);
-		if (!existingData || Object.keys(existingData).length === 0) {
-			throw new Error(`Task not found: ${input.id}`);
-		}
-
-		// Parse metadata if it exists
-		const existingMetadata = existingData.metadata ? JSON.parse(existingData.metadata) : null;
-		
-		// Prepare updates
-		const updates: Record<string, any> = {
-			updatedAt: new Date().toISOString(),
-		};
-
-		// Apply updates from the nested updates object
+		// Prepare updates object for Lua script
+		const updates: Record<string, any> = {};
 		if (input.updates.text !== undefined) updates.text = input.updates.text;
-		if (input.updates.status !== undefined) {
-			updates.status = input.updates.status;
-			// If completing, set completedAt
-			if (input.updates.status === "completed" || input.updates.status === "failed") {
-				updates.completedAt = new Date().toISOString();
-			}
-		}
-		if (input.updates.priority !== undefined) {
-			updates.priority = input.updates.priority;
-			
-			// Update queue position if still pending
-			if (existingData.status === "pending") {
-				const queueKey = redisKey("queue", "tasks", "pending");
-				await ctx.redis.stream.zrem(queueKey, input.id);
-				await ctx.redis.stream.zadd(queueKey, -input.updates.priority, input.id);
-			}
-		}
+		if (input.updates.status !== undefined) updates.status = input.updates.status;
+		if (input.updates.priority !== undefined) updates.priority = input.updates.priority;
 		if (input.updates.metadata !== undefined) {
+			// Get existing metadata first
+			const taskKey = redisKey("task", input.id);
+			const existingData = await ctx.redis.stream.hget(taskKey, "metadata");
+			const existingMetadata = existingData ? JSON.parse(existingData) : {};
 			updates.metadata = JSON.stringify({ ...existingMetadata, ...input.updates.metadata });
 		}
-
-		// Update in Redis
-		await ctx.redis.stream.hset(taskKey, updates);
-
-		// Get updated task
+		
+		// Use Lua script for atomic update with queue repositioning
+		const result = await redisScripts.updateTask(
+			input.id,
+			updates,
+			now
+		);
+		
+		if (!result.success) {
+			throw new Error(result.error || `Task not found: ${input.id}`);
+		}
+		
+		// Get updated task data for response
+		const taskKey = redisKey("task", input.id);
 		const updatedData = await ctx.redis.stream.hgetall(taskKey);
+		
 		const task = {
 			id: input.id,
 			text: updatedData.text as string,
 			status: updatedData.status as any,
 			priority: parseInt(updatedData.priority as string),
-			assignedTo: updatedData.assignedTo || null,
-			result: updatedData.result ? JSON.parse(updatedData.result) : null,
-			error: updatedData.error || null,
 			createdAt: updatedData.createdAt as string,
-			updatedAt: updatedData.updatedAt as string,
-			completedAt: updatedData.completedAt || null,
+			updatedAt: now,
 		};
-
+		
 		// Persist to PostgreSQL if configured
 		if (ctx.persist) {
 			await ctx.prisma.task.update({
@@ -92,11 +75,11 @@ export class TaskUpdateHandler {
 					status: task.status,
 					priority: task.priority,
 					metadata: updates.metadata ? JSON.parse(updates.metadata) : undefined,
-					completedAt: task.completedAt ? new Date(task.completedAt) : null,
+					completedAt: updatedData.completedAt ? new Date(updatedData.completedAt) : null,
 				},
 			});
 		}
-
+		
 		// Publish event
 		await ctx.publish({
 			type: "task.updated",
@@ -106,7 +89,7 @@ export class TaskUpdateHandler {
 				changes: Object.keys(input.updates),
 			},
 		});
-
+		
 		// Return the full updated task for contract compliance
 		return {
 			id: task.id,

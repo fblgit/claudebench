@@ -78,3 +78,24 @@ export type TaskAssignInput = z.infer<typeof taskAssignInput>;
 export type TaskAssignOutput = z.infer<typeof taskAssignOutput>;
 export type TaskCompleteInput = z.infer<typeof taskCompleteInput>;
 export type TaskCompleteOutput = z.infer<typeof taskCompleteOutput>;
+
+// task.claim - NEW for pull model (distributed pattern)
+export const taskClaimInput = z.object({
+	workerId: z.string().min(1),
+	maxTasks: z.number().int().min(1).max(10).default(1),
+});
+
+export const taskClaimOutput = z.object({
+	claimed: z.boolean(),
+	taskId: z.string().optional(),
+	task: z.object({
+		id: z.string(),
+		text: z.string(),
+		priority: z.number(),
+		status: TaskStatus,
+		createdAt: z.string().datetime(),
+	}).optional(),
+});
+
+export type TaskClaimInput = z.infer<typeof taskClaimInput>;
+export type TaskClaimOutput = z.infer<typeof taskClaimOutput>;

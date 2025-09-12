@@ -2,8 +2,7 @@ import { EventHandler, Instrumented, Resilient } from "@/core/decorator";
 import type { EventContext } from "@/core/context";
 import { taskCreateInput, taskCreateOutput } from "@/schemas/task.schema";
 import type { TaskCreateInput, TaskCreateOutput } from "@/schemas/task.schema";
-import { redisKey } from "@/core/redis";
-import { taskQueue } from "@/core/task-queue";
+import { redisScripts } from "@/core/redis-scripts";
 
 @EventHandler({
 	event: "task.create",
@@ -34,59 +33,58 @@ export class TaskCreateHandler {
 		const taskId = `t-${Date.now()}`; // Format per data model: t-{timestamp}
 		const now = new Date().toISOString();
 		
-		const task = {
-			id: taskId,
-			text: input.text, // Changed from title to text
-			status: "pending" as const, // Lowercase per contract
-			priority: input.priority || 50, // Default 50 per contract
-			assignedTo: null,
-			result: null,
-			error: null,
-			metadata: input.metadata || null,
-			createdAt: now,
-			updatedAt: now,
-		};
-
-		// Store in Redis
-		const taskKey = redisKey("task", taskId);
-		await ctx.redis.stream.hset(taskKey, {
-			...task,
-			metadata: JSON.stringify(task.metadata),
-		});
-
-		// Add to task queue using task queue manager
-		await taskQueue.enqueueTask(taskId, task.priority);
+		// Use Lua script for atomic task creation and queue addition
+		const result = await redisScripts.createTask(
+			taskId,
+			input.text,
+			input.priority || 50,
+			"pending",
+			now,
+			input.metadata || null
+		);
 		
-		// Don't auto-assign - let task.assign handler or orchestrator handle assignment
-
+		if (!result.success) {
+			throw new Error(result.error || "Failed to create task");
+		}
+		
 		// Persist to PostgreSQL if configured
 		if (ctx.persist) {
 			await ctx.prisma.task.create({
 				data: {
 					id: taskId,
-					text: task.text, // Changed from title to text
-					status: task.status,
-					priority: task.priority,
-					metadata: task.metadata as any || undefined,
+					text: input.text,
+					status: "pending",
+					priority: input.priority || 50,
+					metadata: input.metadata as any || undefined,
 				},
 			});
 		}
-
+		
 		// Publish event for subscribers
 		await ctx.publish({
 			type: "task.created",
-			payload: task,
+			payload: {
+				id: taskId,
+				text: input.text,
+				status: "pending",
+				priority: input.priority || 50,
+				createdAt: now,
+			},
 			metadata: {
 				createdBy: ctx.instanceId,
 			},
 		});
-
+		
+		// Update queue metrics
+		const metricsKey = "cb:metrics:queues";
+		await ctx.redis.stream.hincrby(metricsKey, "totalTasks", 1);
+		
 		return {
-			id: task.id,
-			text: task.text,
-			status: task.status,
-			priority: task.priority,
-			createdAt: task.createdAt,
+			id: taskId,
+			text: input.text,
+			status: "pending",
+			priority: input.priority || 50,
+			createdAt: now,
 		};
 	}
 }

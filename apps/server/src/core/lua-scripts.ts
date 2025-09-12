@@ -340,3 +340,238 @@ redis.call('expire', state_key, 300)
 
 return {1, new_version}
 `;
+
+/**
+ * Task creation with atomic queue addition
+ * Creates task and adds to global queue in single operation
+ */
+export const TASK_CREATE = `
+local task_key = KEYS[1]          -- cb:task:{taskId}
+local global_queue = KEYS[2]      -- cb:queue:tasks:pending
+local task_id = ARGV[1]
+local task_text = ARGV[2]
+local priority = tonumber(ARGV[3])
+local status = ARGV[4]
+local created_at = ARGV[5]
+local metadata = ARGV[6]
+
+-- Check if task already exists
+local exists = redis.call('exists', task_key)
+if exists == 1 then
+  return {0, 'Task already exists'}
+end
+
+-- Create task hash
+redis.call('hset', task_key,
+  'id', task_id,
+  'text', task_text,
+  'priority', tostring(priority),
+  'status', status,
+  'createdAt', created_at,
+  'updatedAt', created_at,
+  'metadata', metadata,
+  'assignedTo', '',
+  'result', '',
+  'error', ''
+)
+
+-- Add to global queue (negative priority for descending order)
+redis.call('zadd', global_queue, -priority, task_id)
+
+return {1, task_id}
+`;
+
+/**
+ * Task claiming for pull-based model
+ * Worker atomically claims next available task
+ */
+export const TASK_CLAIM = `
+local global_queue = KEYS[1]      -- cb:queue:tasks:pending
+local worker_queue = KEYS[2]      -- cb:queue:instance:{workerId}
+local history_key = KEYS[3]       -- cb:history:assignments
+local worker_id = ARGV[1]
+local timestamp = ARGV[2]
+
+-- Get highest priority task (first in sorted set)
+local tasks = redis.call('zrange', global_queue, 0, 0)
+if #tasks == 0 then
+  return {0, nil} -- No tasks available
+end
+
+local task_id = tasks[1]
+
+-- Atomically remove from global queue
+local removed = redis.call('zrem', global_queue, task_id)
+if removed == 0 then
+  return {0, nil} -- Task was already claimed
+end
+
+-- Get task data
+local task_key = 'cb:task:' .. task_id
+local task_data = redis.call('hgetall', task_key)
+if #task_data == 0 then
+  -- Task doesn't exist, shouldn't happen
+  return {0, nil}
+end
+
+-- Update task assignment
+redis.call('hset', task_key,
+  'assignedTo', worker_id,
+  'status', 'in_progress',
+  'assignedAt', timestamp,
+  'updatedAt', timestamp
+)
+
+-- Add to worker's queue
+redis.call('rpush', worker_queue, task_id)
+
+-- Add to history
+local history_entry = cjson.encode({
+  taskId = task_id,
+  instanceId = worker_id,
+  timestamp = tonumber(timestamp),
+  action = 'claimed'
+})
+redis.call('lpush', history_key, history_entry)
+redis.call('ltrim', history_key, 0, 999)
+redis.call('expire', history_key, 86400)
+
+-- Update metrics
+local metrics_key = 'cb:metrics:instance:' .. worker_id
+redis.call('hincrby', metrics_key, 'tasksClaimed', 1)
+
+-- Build task data for response
+local task = {}
+for i = 1, #task_data, 2 do
+  task[task_data[i]] = task_data[i + 1]
+end
+
+return {1, task_id, cjson.encode(task)}
+`;
+
+/**
+ * Task completion with atomic cleanup
+ * Completes task and removes from all queues
+ */
+export const TASK_COMPLETE = `
+local task_key = KEYS[1]          -- cb:task:{taskId}
+local task_id = ARGV[1]
+local result = ARGV[2]
+local completed_at = ARGV[3]
+local duration = ARGV[4]
+
+-- Check task exists
+local exists = redis.call('exists', task_key)
+if exists == 0 then
+  return {0, 'Task not found'}
+end
+
+-- Get task data
+local assigned_to = redis.call('hget', task_key, 'assignedTo')
+if not assigned_to or assigned_to == '' then
+  return {0, 'Task not assigned'}
+end
+
+local current_status = redis.call('hget', task_key, 'status')
+if current_status == 'completed' or current_status == 'failed' then
+  return {0, 'Task already completed'}
+end
+
+-- Determine final status based on result
+local status = 'completed'
+if result == '' or result == 'null' then
+  status = 'failed'
+end
+
+-- Update task
+redis.call('hset', task_key,
+  'status', status,
+  'completedAt', completed_at,
+  'updatedAt', completed_at,
+  'result', result,
+  'duration', tostring(duration)
+)
+
+-- Remove from worker queue
+local worker_queue = 'cb:queue:instance:' .. assigned_to
+redis.call('lrem', worker_queue, 0, task_id)
+
+-- Update metrics
+local metrics_key = 'cb:metrics:instance:' .. assigned_to
+redis.call('hincrby', metrics_key, 'tasksCompleted', 1)
+if status == 'failed' then
+  redis.call('hincrby', metrics_key, 'tasksFailed', 1)
+end
+
+-- Add to completion history
+local history_key = 'cb:history:task:' .. task_id .. ':completions'
+local history_entry = cjson.encode({
+  status = status,
+  completedAt = completed_at,
+  completedBy = assigned_to,
+  duration = duration
+})
+redis.call('rpush', history_key, history_entry)
+
+-- Update queue metrics
+local queue_metrics_key = 'cb:metrics:queues'
+redis.call('hincrby', queue_metrics_key, 'tasksCompleted', 1)
+
+return {1, status}
+`;
+
+/**
+ * Task update with queue repositioning
+ * Updates task and repositions in queue if needed
+ */
+export const TASK_UPDATE = `
+local task_key = KEYS[1]          -- cb:task:{taskId}
+local global_queue = KEYS[2]      -- cb:queue:tasks:pending
+local task_id = ARGV[1]
+local updates_json = ARGV[2]
+local updated_at = ARGV[3]
+
+-- Check task exists
+local exists = redis.call('exists', task_key)
+if exists == 0 then
+  return {0, 'Task not found'}
+end
+
+-- Parse updates
+local updates = cjson.decode(updates_json)
+
+-- Get current task data
+local current_status = redis.call('hget', task_key, 'status')
+local current_priority = tonumber(redis.call('hget', task_key, 'priority'))
+
+-- Apply updates
+redis.call('hset', task_key, 'updatedAt', updated_at)
+
+if updates.text then
+  redis.call('hset', task_key, 'text', updates.text)
+end
+
+if updates.status then
+  redis.call('hset', task_key, 'status', updates.status)
+  if updates.status == 'completed' or updates.status == 'failed' then
+    redis.call('hset', task_key, 'completedAt', updated_at)
+  end
+end
+
+if updates.metadata then
+  redis.call('hset', task_key, 'metadata', updates.metadata)
+end
+
+-- Handle priority update with queue repositioning
+if updates.priority then
+  redis.call('hset', task_key, 'priority', tostring(updates.priority))
+  
+  -- If task is still pending, update queue position
+  if current_status == 'pending' then
+    redis.call('zrem', global_queue, task_id)
+    redis.call('zadd', global_queue, -updates.priority, task_id)
+  end
+end
+
+return {1, task_id}
+`;
