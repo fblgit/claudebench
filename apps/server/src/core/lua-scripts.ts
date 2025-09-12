@@ -383,6 +383,12 @@ local metrics_key = 'cb:metrics:queues'
 redis.call('hincrby', metrics_key, 'totalTasks', 1)
 redis.call('hincrby', metrics_key, 'pendingTasks', 1)
 
+-- Initialize throughput if it doesn't exist
+local throughput_exists = redis.call('hexists', metrics_key, 'throughput')
+if throughput_exists == 0 then
+  redis.call('hset', metrics_key, 'throughput', '0')
+end
+
 -- Store creation timestamp for wait time calculation
 -- Store as milliseconds for easy calculation
 local now_ms = redis.call('time')[1] * 1000 + redis.call('time')[2] / 1000
