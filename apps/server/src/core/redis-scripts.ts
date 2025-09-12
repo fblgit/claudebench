@@ -262,6 +262,31 @@ export class RedisScriptExecutor {
 	}
 	
 	/**
+	 * Reassign task with deny list (taint/toleration)
+	 */
+	async reassignTask(
+		taskId: string,
+		targetWorker: string | null,
+		reason: string = "rebalance"
+	): Promise<{ success: boolean; target: string; error?: string }> {
+		const response = await this.redis.stream.eval(
+			scripts.TASK_REASSIGN,
+			2,
+			redisKey("task", taskId),
+			redisKey("queue", "tasks", "pending"),
+			taskId,
+			targetWorker || "",
+			reason
+		) as [number, string];
+		
+		if (response[0] === 0) {
+			return { success: false, target: "", error: response[1] };
+		}
+		
+		return { success: true, target: response[1] };
+	}
+	
+	/**
 	 * Completes task with cleanup
 	 */
 	async completeTask(
@@ -309,6 +334,171 @@ export class RedisScriptExecutor {
 			success: result[0] === 1,
 			taskId: result[0] === 1 ? result[1] : null,
 			error: result[0] === 0 ? result[1] : undefined,
+		};
+	}
+	
+	/**
+	 * Check for tasks needing auto-assignment after delay
+	 */
+	async checkDelayedTasks(delayMs: number, maxTasks: number = 10): Promise<string[]> {
+		const tasks = await this.redis.stream.eval(
+			scripts.CHECK_DELAYED_TASKS,
+			1,
+			redisKey("queue", "tasks", "pending"),
+			delayMs.toString(),
+			maxTasks.toString()
+		) as string[];
+		
+		return tasks;
+	}
+	
+	/**
+	 * Auto-assigns tasks to a worker
+	 */
+	async autoAssignTasks(
+		workerId: string
+	): Promise<{ assigned: number; total: number }> {
+		const result = await this.redis.stream.eval(
+			scripts.AUTO_ASSIGN_TASKS,
+			1,
+			redisKey("queue", "tasks", "pending"),
+			workerId
+		) as [number, number];
+		
+		return {
+			assigned: result[0],
+			total: result[1],
+		};
+	}
+	
+	/**
+	 * Registers instance atomically
+	 */
+	async registerInstance(
+		instanceId: string,
+		roles: string[],
+		ttl: number
+	): Promise<{ success: boolean; becameLeader: boolean }> {
+		const result = await this.redis.stream.eval(
+			scripts.INSTANCE_REGISTER,
+			2,
+			redisKey("instance", instanceId),
+			redisKey("instances", "active"),
+			instanceId,
+			JSON.stringify(roles),
+			Date.now().toString(),
+			ttl.toString()
+		) as [number, number];
+		
+		return {
+			success: result[0] === 1,
+			becameLeader: result[1] === 1,
+		};
+	}
+	
+	/**
+	 * Updates instance heartbeat
+	 */
+	async instanceHeartbeat(
+		instanceId: string,
+		ttl: number
+	): Promise<{ success: boolean; isLeader: boolean; error?: string }> {
+		const result = await this.redis.stream.eval(
+			scripts.INSTANCE_HEARTBEAT,
+			2,
+			redisKey("instance", instanceId),
+			redisKey("gossip", "health"),
+			instanceId,
+			Date.now().toString(),
+			ttl.toString(),
+			new Date().toISOString()  // Pass ISO string for lastHeartbeat
+		) as [number, string | number];
+		
+		return {
+			success: result[0] === 1,
+			isLeader: result[0] === 1 ? (result[1] as number) === 1 : false,
+			error: result[0] === 0 ? (result[1] as string) : undefined,
+		};
+	}
+	
+	/**
+	 * Gets system health
+	 */
+	async getSystemHealth(
+		timeout: number
+	): Promise<{ 
+		status: string;
+		services: { redis: boolean; postgres: boolean; mcp: boolean };
+		healthy: number;
+		total: number;
+	}> {
+		const result = await this.redis.stream.eval(
+			scripts.GET_SYSTEM_HEALTH,
+			2,
+			"cb:instance:*",
+			redisKey("gossip", "health"),
+			Date.now().toString(),
+			timeout.toString()
+		) as [string, number, number, number, number, number];
+		
+		return {
+			status: result[0],
+			services: {
+				redis: result[1] === 1,
+				postgres: result[2] === 1,
+				mcp: result[3] === 1,
+			},
+			healthy: result[4],
+			total: result[5],
+		};
+	}
+	
+	/**
+	 * Gets system state
+	 */
+	async getSystemState(): Promise<{ 
+		instances: any[];
+		tasks: any[];
+		recentEvents: any[];
+	}> {
+		const result = await this.redis.stream.eval(
+			scripts.GET_SYSTEM_STATE,
+			3,
+			"cb:instance:*",
+			"cb:task:*",
+			redisKey("stream", "events"),
+		) as [string, string, string];
+		
+		return {
+			instances: JSON.parse(result[0]),
+			tasks: JSON.parse(result[1]),
+			recentEvents: JSON.parse(result[2]),
+		};
+	}
+	
+	/**
+	 * Reassigns tasks from failed instance to healthy workers
+	 */
+	async reassignFailedTasks(
+		failedInstanceId: string
+	): Promise<{ reassigned: number; workers: number; error?: string }> {
+		const result = await this.redis.stream.eval(
+			scripts.REASSIGN_FAILED_TASKS,
+			0,
+			failedInstanceId
+		) as [number, number | string];
+		
+		if (typeof result[1] === 'string') {
+			return {
+				reassigned: 0,
+				workers: 0,
+				error: result[1],
+			};
+		}
+		
+		return {
+			reassigned: result[0],
+			workers: result[1],
 		};
 	}
 }

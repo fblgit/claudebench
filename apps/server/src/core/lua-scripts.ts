@@ -378,6 +378,16 @@ redis.call('hset', task_key,
 -- Add to global queue (negative priority for descending order)
 redis.call('zadd', global_queue, -priority, task_id)
 
+-- Update queue metrics at creation
+local metrics_key = 'cb:metrics:queues'
+redis.call('hincrby', metrics_key, 'totalTasks', 1)
+redis.call('hincrby', metrics_key, 'pendingTasks', 1)
+
+-- Store creation timestamp for wait time calculation
+-- Store as milliseconds for easy calculation
+local now_ms = redis.call('time')[1] * 1000 + redis.call('time')[2] / 1000
+redis.call('hset', task_key, 'createdAtMs', tostring(math.floor(now_ms)))
+
 return {1, task_id}
 `;
 
@@ -392,8 +402,8 @@ local history_key = KEYS[3]       -- cb:history:assignments
 local worker_id = ARGV[1]
 local timestamp = ARGV[2]
 
--- Get highest priority task (first in sorted set)
-local tasks = redis.call('zrange', global_queue, 0, 0)
+-- Get highest priority task (first in sorted set with negative scores)
+local tasks = redis.call('zrange', global_queue, 0, 0)  -- zrange gets lowest score, which is highest priority (-90 < -10)
 if #tasks == 0 then
   return {0, nil} -- No tasks available
 end
@@ -450,6 +460,118 @@ return {1, task_id, cjson.encode(task)}
 `;
 
 /**
+ * Task reassignment with deny list (taint/toleration pattern)
+ * Allows MASTER to move tasks between workers or back to global queue
+ */
+export const TASK_REASSIGN = `
+local task_key = KEYS[1]          -- cb:task:{taskId}
+local global_queue = KEYS[2]      -- cb:queue:tasks:pending
+local task_id = ARGV[1]
+local target_worker = ARGV[2]     -- Optional: specific worker or nil for global
+local reason = ARGV[3]            -- Why reassigning (failed, rebalance, etc)
+
+-- Get task data
+local task_data = redis.call('hgetall', task_key)
+if #task_data == 0 then
+  return {0, 'Task not found'}
+end
+
+-- Parse task fields
+local current_status = nil
+local current_assignee = nil
+local deny_list = nil
+local priority = nil
+
+for i = 1, #task_data, 2 do
+  local field = task_data[i]
+  local value = task_data[i + 1]
+  if field == 'status' then
+    current_status = value
+  elseif field == 'assignedTo' then
+    current_assignee = value
+  elseif field == 'deny' then
+    deny_list = value  -- JSON array of denied worker IDs
+  elseif field == 'priority' then
+    priority = tonumber(value) or 50
+  end
+end
+
+-- Allow reassignment if task is failed OR if MASTER is forcing it
+-- (MASTER knows what they're doing - they might kill -9 the worker next)
+local allow_reassign = (current_status == 'failed') or (reason == 'force')
+
+-- If not failed and not forced, only allow if currently assigned
+if not allow_reassign and (not current_assignee or current_assignee == '') then
+  return {0, 'Task not assigned, use task.assign instead'}
+end
+
+-- Update deny list to prevent ping-pong
+local deny_array = {}
+if deny_list and deny_list ~= '' then
+  deny_array = cjson.decode(deny_list)
+end
+
+-- Add current assignee to deny list (they couldn't handle it)
+if current_assignee and current_assignee ~= '' then
+  local already_denied = false
+  for _, denied_id in ipairs(deny_array) do
+    if denied_id == current_assignee then
+      already_denied = true
+      break
+    end
+  end
+  if not already_denied then
+    table.insert(deny_array, current_assignee)
+  end
+end
+
+-- Remove from current worker's queue if assigned
+if current_assignee and current_assignee ~= '' then
+  local worker_queue = 'cb:queue:instance:' .. current_assignee
+  redis.call('lrem', worker_queue, 0, task_id)
+end
+
+-- Determine target
+if target_worker and target_worker ~= '' then
+  -- Check if target is in deny list
+  for _, denied_id in ipairs(deny_array) do
+    if denied_id == target_worker then
+      return {0, 'Target worker is in deny list for this task'}
+    end
+  end
+  
+  -- Assign to specific worker
+  local target_queue = 'cb:queue:instance:' .. target_worker
+  redis.call('lpush', target_queue, task_id)
+  
+  -- Update task
+  redis.call('hset', task_key,
+    'assignedTo', target_worker,
+    'status', 'in_progress',
+    'deny', cjson.encode(deny_array),
+    'reassignedAt', redis.call('time')[1],
+    'reassignReason', reason
+  )
+  
+  return {1, target_worker}
+else
+  -- Return to global queue for redistribution
+  redis.call('zadd', global_queue, -priority, task_id)
+  
+  -- Update task
+  redis.call('hset', task_key,
+    'assignedTo', '',
+    'status', 'pending',
+    'deny', cjson.encode(deny_array),
+    'reassignedAt', redis.call('time')[1],
+    'reassignReason', reason
+  )
+  
+  return {1, 'global'}
+end
+`;
+
+/**
  * Task completion with atomic cleanup
  * Completes task and removes from all queues
  */
@@ -496,11 +618,40 @@ redis.call('hset', task_key,
 local worker_queue = 'cb:queue:instance:' .. assigned_to
 redis.call('lrem', worker_queue, 0, task_id)
 
--- Update metrics
+-- Update instance metrics
 local metrics_key = 'cb:metrics:instance:' .. assigned_to
 redis.call('hincrby', metrics_key, 'tasksCompleted', 1)
 if status == 'failed' then
   redis.call('hincrby', metrics_key, 'tasksFailed', 1)
+end
+
+-- Update queue metrics for throughput
+local queue_metrics_key = 'cb:metrics:queues'
+local completed_count = redis.call('hincrby', queue_metrics_key, 'completedTasks', 1)
+-- Decrement assignedTasks only if it's positive (defensive)
+local assigned = tonumber(redis.call('hget', queue_metrics_key, 'assignedTasks') or '0')
+if assigned > 0 then
+  redis.call('hincrby', queue_metrics_key, 'assignedTasks', -1)  -- No longer assigned
+end
+local now = redis.call('time')[1]
+
+-- Calculate throughput (tasks per second)
+local first_completion = redis.call('hget', queue_metrics_key, 'firstCompletionTime')
+if not first_completion then
+  redis.call('hset', queue_metrics_key, 'firstCompletionTime', tostring(now))
+  redis.call('hset', queue_metrics_key, 'lastCompletionTime', tostring(now))
+  redis.call('hset', queue_metrics_key, 'throughput', '0')  -- Will be calculated after more completions
+else
+  redis.call('hset', queue_metrics_key, 'lastCompletionTime', tostring(now))
+  local elapsed = now - tonumber(first_completion)
+  if elapsed > 0 then
+    -- Tasks per second since first completion
+    local throughput = completed_count / elapsed
+    redis.call('hset', queue_metrics_key, 'throughput', tostring(throughput))
+  else
+    -- If no time elapsed, set high throughput (multiple completions in same second)
+    redis.call('hset', queue_metrics_key, 'throughput', tostring(completed_count))
+  end
 end
 
 -- Add to completion history
@@ -574,4 +725,419 @@ if updates.priority then
 end
 
 return {1, task_id}
+`;
+
+/**
+ * Check for tasks that need auto-assignment after delay
+ * Returns tasks that have been waiting longer than the specified delay
+ */
+export const CHECK_DELAYED_TASKS = `
+local global_queue = KEYS[1]      -- cb:queue:tasks:pending
+local delay_ms = tonumber(ARGV[1]) -- Milliseconds to wait before auto-assign
+local max_tasks = tonumber(ARGV[2]) -- Max tasks to return
+
+local now_ms = redis.call('time')[1] * 1000 + redis.call('time')[2] / 1000
+local tasks_needing_assignment = {}
+
+-- Get all pending tasks with scores (priority)
+local pending_tasks = redis.call('zrange', global_queue, 0, -1, 'WITHSCORES')  -- Use zrange for correct priority order
+
+for i = 1, #pending_tasks, 2 do
+  local task_id = pending_tasks[i]
+  local priority = pending_tasks[i + 1]
+  
+  -- Check task age
+  local task_key = 'cb:task:' .. task_id
+  local created_at_ms = redis.call('hget', task_key, 'createdAtMs')
+  local assigned_to = redis.call('hget', task_key, 'assignedTo')
+  
+  -- Only consider unassigned tasks
+  if created_at_ms and (not assigned_to or assigned_to == '') then
+    local age_ms = now_ms - tonumber(created_at_ms)
+    
+    -- If task is older than delay, add to list
+    if age_ms >= delay_ms then
+      table.insert(tasks_needing_assignment, task_id)
+      
+      -- Limit results
+      if #tasks_needing_assignment >= max_tasks then
+        break
+      end
+    end
+  end
+end
+
+return tasks_needing_assignment
+`;
+
+/**
+ * Auto-assign tasks to workers on registration
+ * Distributes pending tasks to available workers
+ */
+export const AUTO_ASSIGN_TASKS = `
+local global_queue = KEYS[1]        -- cb:queue:tasks:pending
+local worker_id = ARGV[1]
+local worker_queue_key = 'cb:queue:instance:' .. worker_id
+
+-- Get all workers to calculate fair share
+local worker_keys = redis.call('keys', 'cb:instance:worker-*')
+local active_workers = #worker_keys
+
+if active_workers == 0 then
+  return {0, 0, 'No workers found'} -- No workers, no assignment
+end
+
+-- Get pending tasks from global queue (sorted by priority)
+local pending_tasks = redis.call('zrange', global_queue, 0, -1, 'WITHSCORES') -- Use zrange for high priority first (negative scores)
+local total_tasks = #pending_tasks / 2  -- Each task has score, so divide by 2
+
+if total_tasks == 0 then
+  return {0, 0, 'No tasks in queue'} -- No tasks to assign
+end
+
+-- Assign tasks to this worker
+local assigned_count = 0
+local checked_count = 0
+
+for i = 1, #pending_tasks, 2 do
+  local task_id = pending_tasks[i]
+  local priority = pending_tasks[i + 1]
+  checked_count = checked_count + 1
+  
+  -- Check if this specific task is already in THIS worker's queue
+  local already_has = redis.call('lpos', worker_queue_key, task_id)
+  
+  if not already_has then
+    -- Check if task is already assigned to someone else
+    local task_key = 'cb:task:' .. task_id
+    local current_assignee = redis.call('hget', task_key, 'assignedTo')
+    local deny_list = redis.call('hget', task_key, 'deny')
+    
+    -- Check if this worker is in the deny list
+    local is_denied = false
+    if deny_list and deny_list ~= '' then
+      local deny_array = cjson.decode(deny_list)
+      for _, denied_id in ipairs(deny_array) do
+        if denied_id == worker_id then
+          is_denied = true
+          break
+        end
+      end
+    end
+    
+    -- Only assign if not already assigned AND not denied
+    if (not current_assignee or current_assignee == '') and not is_denied then
+      -- Assign to this worker
+      redis.call('lpush', worker_queue_key, task_id)
+      assigned_count = assigned_count + 1
+      
+      -- Update task assignment
+      redis.call('hset', task_key,
+        'assignedTo', worker_id,
+        'status', 'in_progress',
+        'assignedAt', redis.call('time')[1]
+      )
+      
+      -- Calculate actual wait time using stored timestamp
+      local created_at_ms = redis.call('hget', task_key, 'createdAtMs')
+      
+      if created_at_ms then
+        local now_ms = redis.call('time')[1] * 1000 + redis.call('time')[2] / 1000
+        local wait_time = math.floor(now_ms - tonumber(created_at_ms))
+        
+        -- Update wait time metrics
+        local metrics_key = 'cb:metrics:queues'
+        local total_wait = redis.call('hget', metrics_key, 'totalWaitTime') or '0'
+        local wait_count = redis.call('hget', metrics_key, 'waitCount') or '0'
+        
+        total_wait = tonumber(total_wait) + wait_time
+        wait_count = tonumber(wait_count) + 1
+        local avg_wait = math.floor(total_wait / wait_count)
+        
+        redis.call('hset', metrics_key, 
+          'totalWaitTime', tostring(total_wait),
+          'waitCount', tostring(wait_count),
+          'avgWaitTime', tostring(avg_wait)
+        )
+        
+        -- Decrement pending tasks only if it's positive (defensive)
+        local pending = tonumber(redis.call('hget', metrics_key, 'pendingTasks') or '0')
+        if pending > 0 then
+          redis.call('hincrby', metrics_key, 'pendingTasks', -1)
+        end
+        redis.call('hincrby', metrics_key, 'assignedTasks', 1)
+      end
+      
+      -- Track assignment in list format as expected by tests
+      local assignment = cjson.encode({
+        taskId = task_id,
+        instanceId = worker_id,
+        timestamp = redis.call('time')[1]
+      })
+      redis.call('lpush', 'cb:history:assignments', assignment)
+    end
+    
+    -- Only assign one task at a time for fair distribution
+    break
+  end
+end
+
+return {assigned_count, total_tasks}
+`;
+
+/**
+ * Instance registration with atomic setup
+ * Registers instance, sets up roles, capabilities, and leader election
+ */
+export const INSTANCE_REGISTER = `
+local instance_key = KEYS[1]      -- cb:instance:{id}
+local active_key = KEYS[2]        -- cb:instances:active
+local instance_id = ARGV[1]
+local roles_json = ARGV[2]
+local timestamp = ARGV[3]
+local ttl = tonumber(ARGV[4])
+
+-- Register instance
+redis.call('hset', instance_key,
+  'id', instance_id,
+  'roles', roles_json,
+  'health', 'healthy',
+  'status', 'ACTIVE',
+  'lastSeen', timestamp
+)
+redis.call('expire', instance_key, ttl)
+
+-- Add to active instances
+redis.call('sadd', active_key, instance_id)
+redis.call('expire', active_key, ttl)
+
+-- Register roles
+local roles = cjson.decode(roles_json)
+for _, role in ipairs(roles) do
+  local role_key = 'cb:role:' .. role
+  redis.call('sadd', role_key, instance_id)
+  redis.call('expire', role_key, ttl)
+  
+  -- Set capabilities
+  local caps_key = 'cb:capabilities:' .. instance_id
+  redis.call('sadd', caps_key, role)
+  redis.call('sadd', caps_key, 'instance-' .. instance_id)
+  redis.call('expire', caps_key, ttl)
+end
+
+-- Try to become leader if no current leader
+local leader_key = 'cb:leader:current'
+local lock_key = 'cb:leader:lock'
+local current_leader = redis.call('get', leader_key)
+
+local became_leader = 0
+if not current_leader then
+  local lock_acquired = redis.call('setnx', lock_key, instance_id)
+  if lock_acquired == 1 then
+    redis.call('expire', lock_key, 30)
+    redis.call('setex', leader_key, 30, instance_id)
+    became_leader = 1
+  end
+end
+
+return {1, became_leader}
+`;
+
+/**
+ * Instance heartbeat with gossip update
+ * Updates heartbeat and gossip health atomically
+ */
+export const INSTANCE_HEARTBEAT = `
+local instance_key = KEYS[1]      -- cb:instance:{id}
+local gossip_key = KEYS[2]        -- cb:gossip:health
+local instance_id = ARGV[1]
+local timestamp = ARGV[2]
+local ttl = tonumber(ARGV[3])
+local iso_date = ARGV[4]          -- ISO string for lastHeartbeat
+
+-- Check instance exists
+local exists = redis.call('exists', instance_key)
+if exists == 0 then
+  return {0, 'Instance not registered'}
+end
+
+-- Update heartbeat with both timestamp and ISO date
+redis.call('hset', instance_key,
+  'lastSeen', timestamp,
+  'lastHeartbeat', iso_date
+)
+redis.call('expire', instance_key, ttl)
+
+-- Update gossip health
+local health_data = cjson.encode({
+  status = 'healthy',
+  lastSeen = timestamp
+})
+redis.call('hset', gossip_key, instance_id, health_data)
+redis.call('expire', gossip_key, 300)
+
+-- Check if this instance is leader and renew if so
+local leader_key = 'cb:leader:current'
+local current_leader = redis.call('get', leader_key)
+local is_leader = 0
+if current_leader == instance_id then
+  redis.call('expire', leader_key, 30)
+  redis.call('expire', 'cb:leader:lock', 30)
+  is_leader = 1
+end
+
+return {1, is_leader}
+`;
+
+/**
+ * Get aggregated system health
+ * Checks all instances and returns overall health
+ */
+export const GET_SYSTEM_HEALTH = `
+local instances_pattern = KEYS[1]  -- cb:instance:*
+local gossip_key = KEYS[2]         -- cb:gossip:health
+local current_time = tonumber(ARGV[1])
+local timeout = tonumber(ARGV[2])
+
+-- Get all instances
+local instance_keys = redis.call('keys', instances_pattern)
+local total = #instance_keys
+local healthy = 0
+local degraded = 0
+
+for _, key in ipairs(instance_keys) do
+  local last_seen = redis.call('hget', key, 'lastSeen')
+  if last_seen then
+    local time_diff = current_time - tonumber(last_seen)
+    if time_diff < timeout then
+      healthy = healthy + 1
+    elseif time_diff < timeout * 2 then
+      degraded = degraded + 1
+    end
+  end
+end
+
+-- Determine overall health
+local status = 'unhealthy'
+if healthy == total and total > 0 then
+  status = 'healthy'
+elseif healthy + degraded >= total / 2 then
+  status = 'degraded'
+end
+
+-- Check services
+local redis_ok = 1  -- Redis is working if we're here
+local postgres_ok = redis.call('get', 'cb:service:postgres:status') == 'ok' and 1 or 0
+local mcp_ok = redis.call('get', 'cb:service:mcp:status') == 'ok' and 1 or 0
+
+return {status, redis_ok, postgres_ok, mcp_ok, healthy, total}
+`;
+
+/**
+ * Get current system state
+ * Returns tasks, instances, and recent events
+ */
+export const GET_SYSTEM_STATE = `
+local instance_pattern = KEYS[1]   -- cb:instance:*
+local task_pattern = KEYS[2]       -- cb:task:*
+local event_stream = KEYS[3]       -- cb:stream:events
+
+-- Get instances (max 10)
+local instance_keys = redis.call('keys', instance_pattern)
+local instances = {}
+for i = 1, math.min(#instance_keys, 10) do
+  local data = redis.call('hgetall', instance_keys[i])
+  if #data > 0 then
+    local instance = {}
+    for j = 1, #data, 2 do
+      instance[data[j]] = data[j + 1]
+    end
+    table.insert(instances, instance)
+  end
+end
+
+-- Get tasks (max 10)
+local task_keys = redis.call('keys', task_pattern)
+local tasks = {}
+for i = 1, math.min(#task_keys, 10) do
+  local data = redis.call('hgetall', task_keys[i])
+  if #data > 0 then
+    local task = {}
+    for j = 1, #data, 2 do
+      task[data[j]] = data[j + 1]
+    end
+    table.insert(tasks, task)
+  end
+end
+
+-- Get recent events (max 10)
+local events = {}
+local stream_exists = redis.call('exists', event_stream)
+if stream_exists == 1 then
+  local stream_data = redis.call('xrevrange', event_stream, '+', '-', 'COUNT', '10')
+  for _, entry in ipairs(stream_data) do
+    table.insert(events, entry[2])
+  end
+end
+
+return {
+  cjson.encode(instances),
+  cjson.encode(tasks),
+  cjson.encode(events)
+}
+`;
+
+/**
+ * Reassigns tasks from failed instances to healthy workers
+ */
+export const REASSIGN_FAILED_TASKS = `
+local failed_instance_id = ARGV[1]
+local failed_instance_key = 'cb:instance:' .. failed_instance_id
+local failed_queue_key = 'cb:queue:instance:' .. failed_instance_id
+local reassigned_key = 'cb:reassigned:from:' .. failed_instance_id
+
+-- Mark instance as OFFLINE
+redis.call('hset', failed_instance_key, 'status', 'OFFLINE')
+
+-- Get all tasks from failed instance queue
+local orphaned_tasks = redis.call('lrange', failed_queue_key, 0, -1)
+if #orphaned_tasks == 0 then
+  return {0, 'No tasks to reassign'}
+end
+
+-- Find healthy workers
+local worker_keys = redis.call('keys', 'cb:instance:worker-*')
+local healthy_workers = {}
+for _, key in ipairs(worker_keys) do
+  local status = redis.call('hget', key, 'status')
+  if status == 'ACTIVE' then
+    local worker_id = string.match(key, 'cb:instance:(.*)')
+    if worker_id ~= failed_instance_id then
+      table.insert(healthy_workers, worker_id)
+    end
+  end
+end
+
+if #healthy_workers == 0 then
+  return {0, 'No healthy workers available'}
+end
+
+-- Reassign tasks round-robin to healthy workers
+local reassigned_count = 0
+for i, task_id in ipairs(orphaned_tasks) do
+  local target_worker = healthy_workers[((i - 1) % #healthy_workers) + 1]
+  local target_queue = 'cb:queue:instance:' .. target_worker
+  
+  -- Add to new worker's queue
+  redis.call('lpush', target_queue, task_id)
+  
+  -- Track reassignment
+  redis.call('sadd', reassigned_key, task_id)
+  reassigned_count = reassigned_count + 1
+end
+
+-- Clear failed instance queue
+redis.call('del', failed_queue_key)
+
+return {reassigned_count, #healthy_workers}
 `;

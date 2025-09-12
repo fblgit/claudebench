@@ -14,6 +14,7 @@ import { eventBus } from "./core/bus";
 import { connectRedis, disconnectRedis } from "./core/redis";
 import { metrics } from "./core/metrics";
 import { instanceManager } from "./core/instance-manager";
+import { jobScheduler } from "./core/jobs";
 
 // Import transport handlers
 import { handleJsonRpcRequest, handleJsonRpcBatch } from "./transports/http";
@@ -85,6 +86,14 @@ async function initialize() {
 			console.log(`   - ${h.event} (${h.className})`);
 		});
 		
+		// Start instance health monitoring
+		console.log("🏥 Starting health monitoring...");
+		instanceManager.startHealthMonitoring();
+		
+		// Start job scheduler for multi-instance coordination
+		console.log("⏰ Starting job scheduler...");
+		await jobScheduler.start();
+		
 		// Register auto-generated HTTP routes
 		console.log("🌐 Registering HTTP routes...");
 		registerHttpRoutes(app, registry);
@@ -111,6 +120,9 @@ async function shutdown() {
 	try {
 		// Stop metrics collection
 		metrics.stopCollection();
+		
+		// Stop job scheduler
+		await jobScheduler.stop();
 		
 		// Cleanup instance manager
 		await instanceManager.cleanup();

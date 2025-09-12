@@ -2,6 +2,7 @@ import { EventHandler, Instrumented, Resilient } from "@/core/decorator";
 import type { EventContext } from "@/core/context";
 import { systemHealthInput, systemHealthOutput } from "@/schemas/system.schema";
 import type { SystemHealthInput, SystemHealthOutput } from "@/schemas/system.schema";
+import { redisScripts } from "@/core/redis-scripts";
 
 @EventHandler({
 	event: "system.health",
@@ -9,61 +10,34 @@ import type { SystemHealthInput, SystemHealthOutput } from "@/schemas/system.sch
 	outputSchema: systemHealthOutput,
 	persist: false,
 	rateLimit: 100,
-	description: "Check system health status per JSONRPC contract",
+	description: "Get system health status atomically via Lua script",
 })
 export class SystemHealthHandler {
-	@Instrumented(30) // Cache for 30 seconds - health checks are frequent
+	@Instrumented(30)
 	@Resilient({
-		rateLimit: { limit: 100, windowMs: 60000 }, // 100 requests per minute
-		timeout: 3000, // 3 second timeout
+		rateLimit: { limit: 100, windowMs: 60000 },
+		timeout: 3000,
 		circuitBreaker: { 
 			threshold: 10, 
-			timeout: 30000,
+			timeout: 20000,
 			fallback: () => ({ 
-				status: "degraded",
+				status: "unhealthy" as const,
 				services: {
 					redis: false,
 					postgres: false,
-					mcp: true, // MCP is running if this executes
+					mcp: false,
 				}
 			})
 		}
 	})
 	async handle(input: SystemHealthInput, ctx: EventContext): Promise<SystemHealthOutput> {
-		// Check Redis connection
-		let redisHealthy = false;
-		try {
-			await ctx.redis.stream.ping();
-			redisHealthy = true;
-		} catch (error) {
-			console.error("Redis health check failed:", error);
-		}
+		const timeout = 5000; // 5 seconds timeout for health check
 		
-		// Check PostgreSQL connection
-		let postgresHealthy = false;
-		try {
-			await ctx.prisma.$queryRaw`SELECT 1`;
-			postgresHealthy = true;
-		} catch (error) {
-			console.error("PostgreSQL health check failed:", error);
-		}
-		
-		// MCP is considered healthy if the handler is running
-		const mcpHealthy = true;
-		
-		// Determine overall status
-		const allHealthy = redisHealthy && postgresHealthy && mcpHealthy;
-		const someHealthy = redisHealthy || postgresHealthy || mcpHealthy;
-		
-		const status = allHealthy ? "healthy" : someHealthy ? "degraded" : "unhealthy";
+		const result = await redisScripts.getSystemHealth(timeout);
 		
 		return {
-			status,
-			services: {
-				redis: redisHealthy,
-				postgres: postgresHealthy,
-				mcp: mcpHealthy,
-			},
+			status: result.status as "healthy" | "degraded" | "unhealthy",
+			services: result.services,
 		};
 	}
 }

@@ -59,8 +59,13 @@ export const taskAssignOutput = z.object({
 
 // task.complete
 export const taskCompleteInput = z.object({
-	id: z.string().min(1), // min(1) to reject empty strings
+	id: z.string().min(1).optional(), // min(1) to reject empty strings
+	taskId: z.string().min(1).optional(), // Support both id and taskId
+	workerId: z.string().min(1).optional(), // Optional worker ID for tracking
 	result: z.unknown().optional(),
+}).refine(data => data.id || data.taskId, {
+	message: "Either 'id' or 'taskId' must be provided",
+	path: ["id"],
 });
 
 // Contract doesn't specify output format

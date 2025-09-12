@@ -2,8 +2,7 @@ import { EventHandler, Instrumented, Resilient } from "@/core/decorator";
 import type { EventContext } from "@/core/context";
 import { systemHeartbeatInput, systemHeartbeatOutput } from "@/schemas/system.schema";
 import type { SystemHeartbeatInput, SystemHeartbeatOutput } from "@/schemas/system.schema";
-import { redisKey } from "@/core/redis";
-import { instanceManager } from "@/core/instance-manager";
+import { redisScripts } from "@/core/redis-scripts";
 
 @EventHandler({
 	event: "system.heartbeat",
@@ -11,28 +10,46 @@ import { instanceManager } from "@/core/instance-manager";
 	outputSchema: systemHeartbeatOutput,
 	persist: false,
 	rateLimit: 1000,
-	description: "Simple heartbeat check per JSONRPC contract",
+	description: "Simple heartbeat check atomically via Lua script",
 })
 export class SystemHeartbeatHandler {
-	@Instrumented(10) // Cache for 10 seconds - heartbeats are very frequent
+	@Instrumented(10)
 	@Resilient({
-		rateLimit: { limit: 1000, windowMs: 60000 }, // 1000 requests per minute
-		timeout: 2000, // 2 second timeout
+		rateLimit: { limit: 1000, windowMs: 60000 },
+		timeout: 2000,
 		circuitBreaker: { 
-			threshold: 20, // Higher threshold for heartbeats
-			timeout: 10000, // Recover faster
+			threshold: 20,
+			timeout: 10000,
 			fallback: () => ({ 
-				alive: false // Instance not alive if circuit is open
+				alive: false
 			})
 		}
 	})
 	async handle(input: SystemHeartbeatInput, ctx: EventContext): Promise<SystemHeartbeatOutput> {
-		// Use instance manager for centralized heartbeat management
-		const alive = await instanceManager.heartbeat(input.instanceId);
+		const ttl = 30; // 30 seconds TTL for heartbeat
 		
-		// Per contract, we simply return whether the instance is alive
-		return {
-			alive,
-		};
+		try {
+			const result = await redisScripts.instanceHeartbeat(
+				input.instanceId,
+				ttl
+			);
+			
+			if (result.success && result.isLeader) {
+				console.log(`[SystemHeartbeat] Instance ${input.instanceId} is leader`);
+			}
+			
+			if (result.error) {
+				console.error(`[SystemHeartbeat] Error for ${input.instanceId}: ${result.error}`);
+			}
+			
+			return {
+				alive: result.success,
+			};
+		} catch (error) {
+			console.error(`[SystemHeartbeat] Exception for ${input.instanceId}:`, error);
+			return {
+				alive: false,
+			};
+		}
 	}
 }

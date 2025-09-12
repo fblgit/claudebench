@@ -48,6 +48,14 @@ const configSchema = z.object({
 		checkInterval: z.coerce.number().default(5000), // 5 seconds for production
 	}),
 
+	// Task Queue
+	taskQueue: z.object({
+		autoAssignDelay: z.coerce.number().default(5000), // 5 seconds before auto-assignment
+		autoAssignInterval: z.coerce.number().default(2000), // Check every 2 seconds
+		maxTasksPerWorker: z.coerce.number().default(10), // Max tasks per worker
+		enableAutoAssign: z.boolean().default(true), // Enable auto-assignment
+	}),
+
 	// Hook Validation Rules - Compact regex-based configuration
 	hookValidation: z.object({
 		// Rule groups with regex patterns
@@ -167,6 +175,12 @@ const rawConfig = {
 		heartbeatTimeout: process.env.HEALTH_HEARTBEAT_TIMEOUT ? parseInt(process.env.HEALTH_HEARTBEAT_TIMEOUT) : undefined,
 		checkInterval: process.env.HEALTH_CHECK_INTERVAL ? parseInt(process.env.HEALTH_CHECK_INTERVAL) : undefined,
 	},
+	taskQueue: {
+		autoAssignDelay: process.env.TASK_AUTO_ASSIGN_DELAY ? parseInt(process.env.TASK_AUTO_ASSIGN_DELAY) : undefined,
+		autoAssignInterval: process.env.TASK_AUTO_ASSIGN_INTERVAL ? parseInt(process.env.TASK_AUTO_ASSIGN_INTERVAL) : undefined,
+		maxTasksPerWorker: process.env.TASK_MAX_PER_WORKER ? parseInt(process.env.TASK_MAX_PER_WORKER) : undefined,
+		enableAutoAssign: process.env.TASK_ENABLE_AUTO_ASSIGN ? process.env.TASK_ENABLE_AUTO_ASSIGN === 'true' : undefined,
+	},
 	hookValidation: {
 		// Can be overridden by environment variables or external config
 		ruleGroups: process.env.HOOK_VALIDATION_RULES ? JSON.parse(process.env.HOOK_VALIDATION_RULES) : undefined,
@@ -179,4 +193,4 @@ const rawConfig = {
 export const config = configSchema.parse(rawConfig);
 
 // Export individual sections for convenience
-export const { database, redis, server, instance, rateLimit, circuitBreaker, healthMonitoring, hookValidation } = config;
+export const { database, redis, server, instance, rateLimit, circuitBreaker, healthMonitoring, taskQueue, hookValidation } = config;

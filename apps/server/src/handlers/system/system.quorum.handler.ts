@@ -2,13 +2,13 @@ import { EventHandler, Instrumented, Resilient } from "@/core/decorator";
 import type { EventContext } from "@/core/context";
 import { z } from "zod";
 import { redisScripts } from "@/core/redis-scripts";
-import { instanceManager } from "@/core/instance-manager";
 
 // Input/Output schemas for quorum voting
 const systemQuorumVoteInput = z.object({
 	instanceId: z.string(),
 	decision: z.string(),
 	value: z.string(),
+	totalInstances: z.number().int().min(1).default(3),
 });
 
 const systemQuorumVoteOutput = z.object({
@@ -27,13 +27,13 @@ type SystemQuorumVoteOutput = z.infer<typeof systemQuorumVoteOutput>;
 	outputSchema: systemQuorumVoteOutput,
 	persist: false,
 	rateLimit: 50,
-	description: "Submit vote for quorum-based decisions",
+	description: "Submit vote for quorum-based decisions atomically via Lua script",
 })
 export class SystemQuorumVoteHandler {
-	@Instrumented(0) // No caching for voting
+	@Instrumented(0)
 	@Resilient({
-		rateLimit: { limit: 50, windowMs: 60000 }, // 50 votes per minute
-		timeout: 5000, // 5 second timeout
+		rateLimit: { limit: 50, windowMs: 60000 },
+		timeout: 5000,
 		circuitBreaker: { 
 			threshold: 5, 
 			timeout: 30000,
@@ -44,15 +44,11 @@ export class SystemQuorumVoteHandler {
 		}
 	})
 	async handle(input: SystemQuorumVoteInput, ctx: EventContext): Promise<SystemQuorumVoteOutput> {
-		// Get total number of active instances for quorum calculation
-		const activeInstances = await instanceManager.getActiveInstances();
-		const totalInstances = activeInstances.length || 3; // Default to 3 if no instances
-		
-		// Submit vote using Lua script
+		// Submit vote atomically using Lua script
 		const voteResult = await redisScripts.addQuorumVote(
-			input.instanceId,
+			`${input.decision}:${input.instanceId}`,
 			input.value,
-			totalInstances
+			input.totalInstances
 		);
 		
 		// If quorum reached, emit decision event
@@ -63,7 +59,7 @@ export class SystemQuorumVoteHandler {
 					decision: input.decision,
 					value: voteResult.decision,
 					voteCount: voteResult.voteCount,
-					quorum: Math.floor(totalInstances / 2) + 1,
+					quorum: Math.floor(input.totalInstances / 2) + 1,
 				},
 			});
 		}

@@ -60,39 +60,82 @@ describe("Integration: Task Queue Assignment", () => {
 	});
 
 	it("should assign tasks to available workers", async () => {
-		// Register worker instances
-		const worker1Key = "cb:instance:worker-1";
-		const worker2Key = "cb:instance:worker-2";
+		// Create tasks first
+		await registry.executeHandler("task.create", {
+			text: "Task 1 for distribution",
+			priority: 50
+		});
+		await registry.executeHandler("task.create", {
+			text: "Task 2 for distribution",
+			priority: 50
+		});
+		await registry.executeHandler("task.create", {
+			text: "Task 3 for distribution",
+			priority: 50
+		});
 		
-		// Check workers are registered (will fail without handler)
+		// Now register workers - they should auto-pull tasks
+		await registry.executeHandler("system.register", {
+			id: "worker-dist-1",
+			roles: ["worker"]
+		});
+		await registry.executeHandler("system.register", {
+			id: "worker-dist-2",
+			roles: ["worker"]
+		});
+		
+		// Check workers are registered
+		const worker1Key = "cb:instance:worker-dist-1";
+		const worker2Key = "cb:instance:worker-dist-2";
 		const worker1Exists = await redis.stream.exists(worker1Key);
 		const worker2Exists = await redis.stream.exists(worker2Key);
 		expect(worker1Exists).toBe(1);
 		expect(worker2Exists).toBe(1);
 		
 		// Check tasks are distributed
-		const queue1Key = "cb:queue:instance:worker-1";
-		const queue2Key = "cb:queue:instance:worker-2";
+		const queue1Key = "cb:queue:instance:worker-dist-1";
+		const queue2Key = "cb:queue:instance:worker-dist-2";
 		
 		const queue1Length = await redis.stream.llen(queue1Key);
 		const queue2Length = await redis.stream.llen(queue2Key);
 		
-		// At least one worker should have tasks (will fail without handler)
+		// At least one worker should have tasks
 		expect(queue1Length + queue2Length).toBeGreaterThan(0);
 	});
 
 	it("should respect task priority in assignment", async () => {
+		// Flush Redis to ensure clean state
+		await redis.stream.flushdb();
+		
+		// Create tasks FIRST with different priorities
+		const lowTask = await registry.executeHandler("task.create", {
+			text: "Low priority task",
+			priority: 10
+		});
+		const highTask = await registry.executeHandler("task.create", {
+			text: "High priority task", 
+			priority: 90
+		});
+		const mediumTask = await registry.executeHandler("task.create", {
+			text: "Medium priority task",
+			priority: 50
+		});
+		
+		// NOW register worker - it will auto-pull tasks in priority order
+		await registry.executeHandler("system.register", {
+			id: "worker-priority",
+			roles: ["worker"]
+		});
+		
 		// High priority tasks should be assigned first
 		const queueKey = "cb:queue:instance:worker-priority";
-		
-		// Get first task in queue (will fail without handler)
 		const firstTask = await redis.stream.lindex(queueKey, 0);
 		expect(firstTask).toBeTruthy();
 		
-		// Check if it's high priority
+		// Check if it's high priority (should be the 90 priority task)
 		const taskKey = `cb:task:${firstTask}`;
 		const priority = await redis.stream.hget(taskKey, "priority");
-		expect(parseInt(priority || "0")).toBeGreaterThanOrEqual(5);
+		expect(parseInt(priority || "0")).toBe(90);
 	});
 
 	it("should load balance across instances", async () => {
@@ -112,11 +155,33 @@ describe("Integration: Task Queue Assignment", () => {
 	});
 
 	it("should reassign tasks from failed instances", async () => {
+		// Setup: Create worker-failed with tasks
+		await registry.executeHandler("system.register", {
+			id: "worker-failed",
+			roles: ["worker"]
+		});
+		
+		// Create tasks that will be assigned to worker-failed
+		await registry.executeHandler("task.create", {
+			text: "Task for failed worker",
+			priority: 50
+		});
+		
+		// Wait a moment for the task to be assigned
+		await new Promise(resolve => setTimeout(resolve, 100));
+		
 		// When instance goes offline, tasks should be reassigned
 		const failedInstanceKey = "cb:instance:worker-failed";
 		const failedQueueKey = "cb:queue:instance:worker-failed";
 		
-		// Mark instance as offline (will fail without handler)
+		// Simulate instance failure by stopping heartbeats and waiting for timeout
+		// The monitoring loop should detect and mark it OFFLINE
+		await redis.stream.hset(failedInstanceKey, "lastSeen", "1"); // Very old timestamp
+		
+		// Wait for monitoring loop to detect failure (check interval is likely 1000ms)
+		await new Promise(resolve => setTimeout(resolve, 1500));
+		
+		// Now check if instance was marked offline
 		const status = await redis.stream.hget(failedInstanceKey, "status");
 		expect(status).toBe("OFFLINE");
 		
@@ -173,10 +238,39 @@ describe("Integration: Task Queue Assignment", () => {
 	});
 
 	it("should handle task completion and removal from queue", async () => {
-		const completedTaskId = "task-completed";
-		const queueKey = "cb:queue:instance:worker-complete";
+		// Create a task first
+		const taskResult = await registry.executeHandler("task.create", {
+			text: "Task to be completed",
+			priority: 50
+		});
 		
-		// Task should not be in queue after completion (will fail without handler)
+		// Debug: Check what we actually got back
+		console.log("[TEST] Task create result:", taskResult);
+		
+		if (!taskResult || !taskResult.id) {
+			throw new Error(`Task creation failed or returned invalid result: ${JSON.stringify(taskResult)}`);
+		}
+		
+		const completedTaskId = taskResult.id;
+		
+		// Register a new worker - it should auto-assign the task
+		await registry.executeHandler("system.register", {
+			id: "worker-complete-new",
+			roles: ["worker"]
+		});
+		
+		// Wait a moment for auto-assignment to happen
+		await new Promise(resolve => setTimeout(resolve, 100));
+		
+		// Complete the task
+		await registry.executeHandler("task.complete", {
+			id: completedTaskId,  // Use 'id' not 'taskId' per schema
+			result: { success: true, data: "Task completed successfully" }
+		});
+		
+		const queueKey = "cb:queue:instance:worker-complete-new";
+		
+		// Task should not be in queue after completion
 		const position = await redis.stream.lpos(queueKey, completedTaskId);
 		expect(position).toBeNull();
 		
@@ -189,8 +283,15 @@ describe("Integration: Task Queue Assignment", () => {
 	it("should emit queue metrics", async () => {
 		const metricsKey = "cb:metrics:queues";
 		
-		// Check metrics are tracked (will fail without handler)
+		// Debug: Create a task to ensure metrics are populated
+		await registry.executeHandler("task.create", {
+			text: "Task for metrics test",
+			priority: 50
+		});
+		
+		// Check metrics are tracked
 		const metrics = await redis.stream.hgetall(metricsKey);
+		console.log("[TEST] Queue metrics:", metrics);
 		expect(metrics.totalTasks).toBeTruthy();
 		expect(metrics.avgWaitTime).toBeTruthy();
 		expect(metrics.throughput).toBeTruthy();

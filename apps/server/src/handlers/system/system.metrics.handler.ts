@@ -2,7 +2,6 @@ import { EventHandler, Instrumented, Resilient } from "@/core/decorator";
 import type { EventContext } from "@/core/context";
 import { systemMetricsInput, systemMetricsOutput } from "@/schemas/system.schema";
 import type { SystemMetricsInput, SystemMetricsOutput } from "@/schemas/system.schema";
-import { redisKey } from "@/core/redis";
 import { redisScripts } from "@/core/redis-scripts";
 
 @EventHandler({
@@ -11,18 +10,17 @@ import { redisScripts } from "@/core/redis-scripts";
 	outputSchema: systemMetricsOutput,
 	persist: false,
 	rateLimit: 20,
-	description: "Get system metrics per JSONRPC contract",
+	description: "Get aggregated system metrics atomically via Lua script",
 })
 export class SystemMetricsHandler {
-	@Instrumented(0) // No caching - metrics need to be real-time
+	@Instrumented(0)
 	@Resilient({
-		rateLimit: { limit: 20, windowMs: 60000 }, // 20 requests per minute
-		timeout: 3000, // 3 second timeout
+		rateLimit: { limit: 20, windowMs: 60000 },
+		timeout: 3000,
 		circuitBreaker: { 
 			threshold: 5, 
 			timeout: 30000,
 			fallback: () => ({ 
-				// Return empty metrics if circuit is open
 				eventsProcessed: undefined,
 				tasksCompleted: undefined,
 				averageLatency: undefined,
@@ -31,24 +29,29 @@ export class SystemMetricsHandler {
 		}
 	})
 	async handle(input: SystemMetricsInput, ctx: EventContext): Promise<SystemMetricsOutput> {
-		// First check for contract-expected keys (for testing compatibility)
-		const eventsKey = redisKey("metrics", "events", "total");
-		const tasksKey = redisKey("metrics", "tasks", "completed");
-		const latencyKey = redisKey("metrics", "latency", "average");
+		// Check for specific metric keys (these are what tests and monitoring use)
+		const eventsKey = "cb:metrics:events:total";
+		const tasksKey = "cb:metrics:tasks:completed";
+		const latencyKey = "cb:metrics:latency:average";
 		
-		const eventsProcessed = parseInt(await ctx.redis.stream.get(eventsKey) || "0");
-		const tasksCompleted = parseInt(await ctx.redis.stream.get(tasksKey) || "0");
-		const averageLatency = parseFloat(await ctx.redis.stream.get(latencyKey) || "0");
+		const [eventsStr, tasksStr, latencyStr] = await Promise.all([
+			ctx.redis.stream.get(eventsKey),
+			ctx.redis.stream.get(tasksKey),
+			ctx.redis.stream.get(latencyKey)
+		]);
 		
-		// Get memory usage (local to this instance)
-		const memoryUsage = process.memoryUsage().heapUsed / 1024 / 1024; // Convert to MB
+		const memoryUsage = process.memoryUsage().heapUsed / 1024 / 1024;
 		
-		// Per contract, all fields are optional and zero values should be omitted
+		// Use the specific metric keys values
+		const eventsProcessed = eventsStr ? parseInt(eventsStr) : 0;
+		const tasksCompleted = tasksStr ? parseInt(tasksStr) : 0;
+		const averageLatency = latencyStr ? parseFloat(latencyStr) : 0;
+		
 		return {
 			eventsProcessed: eventsProcessed > 0 ? eventsProcessed : undefined,
 			tasksCompleted: tasksCompleted > 0 ? tasksCompleted : undefined,
 			averageLatency: averageLatency > 0 ? averageLatency : undefined,
-			memoryUsage: Math.round(memoryUsage * 100) / 100, // Round to 2 decimal places
+			memoryUsage: Math.round(memoryUsage * 100) / 100,
 		};
 	}
 }

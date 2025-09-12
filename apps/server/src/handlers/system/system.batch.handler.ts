@@ -25,23 +25,23 @@ type SystemBatchProcessOutput = z.infer<typeof systemBatchProcessOutput>;
 	outputSchema: systemBatchProcessOutput,
 	persist: false,
 	rateLimit: 10,
-	description: "Coordinate batch processing across instances",
+	description: "Coordinate batch processing atomically via Lua script",
 })
 export class SystemBatchProcessHandler {
-	@Instrumented(0) // No caching for batch coordination
+	@Instrumented(0)
 	@Resilient({
-		rateLimit: { limit: 10, windowMs: 60000 }, // 10 batches per minute
-		timeout: 30000, // 30 second timeout for batch processing
+		rateLimit: { limit: 10, windowMs: 60000 },
+		timeout: 30000,
 		circuitBreaker: { 
 			threshold: 3, 
 			timeout: 60000,
 			fallback: () => ({ 
-				processed: false // Fail batch if circuit is open
+				processed: false
 			})
 		}
 	})
 	async handle(input: SystemBatchProcessInput, ctx: EventContext): Promise<SystemBatchProcessOutput> {
-		// Try to coordinate batch processing using Lua script
+		// Atomically coordinate batch processing
 		const coordination = await redisScripts.coordinateBatch(
 			input.instanceId,
 			input.batchId,
@@ -67,14 +67,15 @@ export class SystemBatchProcessHandler {
 				await new Promise(resolve => setTimeout(resolve, 10));
 				itemsProcessed++;
 				
-				// Update progress periodically
-				if (itemsProcessed % 10 === 0) {
-					await ctx.redis.stream.hset("cb:batch:progress", "processed", itemsProcessed.toString());
+				// Update progress through Lua script for atomicity
+				if (itemsProcessed % 10 === 0 || itemsProcessed === input.items.length) {
+					await redisScripts.coordinateBatch(
+						input.instanceId,
+						input.batchId,
+						itemsProcessed
+					);
 				}
 			}
-			
-			// Update final progress
-			await ctx.redis.stream.hset("cb:batch:progress", "processed", itemsProcessed.toString());
 			
 			// Emit batch completion event
 			await ctx.publish({
@@ -91,9 +92,9 @@ export class SystemBatchProcessHandler {
 				processorId: input.instanceId,
 				itemsProcessed,
 			};
-		} finally {
-			// Release the lock
-			await ctx.redis.stream.del("cb:batch:lock");
+		} catch (error) {
+			// On error, the lock will expire automatically (TTL in Lua script)
+			throw error;
 		}
 	}
 }

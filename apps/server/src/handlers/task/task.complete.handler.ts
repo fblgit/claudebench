@@ -27,12 +27,18 @@ export class TaskCompleteHandler {
 		}
 	})
 	async handle(input: TaskCompleteInput, ctx: EventContext): Promise<TaskCompleteOutput> {
+		// Support both 'id' and 'taskId' fields
+		const taskId = input.id || input.taskId;
+		if (!taskId) {
+			throw new Error("Task ID is required");
+		}
+		
 		// Get task data to calculate duration
-		const taskKey = redisKey("task", input.id);
+		const taskKey = redisKey("task", taskId);
 		const taskData = await ctx.redis.stream.hgetall(taskKey);
 		
 		if (!taskData || Object.keys(taskData).length === 0) {
-			throw new Error(`Task not found: ${input.id}`);
+			throw new Error(`Task not found: ${taskId}`);
 		}
 		
 		// Calculate duration
@@ -43,20 +49,20 @@ export class TaskCompleteHandler {
 		
 		// Use Lua script for atomic completion with cleanup
 		const result = await redisScripts.completeTask(
-			input.id,
+			taskId,
 			input.result,
 			completedAt,
 			duration
 		);
 		
 		if (!result.success) {
-			throw new Error(result.error || `Failed to complete task: ${input.id}`);
+			throw new Error(result.error || `Failed to complete task: ${taskId}`);
 		}
 		
 		// Persist to PostgreSQL if configured
 		if (ctx.persist) {
 			await ctx.prisma.task.update({
-				where: { id: input.id },
+				where: { id: taskId },
 				data: {
 					status: result.status as any,
 					completedAt: new Date(completedAt),
@@ -73,18 +79,18 @@ export class TaskCompleteHandler {
 		await ctx.publish({
 			type: "task.completed",
 			payload: {
-				id: input.id,
+				id: taskId,
 				status: result.status,
 				duration,
 			},
 			metadata: {
-				completedBy: taskData.assignedTo,
+				completedBy: input.workerId || taskData.assignedTo,
 			},
 		});
 		
 		// Return simplified output per contract
 		return {
-			id: input.id,
+			id: taskId,
 			status: result.status as "completed" | "failed",
 			completedAt,
 		};

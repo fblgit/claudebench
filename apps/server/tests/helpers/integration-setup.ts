@@ -17,6 +17,11 @@ export async function setupIntegrationTest() {
 	await registry.discover();
 	await eventBus.initialize();
 	
+	// Start health monitoring loop for failure detection
+	// For tests, we need to set a faster check interval
+	process.env.HEALTH_CHECK_INTERVAL = "500"; // 500ms for tests
+	instanceManager.startHealthMonitoring();
+	
 	return redis;
 }
 

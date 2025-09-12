@@ -60,6 +60,10 @@ export class TaskCreateHandler {
 			});
 		}
 		
+		// NOTE: Removed auto-assignment to respect separation of concerns
+		// Tasks should be explicitly assigned via task.assign handler
+		// This allows tests and systems to control assignment timing
+		
 		// Publish event for subscribers
 		await ctx.publish({
 			type: "task.created",
@@ -75,9 +79,7 @@ export class TaskCreateHandler {
 			},
 		});
 		
-		// Update queue metrics
-		const metricsKey = "cb:metrics:queues";
-		await ctx.redis.stream.hincrby(metricsKey, "totalTasks", 1);
+		// Metrics are now updated by the Lua script
 		
 		return {
 			id: taskId,
