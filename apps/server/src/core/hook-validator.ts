@@ -40,10 +40,8 @@ export class HookValidator {
 		// Check cache first for ANY validation (including safe patterns)
 		const cacheKey = this.getCacheKey(tool, toolParams);
 		const cached = this.getCachedResult(cacheKey);
-		console.log("Cache check:", { cacheKey, cached: !!cached });
 		if (cached) {
 			await metrics.increment("hook.validation.cache.hits");
-			console.log("Cache hit!");
 			// Still record validation for cached results (for test expectations)
 			await this.recordValidation(params, cached, "cached");
 			return cached;

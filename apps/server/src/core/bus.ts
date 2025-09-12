@@ -1,5 +1,6 @@
 import { getRedis, redisKey } from "./redis";
 import type { Redis as RedisClient } from "ioredis";
+import { redisScripts } from "./redis-scripts";
 
 export interface Event {
 	id?: string;
@@ -68,6 +69,15 @@ export class EventBus {
 
 	async publish(event: Event): Promise<string> {
 		const eventId = event.id || `evt-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+		
+		// Check for exactly-once delivery using Lua script
+		const { isDuplicate, duplicateCount } = await redisScripts.ensureExactlyOnce(eventId);
+		
+		if (isDuplicate) {
+			console.log(`Duplicate event prevented: ${eventId} (count: ${duplicateCount})`);
+			return eventId; // Return early, don't re-process
+		}
+		
 		const streamKey = redisKey("stream", event.type);
 		const eventData = {
 			...event,
@@ -85,6 +95,15 @@ export class EventBus {
 
 		// Publish to Redis pub/sub for real-time
 		await this.redis.pub.publish(event.type, JSON.stringify(eventData));
+		
+		// Add to partition if metadata contains partition key
+		if (event.metadata?.partitionKey) {
+			await redisScripts.partitionEvent(
+				event.metadata.partitionKey,
+				eventId,
+				eventData
+			);
+		}
 
 		return eventId;
 	}

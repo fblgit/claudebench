@@ -36,10 +36,9 @@ describe("Integration: Circuit Breaker", () => {
 		
 		// Trigger a failure by calling handler with shouldFail=true
 		try {
-			const result = await registry.executeHandler("test.circuit", { shouldFail: true });
-			console.log("Unexpected success:", result);
+			await registry.executeHandler("test.circuit", { shouldFail: true });
 		} catch (error: any) {
-			console.log("Expected failure:", error.message);
+			// Expected to fail
 		}
 		
 		const failures = await redis.stream.get(failureKey);

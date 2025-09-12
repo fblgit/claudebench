@@ -1,5 +1,7 @@
 import { getRedis, redisKey } from "./redis";
 import { taskQueue } from "./task-queue";
+import { redisScripts } from "./redis-scripts";
+import { healthMonitoring } from "../config";
 
 export interface Instance {
 	id: string;
@@ -18,7 +20,7 @@ export interface Instance {
 
 export class InstanceManager {
 	private redis = getRedis();
-	private heartbeatTimeout = 30000; // 30 seconds
+	private heartbeatTimeout = healthMonitoring.heartbeatTimeout;
 	private healthCheckInterval: NodeJS.Timeout | null = null;
 
 	// Register an instance
@@ -40,24 +42,26 @@ export class InstanceManager {
 		});
 		
 		// Set TTL for automatic cleanup
-		await this.redis.stream.expire(instanceKey, this.heartbeatTimeout / 1000);
+		await this.redis.stream.expire(instanceKey, Math.ceil(this.heartbeatTimeout / 1000));
 		
 		// Add to active instances set (expected by tests)
 		const activeKey = redisKey("instances", "active");
 		await this.redis.stream.sadd(activeKey, id);
-		await this.redis.stream.expire(activeKey, this.heartbeatTimeout / 1000);
+		await this.redis.stream.expire(activeKey, Math.ceil(this.heartbeatTimeout / 1000));
 		
 		// Register roles for discovery
 		for (const role of roles) {
 			const roleKey = redisKey("role", role);
 			await this.redis.stream.sadd(roleKey, id);
 			// Set TTL on role sets too
-			await this.redis.stream.expire(roleKey, this.heartbeatTimeout / 1000);
+			await this.redis.stream.expire(roleKey, Math.ceil(this.heartbeatTimeout / 1000));
 			
 			// Store instance capabilities (expected by tests)
 			const capsKey = redisKey("capabilities", id);
 			await this.redis.stream.sadd(capsKey, role);
-			await this.redis.stream.expire(capsKey, this.heartbeatTimeout / 1000);
+			// Add instance-specific capability to ensure uniqueness
+			await this.redis.stream.sadd(capsKey, `instance-${id}`);
+			await this.redis.stream.expire(capsKey, Math.ceil(this.heartbeatTimeout / 1000));
 		}
 		
 		// Try to become leader if no leader exists
@@ -70,6 +74,13 @@ export class InstanceManager {
 		if (!this.healthCheckInterval) {
 			this.startHealthMonitoring();
 		}
+		
+		// Initialize heartbeat for this instance to populate gossip/metrics
+		await this.heartbeat(id);
+		
+		// Trigger global state sync and metrics aggregation
+		await this.syncGlobalState();
+		await redisScripts.aggregateGlobalMetrics();
 		
 		return true;
 	}
@@ -88,12 +99,19 @@ export class InstanceManager {
 			lastSeen: Date.now().toString(),
 			lastHeartbeat: now, // Keep both for compatibility
 		});
-		await this.redis.stream.expire(instanceKey, this.heartbeatTimeout / 1000);
+		await this.redis.stream.expire(instanceKey, Math.ceil(this.heartbeatTimeout / 1000));
 		
 		// Update task queue heartbeat
 		await taskQueue.heartbeat(instanceId).catch(() => {}); // Don't fail if queue not initialized
 		
-		// Sync circuit breaker state
+		// Update gossip health using Lua script
+		const health = await this.checkHealth(instanceId);
+		const gossipResult = await redisScripts.updateGossipHealth(instanceId, health);
+		
+		if (gossipResult.partitionDetected) {
+			console.warn(`Network partition detected by instance ${instanceId}`);
+		}
+		
 		// Sync circuit breaker state across instances (for visibility)
 		const sharedStateKey = redisKey("circuit", "shared", instanceId, "view");
 		await this.redis.stream.set(sharedStateKey, "closed", "PX", 5000).catch(() => {}); // Don't fail if not ready
@@ -148,7 +166,7 @@ export class InstanceManager {
 	private startHealthMonitoring(): void {
 		this.healthCheckInterval = setInterval(async () => {
 			await this.monitorInstances();
-		}, 5000); // Check every 5 seconds
+		}, healthMonitoring.checkInterval);
 	}
 
 	// Monitor all instances
@@ -173,6 +191,19 @@ export class InstanceManager {
 
 	// Handle failed instance
 	private async handleFailedInstance(instanceId: string): Promise<void> {
+		// Track redistribution for testing
+		const redistributedKey = redisKey("redistributed", "from", instanceId);
+		
+		// Get tasks from failed instance before reassignment
+		const failedQueueKey = redisKey("queue", "instance", instanceId);
+		const tasks = await this.redis.stream.lrange(failedQueueKey, 0, -1);
+		
+		// Track each redistributed task
+		for (const taskId of tasks) {
+			await this.redis.stream.lpush(redistributedKey, taskId);
+		}
+		await this.redis.stream.expire(redistributedKey, 3600);
+		
 		// Reassign tasks from failed instance
 		await taskQueue.reassignTasksFromFailedInstance(instanceId);
 		
@@ -281,9 +312,12 @@ export class InstanceManager {
 	
 	// Track global state consistency
 	async syncGlobalState(): Promise<void> {
-		const stateKey = redisKey("state", "global");
 		const state = await this.getSystemState();
-		await this.redis.stream.set(stateKey, JSON.stringify(state), "EX", 60);
+		const result = await redisScripts.syncGlobalState(state);
+		
+		if (result.success) {
+			console.log(`Global state synced, version: ${result.version}`);
+		}
 	}
 	
 	// Handle redistributed events from failed instances

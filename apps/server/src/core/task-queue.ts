@@ -1,4 +1,5 @@
 import { getRedis, redisKey } from "./redis";
+import { redisScripts } from "./redis-scripts";
 
 export interface QueuedTask {
 	id: string;
@@ -30,22 +31,17 @@ export class TaskQueueManager {
 	// Assign tasks to available workers
 	async assignTasksToWorkers(): Promise<void> {
 		const globalQueueKey = redisKey("queue", "tasks", "pending");
-		const instancesKey = redisKey("instance", "*");
-		
-		// Get all active instances
-		const instanceKeys = await this.redis.stream.keys(instancesKey);
-		if (instanceKeys.length === 0) return;
 		
 		// Get pending tasks (sorted by priority)
 		const pendingTasks = await this.redis.stream.zrange(globalQueueKey, 0, -1);
 		if (pendingTasks.length === 0) return;
 		
-		// Distribute tasks across instances
+		// Use Lua script for atomic load-balanced assignment
 		for (const taskId of pendingTasks) {
-			const assigned = await this.assignTaskToInstance(taskId, instanceKeys);
-			if (assigned) {
-				// Remove from global queue
-				await this.redis.stream.zrem(globalQueueKey, taskId);
+			const result = await redisScripts.assignTaskWithLoadBalancing(taskId);
+			
+			if (result.success && result.assignedTo) {
+				console.log(`Task ${taskId} assigned to ${result.assignedTo} (queue depth: ${result.queueDepth})`);
 			}
 		}
 	}

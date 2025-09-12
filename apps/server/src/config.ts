@@ -42,6 +42,12 @@ const configSchema = z.object({
 		resetTimeout: z.coerce.number().default(60000), // 60 seconds to fully reset
 	}),
 
+	// Health Monitoring
+	healthMonitoring: z.object({
+		heartbeatTimeout: z.coerce.number().default(30000), // 30 seconds for production
+		checkInterval: z.coerce.number().default(5000), // 5 seconds for production
+	}),
+
 	// Hook Validation Rules - Compact regex-based configuration
 	hookValidation: z.object({
 		// Rule groups with regex patterns
@@ -157,6 +163,10 @@ const rawConfig = {
 		timeout: process.env.CIRCUIT_BREAKER_TIMEOUT,
 		resetTimeout: process.env.CIRCUIT_BREAKER_RESET_TIMEOUT,
 	},
+	healthMonitoring: {
+		heartbeatTimeout: process.env.HEALTH_HEARTBEAT_TIMEOUT ? parseInt(process.env.HEALTH_HEARTBEAT_TIMEOUT) : undefined,
+		checkInterval: process.env.HEALTH_CHECK_INTERVAL ? parseInt(process.env.HEALTH_CHECK_INTERVAL) : undefined,
+	},
 	hookValidation: {
 		// Can be overridden by environment variables or external config
 		ruleGroups: process.env.HOOK_VALIDATION_RULES ? JSON.parse(process.env.HOOK_VALIDATION_RULES) : undefined,
@@ -169,4 +179,4 @@ const rawConfig = {
 export const config = configSchema.parse(rawConfig);
 
 // Export individual sections for convenience
-export const { database, redis, server, instance, rateLimit, circuitBreaker, hookValidation } = config;
+export const { database, redis, server, instance, rateLimit, circuitBreaker, healthMonitoring, hookValidation } = config;

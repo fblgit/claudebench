@@ -3,6 +3,7 @@ import type { EventContext } from "@/core/context";
 import { systemMetricsInput, systemMetricsOutput } from "@/schemas/system.schema";
 import type { SystemMetricsInput, SystemMetricsOutput } from "@/schemas/system.schema";
 import { redisKey } from "@/core/redis";
+import { redisScripts } from "@/core/redis-scripts";
 
 @EventHandler({
 	event: "system.metrics",
@@ -30,22 +31,19 @@ export class SystemMetricsHandler {
 		}
 	})
 	async handle(input: SystemMetricsInput, ctx: EventContext): Promise<SystemMetricsOutput> {
-		// Get events processed count
+		// First check for contract-expected keys (for testing compatibility)
 		const eventsKey = redisKey("metrics", "events", "total");
-		const eventsProcessed = parseInt(await ctx.redis.stream.get(eventsKey) || "0");
-		
-		// Get tasks completed count
 		const tasksKey = redisKey("metrics", "tasks", "completed");
-		const tasksCompleted = parseInt(await ctx.redis.stream.get(tasksKey) || "0");
-		
-		// Calculate average latency (simplified)
 		const latencyKey = redisKey("metrics", "latency", "average");
+		
+		const eventsProcessed = parseInt(await ctx.redis.stream.get(eventsKey) || "0");
+		const tasksCompleted = parseInt(await ctx.redis.stream.get(tasksKey) || "0");
 		const averageLatency = parseFloat(await ctx.redis.stream.get(latencyKey) || "0");
 		
-		// Get memory usage (if available)
+		// Get memory usage (local to this instance)
 		const memoryUsage = process.memoryUsage().heapUsed / 1024 / 1024; // Convert to MB
 		
-		// Per contract, all fields are optional
+		// Per contract, all fields are optional and zero values should be omitted
 		return {
 			eventsProcessed: eventsProcessed > 0 ? eventsProcessed : undefined,
 			tasksCompleted: tasksCompleted > 0 ? tasksCompleted : undefined,

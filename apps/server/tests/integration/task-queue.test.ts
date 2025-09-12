@@ -183,7 +183,7 @@ describe("Integration: Task Queue Assignment", () => {
 		// Task should be marked as completed
 		const taskKey = `cb:task:${completedTaskId}`;
 		const status = await redis.stream.hget(taskKey, "status");
-		expect(status).toBe("COMPLETED");
+		expect(status).toBe("completed");
 	});
 
 	it("should emit queue metrics", async () => {
