@@ -20,7 +20,12 @@ export interface Instance {
 
 export class InstanceManager {
 	private redis = getRedis();
-	private heartbeatTimeout = healthMonitoring.heartbeatTimeout;
+	private get heartbeatTimeout() {
+		// Check env var at runtime, fallback to config
+		return process.env.HEALTH_HEARTBEAT_TIMEOUT 
+			? parseInt(process.env.HEALTH_HEARTBEAT_TIMEOUT)
+			: healthMonitoring.heartbeatTimeout;
+	}
 	private healthCheckInterval: NodeJS.Timeout | null = null;
 
 	// Register an instance
@@ -169,11 +174,16 @@ export class InstanceManager {
 			return;
 		}
 		
+		// Use env var if set, otherwise use config default
+		const checkInterval = process.env.HEALTH_CHECK_INTERVAL 
+			? parseInt(process.env.HEALTH_CHECK_INTERVAL) 
+			: healthMonitoring.checkInterval;
+		
 		this.healthCheckInterval = setInterval(async () => {
 			await this.monitorInstances();
-		}, healthMonitoring.checkInterval);
+		}, checkInterval);
 		
-		console.log(`[InstanceManager] Health monitoring started (interval: ${healthMonitoring.checkInterval}ms)`);
+		console.log(`[InstanceManager] Health monitoring started (interval: ${checkInterval}ms)`);
 	}
 
 	// Monitor all instances

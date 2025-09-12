@@ -141,27 +141,9 @@ export async function setupEventSubscriptions() {
 		lastSeen: (Date.now() - 70000).toString() // 70 seconds ago
 	});
 	
-	// Start job scheduler now to trigger failure detection
-	await jobScheduler.start();
-	
-	// 4. Poll for redistribution side-effects
-	const redistributedKey = "cb:redistributed:from:worker-failed";
-	let attempts = 0;
-	const maxAttempts = 7;
-	
-	while (attempts < maxAttempts) {
-		const exists = await redis.stream.exists(redistributedKey);
-		if (exists === 1) {
-			console.log(`[Setup] Redistribution detected after ${attempts * 5} seconds`);
-			break;
-		}
-		
-		attempts++;
-		if (attempts < maxAttempts) {
-			console.log(`[Setup] Waiting for redistribution... attempt ${attempts}/${maxAttempts}`);
-			await new Promise(resolve => setTimeout(resolve, 5000));
-		}
-	}
+	// 4. Wait briefly for system to detect and handle failure
+	// The monitoring interval is 500ms and BullMQ jobs run immediately
+	await new Promise(resolve => setTimeout(resolve, 3000)); // 3 seconds should be enough
 }
 
 /**
