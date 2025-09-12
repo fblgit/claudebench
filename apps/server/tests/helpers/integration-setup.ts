@@ -3,6 +3,7 @@ import { registry } from "@/core/registry";
 import { instanceManager } from "@/core/instance-manager";
 import { taskQueue } from "@/core/task-queue";
 import { eventBus } from "@/core/bus";
+import { jobScheduler } from "@/core/jobs";
 
 // Import all handlers to register them
 import "@/handlers";
@@ -21,6 +22,8 @@ export async function setupIntegrationTest() {
 	// For tests, we need to set a faster check interval
 	process.env.HEALTH_CHECK_INTERVAL = "500"; // 500ms for tests
 	instanceManager.startHealthMonitoring();
+	
+	// Don't start job scheduler yet - will start after setting up test scenario
 	
 	return redis;
 }
@@ -92,6 +95,73 @@ export async function setupEventSubscriptions() {
 	// Add test data to partition
 	await eventBus.addToPartition("user-123", { event: "test1", timestamp: 1 });
 	await eventBus.addToPartition("user-123", { event: "test2", timestamp: 2 });
+	
+	// Setup failed instance scenario for redistribution test
+	const redis = getRedis();
+	
+	// 1. Create the instance through handler
+	try {
+		await registry.executeHandler("system.register", {
+			id: "worker-failed",
+			roles: ["worker"]
+		});
+	} catch (error) {
+		console.error("[Setup] Failed to register worker-failed:", error);
+	}
+	
+	// 2. Create tasks through handler
+	const task1 = await registry.executeHandler("task.create", { 
+		text: "Failed worker task 1", 
+		priority: 50 
+	});
+	const task2 = await registry.executeHandler("task.create", { 
+		text: "Failed worker task 2", 
+		priority: 50 
+	});
+	
+	// Assign tasks to the instance through handler (before marking stale)
+	try {
+		await registry.executeHandler("task.assign", {
+			taskId: task1.id,
+			instanceId: "worker-failed"
+		});
+		await registry.executeHandler("task.assign", {
+			taskId: task2.id,
+			instanceId: "worker-failed"
+		});
+	} catch (error) {
+		console.error("[Setup] Failed to assign tasks to worker-failed:", error);
+	}
+	
+	// Wait a moment to ensure assignments are processed
+	await new Promise(resolve => setTimeout(resolve, 100));
+	
+	// 3. FAULT INJECTION - Only Redis command allowed
+	await redis.stream.hset("cb:instance:worker-failed", {
+		lastSeen: (Date.now() - 70000).toString() // 70 seconds ago
+	});
+	
+	// Start job scheduler now to trigger failure detection
+	await jobScheduler.start();
+	
+	// 4. Poll for redistribution side-effects
+	const redistributedKey = "cb:redistributed:from:worker-failed";
+	let attempts = 0;
+	const maxAttempts = 7;
+	
+	while (attempts < maxAttempts) {
+		const exists = await redis.stream.exists(redistributedKey);
+		if (exists === 1) {
+			console.log(`[Setup] Redistribution detected after ${attempts * 5} seconds`);
+			break;
+		}
+		
+		attempts++;
+		if (attempts < maxAttempts) {
+			console.log(`[Setup] Waiting for redistribution... attempt ${attempts}/${maxAttempts}`);
+			await new Promise(resolve => setTimeout(resolve, 5000));
+		}
+	}
 }
 
 /**

@@ -5,3 +5,4 @@ export { SystemGetStateHandler } from "./system.get_state.handler";
 export { SystemMetricsHandler } from "./system.metrics.handler";
 export { SystemBatchProcessHandler } from "./system.batch.handler";
 export { SystemQuorumVoteHandler } from "./system.quorum.handler";
+export { SystemCheckHealthHandler } from "./system.check_health.handler";

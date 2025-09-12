@@ -1094,7 +1094,7 @@ export const REASSIGN_FAILED_TASKS = `
 local failed_instance_id = ARGV[1]
 local failed_instance_key = 'cb:instance:' .. failed_instance_id
 local failed_queue_key = 'cb:queue:instance:' .. failed_instance_id
-local reassigned_key = 'cb:reassigned:from:' .. failed_instance_id
+local redistributed_key = 'cb:redistributed:from:' .. failed_instance_id
 
 -- Mark instance as OFFLINE
 redis.call('hset', failed_instance_key, 'status', 'OFFLINE')
@@ -1131,8 +1131,13 @@ for i, task_id in ipairs(orphaned_tasks) do
   -- Add to new worker's queue
   redis.call('lpush', target_queue, task_id)
   
-  -- Track reassignment
-  redis.call('sadd', reassigned_key, task_id)
+  -- Track redistribution as a list with JSON objects
+  local redistribution_data = cjson.encode({
+    taskId = task_id,
+    redistributedAt = redis.call('time')[1],
+    targetWorker = target_worker
+  })
+  redis.call('lpush', redistributed_key, redistribution_data)
   reassigned_count = reassigned_count + 1
 end
 

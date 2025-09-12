@@ -148,13 +148,14 @@ export const monitoringWorker = new Worker<MonitoringJob>(
 				return healthResults;
 				
 			case "failure-detection":
-				// Use system.monitor handler if available
-				const handler = registry.getHandler("system.monitor");
-				if (handler) {
-					const result = await registry.executeHandler("system.monitor", { checkInterval: 3000 });
+				// Use system.check_health handler to detect and handle failures
+				try {
+					const result = await registry.executeHandler("system.check_health", { timeout: 30000 });
 					return result;
+				} catch (error) {
+					console.error("[MonitoringWorker] Failed to check health:", error);
+					return { healthy: [], failed: [], reassigned: {} };
 				}
-				return { detected: 0 };
 				
 			case "redistribute-tasks":
 				// This would be triggered when an instance fails
