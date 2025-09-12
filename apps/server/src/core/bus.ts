@@ -159,8 +159,13 @@ export class EventBus {
 	// Track event in partition (for ordering)
 	async addToPartition(partitionId: string, eventData: any): Promise<void> {
 		const partitionKey = redisKey("partition", partitionId);
-		await this.redis.stream.lpush(partitionKey, JSON.stringify(eventData));
-		await this.redis.stream.ltrim(partitionKey, 0, 999); // Keep last 1000
+		// Ensure event has timestamp for ordering
+		const event = {
+			...eventData,
+			timestamp: eventData.timestamp || Date.now()
+		};
+		await this.redis.stream.rpush(partitionKey, JSON.stringify(event)); // Use rpush to maintain insertion order
+		await this.redis.stream.ltrim(partitionKey, -1000, -1); // Keep last 1000
 		await this.redis.stream.expire(partitionKey, 3600);
 	}
 }
