@@ -111,38 +111,48 @@ export async function processMcpRequest(
 	});
 	
 	// Process through transport
+	console.log("[MCP Transport] Processing request:", body?.method || "unknown");
 	const handlePromise = transport.handleRequest(mockReq, mockRes, body);
 	
 	// Wait for both with timeout
-	await Promise.race([
-		Promise.all([handlePromise, responsePromise]),
-		new Promise(resolve => setTimeout(resolve, 5000))
+	const raceResult = await Promise.race([
+		Promise.all([handlePromise, responsePromise]).then(() => "completed"),
+		new Promise(resolve => setTimeout(() => resolve("timeout"), 5000))
 	]);
+	
+	if (raceResult === "timeout") {
+		console.log("[MCP Transport] Request timed out after 5 seconds");
+	}
 	
 	// Extract response
 	const responseData = mockRes._getResponseData();
 	const responseStatus = mockRes._getResponseStatus();
 	const responseHeaders = mockRes._getResponseHeaders();
 	
-	// Parse SSE format if present
+	// Parse response data
 	let parsedData = responseData;
-	if (typeof responseData === "string" && responseData.includes("event:")) {
-		const lines = responseData.split("\n");
-		for (const line of lines) {
-			if (line.startsWith("data: ")) {
-				try {
-					parsedData = JSON.parse(line.substring(6));
-					break;
-				} catch (e) {
-					// Keep original if parse fails
+	if (typeof responseData === "string") {
+		// Check for SSE format
+		if (responseData.includes("event:") && responseData.includes("data:")) {
+			const lines = responseData.split("\n");
+			for (const line of lines) {
+				if (line.startsWith("data: ")) {
+					try {
+						parsedData = JSON.parse(line.substring(6));
+						console.log("[MCP Transport] Parsed SSE data:", parsedData);
+						break;
+					} catch (e) {
+						console.error("[MCP Transport] Failed to parse SSE data:", e);
+					}
 				}
 			}
-		}
-	} else if (typeof responseData === "string") {
-		try {
-			parsedData = JSON.parse(responseData);
-		} catch (e) {
-			// Keep as string if not JSON
+		} else {
+			// Try to parse as regular JSON
+			try {
+				parsedData = JSON.parse(responseData);
+			} catch (e) {
+				// Keep as string if not JSON
+			}
 		}
 	}
 	

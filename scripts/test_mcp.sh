@@ -58,7 +58,7 @@ TASK_RESPONSE=$(curl -s -X POST $BASE_URL \
     "jsonrpc": "2.0",
     "method": "tools/call",
     "params": {
-      "name": "task_create",
+      "name": "task__create",
       "arguments": {
         "text": "Test task from MCP integration test",
         "priority": "high"
@@ -99,7 +99,7 @@ ERROR_RESPONSE=$(curl -s -X POST $BASE_URL \
     "jsonrpc": "2.0",
     "method": "tools/call",
     "params": {
-      "name": "task_create",
+      "name": "task__create",
       "arguments": {
         "priority": "low"
       }
@@ -126,7 +126,7 @@ INSTANCE_RESPONSE=$(curl -s -X POST $BASE_URL \
     "jsonrpc": "2.0",
     "method": "tools/call",
     "params": {
-      "name": "instance_status",
+      "name": "system__health",
       "arguments": {
         "instanceId": "MASTER"
       }

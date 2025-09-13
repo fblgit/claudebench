@@ -13,10 +13,10 @@ import { z } from "zod";
  * Convert handler's Zod schema to MCP-compatible format
  * MCP SDK expects the .shape property for object schemas
  */
-function extractZodShape(schema: z.ZodSchema<any>): any {
-	// If it's a ZodObject, return its shape
+function extractZodShape(schema: z.ZodSchema<any>): Record<string, z.ZodTypeAny> {
+	// If it's a ZodObject, return its shape directly (which contains Zod field definitions)
 	if (schema instanceof z.ZodObject) {
-		return schema.shape;
+		return schema.shape as Record<string, z.ZodTypeAny>;
 	}
 	
 	// If it's wrapped in effects/transforms, try to unwrap
@@ -30,9 +30,9 @@ function extractZodShape(schema: z.ZodSchema<any>): any {
 		}
 	}
 	
-	// For non-object schemas, wrap in an object
+	// For non-object schemas, wrap in an object with a value field
 	return {
-		value: schema
+		value: schema as z.ZodTypeAny
 	};
 }
 
@@ -51,15 +51,25 @@ export async function registerTools(
 		const toolName = handler.event.replace(/\./g, "__");
 		
 		try {
-			// Extract the Zod shape for MCP SDK
-			const inputShape = extractZodShape(handler.inputSchema);
+			// MCP SDK expects a Zod object schema, not just the shape
+			// We need to ensure we're passing the actual Zod schema object
+			let mcpInputSchema: z.ZodObject<any> | Record<string, z.ZodTypeAny>;
+			
+			if (handler.inputSchema instanceof z.ZodObject) {
+				// If it's already a ZodObject, use it directly
+				mcpInputSchema = handler.inputSchema;
+			} else {
+				// Otherwise, extract the shape and create a new ZodObject
+				const shape = extractZodShape(handler.inputSchema);
+				mcpInputSchema = z.object(shape);
+			}
 			
 			// Register the tool with MCP server
-			// The SDK's tool method expects: name, description, inputSchema (as ZodRawShape), handler
+			// The SDK's tool method expects: name, description, inputSchema (ZodObject or shape), handler
 			mcpServer.tool(
 				toolName,
 				handler.description || `Execute ${handler.event} event handler`,
-				inputShape,
+				mcpInputSchema,
 				async (args: any) => {
 					try {
 						// Validate input with original schema

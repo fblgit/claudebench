@@ -26,6 +26,7 @@ export async function handleMcpPost(c: Context) {
 		// Check for existing session ID in header
 		const sessionId = c.req.header("mcp-session-id");
 		let transport: StreamableHTTPServerTransport | undefined;
+		let activeSessionId: string | undefined = sessionId;
 		
 		if (sessionId && transports.has(sessionId)) {
 			// Reuse existing transport for this session
@@ -33,6 +34,7 @@ export async function handleMcpPost(c: Context) {
 		} else if (!sessionId && isInitializeRequest(body)) {
 			// New initialization request - create new session
 			const newSessionId = crypto.randomUUID();
+			activeSessionId = newSessionId;
 			
 			// Create transport with session management
 			transport = new StreamableHTTPServerTransport({
@@ -60,6 +62,10 @@ export async function handleMcpPost(c: Context) {
 			});
 			
 			// Register tools from handlers
+			// Make sure registry has discovered handlers first
+			if (registry.getAllHandlers().length === 0) {
+				await registry.discover();
+			}
 			const handlers = registry.getAllHandlers();
 			console.log(`[MCP] Registering ${handlers.length} tools for session ${newSessionId}`);
 			await registerTools(server, registry);
@@ -98,7 +104,13 @@ export async function handleMcpPost(c: Context) {
 		
 		// Process request through transport adapter
 		const headers = Object.fromEntries(c.req.raw.headers.entries());
+		console.log(`[MCP] Processing request for session ${activeSessionId}:`, body.method);
 		const response = await processMcpRequest(transport, headers, body);
+		
+		console.log(`[MCP] Response status: ${response.status}, has data: ${!!response.data}`);
+		if (response.data) {
+			console.log(`[MCP] Response data:`, JSON.stringify(response.data).substring(0, 200));
+		}
 		
 		// Apply response headers
 		for (const [key, value] of Object.entries(response.headers)) {
