@@ -118,7 +118,7 @@
 - [x] T048 Set up Hono server with CORS and logging in apps/server/src/server.ts
 - [x] T049 Auto-generate HTTP routes from handler registry in apps/server/src/transports/http-routes.ts
 
-### Checkpoint - All your handlers related tests must be passing
+### Checkpoint - 245 Passed Tests & 9 Failing (advanced features)
 
 ### MCP Server
 - [ ] T050 Initialize MCP server with Streamable HTTP transport in apps/server/src/mcp/server.ts
@@ -147,9 +147,9 @@
 
 ### Routes
 - [ ] T063 Create dashboard home route in apps/web/src/routes/index.tsx
-- [ ] T064 [P] Create events route in apps/web/src/routes/events.tsx
-- [ ] T065 [P] Create tasks route in apps/web/src/routes/tasks.tsx
-- [ ] T066 [P] Create system route in apps/web/src/routes/system.tsx
+- [x] T064 [P] Create events route in apps/web/src/routes/events.tsx
+- [x] T065 [P] Create tasks route in apps/web/src/routes/tasks.tsx
+- [x] T066 [P] Create system route in apps/web/src/routes/system.tsx
 
 ## Phase 3.6: CLI Tools
 - [ ] T067 Create CLI entry point in apps/server/src/cli/index.ts

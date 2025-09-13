@@ -20,6 +20,10 @@ import { jobScheduler } from "./core/jobs";
 import { handleJsonRpcRequest, handleJsonRpcBatch } from "./transports/http";
 import { registerHttpRoutes } from "./transports/http-routes";
 
+// Import MCP handlers
+import { handleMcpPost, handleMcpGet, handleMcpDelete, handleMcpHealth } from "./mcp/handler";
+import { shutdownMcpServers } from "./mcp";
+
 // Import Prometheus middleware
 import { prometheusMiddleware, getMetrics } from "./middleware/prometheus";
 
@@ -32,8 +36,9 @@ app.use(
 	"/*",
 	cors({
 		origin: process.env.CORS_ORIGIN || "http://localhost:3001",
-		allowMethods: ["GET", "POST", "OPTIONS"],
-		allowHeaders: ["Content-Type", "Authorization"],
+		allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
+		allowHeaders: ["Content-Type", "Authorization", "mcp-session-id"],
+		exposeHeaders: ["Mcp-Session-Id"],
 		credentials: true,
 	})
 );
@@ -58,6 +63,12 @@ app.get("/metrics", async (c) => {
 // JSONRPC endpoint
 app.post("/rpc", handleJsonRpcRequest);
 app.post("/rpc/batch", handleJsonRpcBatch);
+
+// MCP routes
+app.post("/mcp", handleMcpPost);
+app.get("/mcp", handleMcpGet);
+app.delete("/mcp", handleMcpDelete);
+app.get("/mcp/health", handleMcpHealth);
 
 // Initialize system
 async function initialize() {
@@ -105,6 +116,9 @@ async function initialize() {
 			console.log(`   - ${r.method} ${r.path} -> ${r.event}`);
 		});
 		
+		// MCP servers are created per-session, not globally
+		console.log("🎯 MCP endpoint ready at /mcp");
+		
 		console.log("✅ Server initialized successfully");
 		
 	} catch (error) {
@@ -126,6 +140,9 @@ async function shutdown() {
 		
 		// Cleanup instance manager
 		await instanceManager.cleanup();
+		
+		// Shutdown MCP servers
+		await shutdownMcpServers();
 		
 		// Close event bus subscriptions
 		await eventBus.close();
@@ -171,6 +188,7 @@ if (require.main === module) {
 		
 		console.log(`🎯 Server running at http://localhost:${PORT}`);
 		console.log(`📡 JSONRPC endpoint: http://localhost:${PORT}/rpc`);
+		console.log(`🤖 MCP endpoint: http://localhost:${PORT}/mcp`);
 		console.log(`🔧 Health check: http://localhost:${PORT}/`);
 	});
 }
