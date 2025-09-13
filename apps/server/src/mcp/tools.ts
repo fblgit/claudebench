@@ -51,29 +51,34 @@ export async function registerTools(
 		const toolName = handler.event.replace(/\./g, "__");
 		
 		try {
-			// MCP SDK expects a Zod object schema, not just the shape
-			// We need to ensure we're passing the actual Zod schema object
-			let mcpInputSchema: z.ZodObject<any> | Record<string, z.ZodTypeAny>;
+			// For MCP SDK, we need to handle the schema registration carefully
+			// The SDK accepts either a Zod schema or a shape object with Zod field definitions
+			let mcpSchema: any;
 			
 			if (handler.inputSchema instanceof z.ZodObject) {
-				// If it's already a ZodObject, use it directly
-				mcpInputSchema = handler.inputSchema;
+				// Use the ZodObject directly - the SDK knows how to handle it
+				mcpSchema = handler.inputSchema;
 			} else {
-				// Otherwise, extract the shape and create a new ZodObject
-				const shape = extractZodShape(handler.inputSchema);
-				mcpInputSchema = z.object(shape);
+				// Try to extract and use the shape
+				mcpSchema = extractZodShape(handler.inputSchema);
 			}
 			
-			// Register the tool with MCP server
-			// The SDK's tool method expects: name, description, inputSchema (ZodObject or shape), handler
-			mcpServer.tool(
+			// Use the new registerTool method which is recommended for new code
+			// It properly handles arguments passing
+			mcpServer.registerTool(
 				toolName,
-				handler.description || `Execute ${handler.event} event handler`,
-				mcpInputSchema,
-				async (args: any) => {
+				{
+					title: handler.description || `Execute ${handler.event} event handler`,
+					description: handler.description || `Execute ${handler.event} event handler`,
+					inputSchema: mcpSchema
+				},
+				async (toolArgs: any) => {
 					try {
+						// With registerTool, the handler receives the actual arguments directly
+						console.log(`[MCP Tool] Executing ${toolName} with args:`, toolArgs);
+						
 						// Validate input with original schema
-						const validatedInput = handler.inputSchema.parse(args);
+						const validatedInput = handler.inputSchema.parse(toolArgs);
 						
 						// Execute the handler through the registry
 						const result = await registry.executeHandler(handler.event, validatedInput);

@@ -30,7 +30,9 @@
     "test:integration": "turbo -F server test:integration",
     "test:watch": "turbo -F server test:watch"
   },
-  "dependencies": {},
+  "dependencies": {
+    "fetch-to-node": "^2.1.0"
+  },
   "devDependencies": {
     "turbo": "^2.5.4",
     "@biomejs/biome": "^2.2.0",

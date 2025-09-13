@@ -2,7 +2,7 @@
  * MCP Request Handler - Based on working implementation
  */
 
-import { Context } from "hono";
+import type { Context } from "hono";
 import { streamSSE } from "hono/streaming";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
