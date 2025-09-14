@@ -22,7 +22,6 @@ import { registerHttpRoutes } from "./transports/http-routes";
 
 // Import MCP handlers
 import { handleMcpPost, handleMcpGet, handleMcpDelete, handleMcpHealth } from "./mcp/handler";
-import { shutdownMcpServers } from "./mcp";
 
 // Import Prometheus middleware
 import { prometheusMiddleware, getMetrics } from "./middleware/prometheus";
@@ -141,8 +140,7 @@ async function shutdown() {
 		// Cleanup instance manager
 		await instanceManager.cleanup();
 		
-		// Shutdown MCP servers
-		await shutdownMcpServers();
+		// MCP servers are now managed per-session, no global shutdown needed
 		
 		// Close event bus subscriptions
 		await eventBus.close();

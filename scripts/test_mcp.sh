@@ -50,7 +50,7 @@ echo ""
 
 # Step 2: Create a task
 echo -e "${GREEN}2. Creating a task...${NC}"
-TASK_RESPONSE=$(curl -s -X POST $BASE_URL \
+TASK_RESPONSE=$(curl -sv -X POST $BASE_URL \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -H "Mcp-Session-Id: $SESSION_ID" \

@@ -25,10 +25,10 @@ NC = '\033[0m'  # No Color
 
 # Map hook names to API endpoints (Hono routes)
 HOOK_ENDPOINTS = {
-    'pre-tool-use': '/hooks/preToolUse',
-    'post-tool-use': '/hooks/postToolUse',
-    'user-prompt-submit': '/hooks/userPromptSubmit',
-    'todo-write': '/hooks/todoWrite'
+    'pre-tool-use': '/hooks/pre_tool',
+    'post-tool-use': '/hooks/post_tool',
+    'user-prompt-submit': '/hooks/user_prompt',
+    'todo-write': '/hooks/todo_write'
 }
 
 def make_request(endpoint: str, data: Dict[str, Any]) -> Tuple[Dict[str, Any], int]:

@@ -1,128 +1,154 @@
 /**
- * MCP Request Handler - Based on working implementation
+ * MCP Request Handler - Using fetch-to-node approach from mcp-hono-stateless
  */
 
 import type { Context } from "hono";
 import { streamSSE } from "hono/streaming";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { toFetchResponse, toReqRes } from "fetch-to-node";
 import { registry } from "../core/registry";
-import { registerTools } from "./tools";
-import { SessionManager } from "./session";
-import { processMcpRequest } from "./transport-adapter";
+import * as crypto from "crypto";
+import { z } from "zod";
 
-// Store transports and servers by session ID
-const transports = new Map<string, StreamableHTTPServerTransport>();
+// Store servers and transports by session ID to maintain state
 const servers = new Map<string, McpServer>();
+const transports = new Map<string, StreamableHTTPServerTransport>();
 
 /**
- * POST /mcp - Handle JSON-RPC requests
+ * Get or create MCP server for a session
+ */
+async function getOrCreateServer(sessionId: string): Promise<McpServer> {
+	if (servers.has(sessionId)) {
+		return servers.get(sessionId)!;
+	}
+	
+	// Create new server
+	const server = new McpServer({
+		name: "claudebench-mcp",
+		version: "0.1.0",
+	}, {
+		capabilities: {
+			logging: {},
+			tools: {}
+		}
+	});
+	
+	// Ensure handlers are discovered
+	if (registry.getAllHandlers().length === 0) {
+		await registry.discover();
+	}
+	
+	// Register tools from handlers
+	const handlers = registry.getAllHandlers();
+	console.log(`[MCP] Registering ${handlers.length} tools for session ${sessionId}`);
+	
+	for (const handler of handlers) {
+		const toolName = handler.event.replace(/\./g, "__");
+		
+		try {
+			// Register using the new registerTool method
+			// For now, skip inputSchema in registration and validate manually
+			// The MCP SDK has issues with Zod schema parsing
+			server.registerTool(
+				toolName,
+				{
+					title: handler.description || `Execute ${handler.event}`,
+					description: handler.description || `Execute ${handler.event} event handler`,
+					// inputSchema is optional - we'll validate manually
+				},
+				async (params: any, metadata: any): Promise<any> => {
+					console.log(`[MCP Tool] Executing ${toolName}`);
+					console.log(`[MCP Tool] Params:`, params);
+					console.log(`[MCP Tool] Metadata keys:`, metadata ? Object.keys(metadata) : 'none');
+					
+					// Check if params is the actual arguments or if they're nested
+					const toolArgs = params.arguments || params;
+					console.log(`[MCP Tool] Using args:`, toolArgs);
+					
+					// Validate and execute
+					const validatedInput = handler.inputSchema.parse(toolArgs);
+					const result = await registry.executeHandler(handler.event, validatedInput);
+					
+					// Return in MCP format
+					return {
+						content: [
+							{
+								type: "text" as const,
+								text: JSON.stringify(result, null, 2)
+							}
+						]
+					};
+				}
+			);
+			
+			console.log(`   ✅ Registered MCP tool: ${toolName}`);
+		} catch (error) {
+			console.error(`   ❌ Failed to register tool ${toolName}:`, error);
+		}
+	}
+	
+	servers.set(sessionId, server);
+	return server;
+}
+
+/**
+ * POST /mcp - Handle JSON-RPC requests maintaining session state
  */
 export async function handleMcpPost(c: Context) {
 	try {
 		const body = await c.req.json();
-		
-		// Check for existing session ID in header
-		const sessionId = c.req.header("mcp-session-id");
+		let sessionId = c.req.header("mcp-session-id");
 		let transport: StreamableHTTPServerTransport | undefined;
-		let activeSessionId: string | undefined = sessionId;
 		
-		if (sessionId && transports.has(sessionId)) {
-			// Reuse existing transport for this session
-			transport = transports.get(sessionId);
-		} else if (!sessionId && isInitializeRequest(body)) {
-			// New initialization request - create new session
-			const newSessionId = crypto.randomUUID();
-			activeSessionId = newSessionId;
+		// Check if this is an initialization request
+		const isInit = body.method === "initialize";
+		
+		if (isInit) {
+			// Generate new session ID for initialization
+			sessionId = crypto.randomUUID();
+			console.log(`[MCP] New session initialization: ${sessionId}`);
 			
-			// Create transport with session management
+			// Create new transport for this session
 			transport = new StreamableHTTPServerTransport({
-				sessionIdGenerator: () => newSessionId,
-				onsessioninitialized: (sid) => {
-					console.log(`[MCP] Session initialized: ${sid}`);
-					SessionManager.getInstance().createSession(sid);
-				},
-				enableDnsRebindingProtection: true,
-				allowedHosts: ["127.0.0.1", "localhost", "localhost:3000", "127.0.0.1:3000"],
+				sessionIdGenerator: () => sessionId
 			});
 			
-			// Set up cleanup handler
-			transport.onclose = () => {
-				console.log(`[MCP] Transport closed for session: ${newSessionId}`);
-				transports.delete(newSessionId);
-				servers.delete(newSessionId);
-				SessionManager.getInstance().removeSession(newSessionId);
-			};
-			
-			// Create MCP server for this session
-			const server = new McpServer({
-				name: "claudebench-mcp",
-				version: "0.1.0",
-			});
-			
-			// Register tools from handlers
-			// Make sure registry has discovered handlers first
-			if (registry.getAllHandlers().length === 0) {
-				await registry.discover();
-			}
-			const handlers = registry.getAllHandlers();
-			console.log(`[MCP] Registering ${handlers.length} tools for session ${newSessionId}`);
-			await registerTools(server, registry);
-			
-			// Connect transport to server
+			// Create and connect server
+			const server = await getOrCreateServer(sessionId);
 			await server.connect(transport);
 			
-			// Store transport and server
-			transports.set(newSessionId, transport);
-			servers.set(newSessionId, server);
+			// Store transport for future requests
+			transports.set(sessionId, transport);
 			
-			// Set session ID header in response
-			c.header("Mcp-Session-Id", newSessionId);
+		} else if (sessionId && transports.has(sessionId)) {
+			// Reuse existing transport for this session
+			transport = transports.get(sessionId);
+			console.log(`[MCP] Reusing session ${sessionId} for method: ${body.method}`);
 		} else {
-			// Invalid request
+			// No valid session
+			console.log(`[MCP] Invalid session: ${sessionId}`);
 			return c.json({
 				jsonrpc: "2.0",
 				error: {
 					code: -32000,
-					message: "Bad Request: No valid session ID provided",
+					message: "Bad Request: Invalid or missing session ID. Initialize first."
 				},
-				id: null,
+				id: body.id || null
 			}, 400);
 		}
 		
-		if (!transport) {
-			return c.json({
-				jsonrpc: "2.0",
-				error: {
-					code: -32603,
-					message: "Internal error: Transport not available",
-				},
-				id: null,
-			}, 500);
-		}
+		// Convert Hono request to Node.js format
+		const { req, res } = toReqRes(c.req.raw);
 		
-		// Process request through transport adapter
-		const headers = Object.fromEntries(c.req.raw.headers.entries());
-		console.log(`[MCP] Processing request for session ${activeSessionId}:`, body.method);
-		const response = await processMcpRequest(transport, headers, body);
+		// Handle the request through the transport
+		await transport!.handleRequest(req, res, body);
 		
-		console.log(`[MCP] Response status: ${response.status}, has data: ${!!response.data}`);
-		if (response.data) {
-			console.log(`[MCP] Response data:`, JSON.stringify(response.data).substring(0, 200));
-		}
+		// Set session ID header for client
+		c.header("Mcp-Session-Id", sessionId);
 		
-		// Apply response headers
-		for (const [key, value] of Object.entries(response.headers)) {
-			c.header(key, value);
-		}
-		
-		// Return response
-		if (response.data) {
-			return c.json(response.data, response.status as any);
-		} else {
-			return c.text("", response.status as any);
-		}
+		// Convert Node.js response back to Fetch Response
+		return toFetchResponse(res);
 		
 	} catch (error) {
 		console.error("[MCP] Request handling error:", error);
@@ -143,7 +169,7 @@ export async function handleMcpPost(c: Context) {
 export async function handleMcpGet(c: Context) {
 	const sessionId = c.req.header("mcp-session-id");
 	
-	if (!sessionId || !transports.has(sessionId)) {
+	if (!sessionId || !servers.has(sessionId)) {
 		return c.text("Invalid or missing session ID", 400);
 	}
 	
@@ -181,7 +207,10 @@ export async function handleMcpDelete(c: Context) {
 		// Remove transport
 		if (transports.has(sessionId)) {
 			const transport = transports.get(sessionId);
-			transport?.close();
+			// Close the transport if it has a close method
+			if (transport && typeof (transport as any).close === 'function') {
+				(transport as any).close();
+			}
 			transports.delete(sessionId);
 		}
 		
@@ -189,9 +218,6 @@ export async function handleMcpDelete(c: Context) {
 		if (servers.has(sessionId)) {
 			servers.delete(sessionId);
 		}
-		
-		// Remove from session manager
-		await SessionManager.getInstance().removeSession(sessionId);
 		
 		console.log(`[MCP] Session terminated: ${sessionId}`);
 		
@@ -226,6 +252,7 @@ export function handleMcpHealth(c: Context) {
 	return c.json({
 		status: "healthy",
 		activeSessions: activeSessions.length,
-		sessions: activeSessions
+		sessions: activeSessions,
+		transports: transports.size
 	});
 }
