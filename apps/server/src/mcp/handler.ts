@@ -47,28 +47,23 @@ async function getOrCreateServer(sessionId: string): Promise<McpServer> {
 		const toolName = handler.event.replace(/\./g, "__");
 		
 		try {
-			// Register using the new registerTool method
-			// For now, skip inputSchema in registration and validate manually
-			// The MCP SDK has issues with Zod schema parsing
-			server.registerTool(
+			// Convert Zod schema to a raw shape for the tool() method
+			// The tool() method expects ZodRawShape, not a ZodObject
+			const inputSchemaShape = handler.inputSchema._def.shape ? handler.inputSchema._def.shape() : {};
+			
+			// Use the high-level tool() method which properly handles Zod schemas
+			(server as any).tool(
 				toolName,
-				{
-					title: handler.description || `Execute ${handler.event}`,
-					description: handler.description || `Execute ${handler.event} event handler`,
-					// inputSchema is optional - we'll validate manually
-				},
+				handler.description || `Execute ${handler.event} event handler`,
+				inputSchemaShape,
 				async (params: any, metadata: any): Promise<any> => {
 					console.log(`[MCP Tool] Executing ${toolName}`);
 					console.log(`[MCP Tool] Params:`, params);
 					console.log(`[MCP Tool] Metadata keys:`, metadata ? Object.keys(metadata) : 'none');
 					
-					// Check if params is the actual arguments or if they're nested
-					const toolArgs = params.arguments || params;
-					console.log(`[MCP Tool] Using args:`, toolArgs);
-					
-					// Validate and execute
-					const validatedInput = handler.inputSchema.parse(toolArgs);
-					const result = await registry.executeHandler(handler.event, validatedInput);
+					// The tool() method already validates params with the schema
+					// So params here are already validated
+					const result = await registry.executeHandler(handler.event, params);
 					
 					// Return in MCP format
 					return {
