@@ -49,8 +49,18 @@ async function getOrCreateServer(sessionId: string): Promise<McpServer> {
 		try {
 			// Convert Zod schema to a raw shape for the tool() method
 			// The tool() method expects ZodRawShape, not a ZodObject
-			// In Zod v3, .shape is directly accessible on ZodObject
-			const inputSchemaShape = (handler.inputSchema as any).shape;
+			// Handle both ZodObject and ZodEffects (from .refine())
+			let inputSchemaShape;
+			const schema = handler.inputSchema as any;
+			
+			// Check if it's a ZodEffects (has refinement)
+			if (schema._def?.typeName === "ZodEffects" && schema._def?.schema) {
+				// Get shape from the underlying schema
+				inputSchemaShape = schema._def.schema.shape;
+			} else {
+				// Regular ZodObject - shape is directly accessible
+				inputSchemaShape = schema.shape;
+			}
 			
 			// Use the high-level tool() method which properly handles Zod schemas
 			(server as any).tool(
