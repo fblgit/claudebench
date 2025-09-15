@@ -49,7 +49,8 @@ async function getOrCreateServer(sessionId: string): Promise<McpServer> {
 		try {
 			// Convert Zod schema to a raw shape for the tool() method
 			// The tool() method expects ZodRawShape, not a ZodObject
-			const inputSchemaShape = handler.inputSchema._def.shape || {};
+			// In Zod v3, .shape is directly accessible on ZodObject
+			const inputSchemaShape = (handler.inputSchema as any).shape;
 			
 			// Use the high-level tool() method which properly handles Zod schemas
 			(server as any).tool(
@@ -106,7 +107,7 @@ export async function handleMcpPost(c: Context) {
 			
 			// Create new transport for this session
 			transport = new StreamableHTTPServerTransport({
-				sessionIdGenerator: () => sessionId
+				sessionIdGenerator: () => sessionId!
 			});
 			
 			// Create and connect server

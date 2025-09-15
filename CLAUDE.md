@@ -83,6 +83,11 @@ claudebench/
 └── templates/          # Project templates
 ```
 
+## Important Dependencies
+
+### Zod Version Requirement
+**CRITICAL**: This project requires **Zod v3** (specifically v3.25.76). Do NOT upgrade to Zod v4 as it breaks MCP (Model Context Protocol) parameter registration. The MCP SDK's `tool()` method expects the raw shape from ZodObject, which is accessed via `.shape` in Zod v3.
+
 ## Technical Stack Details
 
 ### Backend (apps/server)
