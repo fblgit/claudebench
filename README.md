@@ -90,5 +90,6 @@ claudebench/
 - MCP_SDK.md (When working with MCP)
 - src/core/decorator.ts (Our decorator-FIRST approach: metrics, audit log, cache, rate limit, circuit breaker)
 - docs/HOWTO_INSTRUMENTED_RESILIENT.md (How to use the Decorators)
+- docs/FRONTEND_SERVICES.md (For Frontend services and related frontend tasks)
 
 Be sure to always have visited and readed these documents when working in any task.
