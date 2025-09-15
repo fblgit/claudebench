@@ -10,6 +10,7 @@ import { toFetchResponse, toReqRes } from "fetch-to-node";
 import { registry } from "../core/registry";
 import * as crypto from "crypto";
 import { z } from "zod";
+import { getRedis } from "../core/redis";
 
 // Store servers and transports by session ID to maintain state
 const servers = new Map<string, McpServer>();
@@ -72,6 +73,11 @@ async function getOrCreateServer(sessionId: string): Promise<McpServer> {
 					console.log(`[MCP Tool] Params:`, params);
 					console.log(`[MCP Tool] Metadata keys:`, metadata ? Object.keys(metadata) : 'none');
 					
+					// Update MCP service status when tool is executed
+					const redis = getRedis();
+					await redis.pub.setex("cb:service:mcp:status", 300, "ok"); // 5 minute TTL
+					await redis.pub.incr("cb:metrics:mcp:calls");
+					
 					// The tool() method already validates params with the schema
 					// So params here are already validated
 					const result = await registry.executeHandler(handler.event, params);
@@ -114,6 +120,11 @@ export async function handleMcpPost(c: Context) {
 			// Generate new session ID for initialization
 			sessionId = crypto.randomUUID();
 			console.log(`[MCP] New session initialization: ${sessionId}`);
+			
+			// Set MCP service status as ok in Redis
+			const redis = getRedis();
+			await redis.pub.setex("cb:service:mcp:status", 300, "ok"); // 5 minute TTL
+			await redis.pub.incr("cb:metrics:mcp:calls");
 			
 			// Create new transport for this session
 			transport = new StreamableHTTPServerTransport({

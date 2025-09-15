@@ -19,6 +19,8 @@ import { jobScheduler } from "./core/jobs";
 // Import transport handlers
 import { handleJsonRpcRequest, handleJsonRpcBatch } from "./transports/http";
 import { registerHttpRoutes } from "./transports/http-routes";
+import { createWebSocketHandler, handleWebSocketConnection } from "./transports/websocket";
+import { createSSEHandler, createSSETestHandler, getSSEStats } from "./transports/sse";
 
 // Import MCP handlers
 import { handleMcpPost, handleMcpGet, handleMcpDelete, handleMcpHealth } from "./mcp/handler";
@@ -69,6 +71,18 @@ app.get("/mcp", handleMcpGet);
 app.delete("/mcp", handleMcpDelete);
 app.get("/mcp/health", handleMcpHealth);
 
+// WebSocket endpoint for real-time event subscriptions
+app.get("/ws", createWebSocketHandler());
+
+// SSE endpoint for event streaming
+app.get("/events", createSSEHandler());
+app.get("/events/test", createSSETestHandler());
+
+// SSE statistics endpoint
+app.get("/events/stats", (c) => {
+	return c.json(getSSEStats());
+});
+
 // Initialize system
 async function initialize() {
 	console.log("🚀 Starting ClaudeBench server...");
@@ -77,6 +91,11 @@ async function initialize() {
 		// Connect to Redis
 		console.log("📦 Connecting to Redis...");
 		await connectRedis();
+		
+		// Connect to PostgreSQL and set status
+		console.log("🐘 Connecting to PostgreSQL...");
+		const { initializePostgreSQL } = await import("./db");
+		await initializePostgreSQL();
 		
 		// Initialize event bus
 		console.log("🚌 Initializing event bus...");
@@ -187,6 +206,8 @@ if (require.main === module) {
 		console.log(`🎯 Server running at http://localhost:${PORT}`);
 		console.log(`📡 JSONRPC endpoint: http://localhost:${PORT}/rpc`);
 		console.log(`🤖 MCP endpoint: http://localhost:${PORT}/mcp`);
+		console.log(`🔄 WebSocket endpoint: ws://localhost:${PORT}/ws`);
+		console.log(`📊 SSE endpoint: http://localhost:${PORT}/events`);
 		console.log(`🔧 Health check: http://localhost:${PORT}/`);
 	});
 }
