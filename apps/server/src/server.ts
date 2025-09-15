@@ -19,8 +19,8 @@ import { jobScheduler } from "./core/jobs";
 // Import transport handlers
 import { handleJsonRpcRequest, handleJsonRpcBatch } from "./transports/http";
 import { registerHttpRoutes } from "./transports/http-routes";
-import { createWebSocketHandler, handleWebSocketConnection } from "./transports/websocket";
-import { createSSEHandler, createSSETestHandler, getSSEStats } from "./transports/sse";
+import { createWebSocketHandler, websocket, getWebSocketStats } from "./transports/websocket";
+import { handleSSEConnection, handleSSEExecute, getSSEStats } from "./transports/sse";
 
 // Import MCP handlers
 import { handleMcpPost, handleMcpGet, handleMcpDelete, handleMcpHealth } from "./mcp/handler";
@@ -75,12 +75,16 @@ app.get("/mcp/health", handleMcpHealth);
 app.get("/ws", createWebSocketHandler());
 
 // SSE endpoint for event streaming
-app.get("/events", createSSEHandler());
-app.get("/events/test", createSSETestHandler());
+app.get("/events", handleSSEConnection);
+app.post("/events/execute", handleSSEExecute);
 
-// SSE statistics endpoint
+// Real-time transport statistics endpoints
 app.get("/events/stats", (c) => {
 	return c.json(getSSEStats());
+});
+
+app.get("/ws/stats", (c) => {
+	return c.json(getWebSocketStats());
 });
 
 // Initialize system
@@ -194,20 +198,40 @@ process.on("unhandledRejection", (reason, promise) => {
 export { app, initialize };
 
 // Start server if running directly
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}` || require.main === module) {
 	const PORT = parseInt(process.env.PORT || "3000", 10);
 	
 	initialize().then(() => {
-		serve({
-			fetch: app.fetch,
-			port: PORT,
-		});
-		
-		console.log(`🎯 Server running at http://localhost:${PORT}`);
-		console.log(`📡 JSONRPC endpoint: http://localhost:${PORT}/rpc`);
-		console.log(`🤖 MCP endpoint: http://localhost:${PORT}/mcp`);
-		console.log(`🔄 WebSocket endpoint: ws://localhost:${PORT}/ws`);
-		console.log(`📊 SSE endpoint: http://localhost:${PORT}/events`);
-		console.log(`🔧 Health check: http://localhost:${PORT}/`);
+		// Check if we're running in Bun
+		if (typeof Bun !== "undefined") {
+			// Bun native server with WebSocket support
+			const server = Bun.serve({
+				fetch: app.fetch,
+				websocket,
+				port: PORT,
+			});
+			
+			console.log(`🎯 Server running at http://localhost:${server.port}`);
+			console.log(`📡 JSONRPC endpoint: http://localhost:${server.port}/rpc`);
+			console.log(`🤖 MCP endpoint: http://localhost:${server.port}/mcp`);
+			console.log(`🔄 WebSocket endpoint: ws://localhost:${server.port}/ws`);
+			console.log(`📊 SSE endpoint: http://localhost:${server.port}/events`);
+			console.log(`📈 Metrics endpoint: http://localhost:${server.port}/metrics`);
+			console.log(`🔧 Health check: http://localhost:${server.port}/`);
+		} else {
+			// Node.js server (no WebSocket support via this method)
+			serve({
+				fetch: app.fetch,
+				port: PORT,
+			});
+			
+			console.log(`🎯 Server running at http://localhost:${PORT}`);
+			console.log(`📡 JSONRPC endpoint: http://localhost:${PORT}/rpc`);
+			console.log(`🤖 MCP endpoint: http://localhost:${PORT}/mcp`);
+			console.log(`⚠️  WebSocket not supported in Node.js mode`);
+			console.log(`📊 SSE endpoint: http://localhost:${PORT}/events`);
+			console.log(`📈 Metrics endpoint: http://localhost:${PORT}/metrics`);
+			console.log(`🔧 Health check: http://localhost:${PORT}/`);
+		}
 	});
 }

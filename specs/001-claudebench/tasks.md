@@ -126,8 +126,8 @@
 - [x] T052 Implement MCP session management in apps/server/src/mcp/session.ts
 
 ### WebSocket/SSE
-- [x] T053 [P] Create WebSocket event subscription handler in apps/server/src/transports/websocket.ts
-- [x] T054 [P] Implement SSE event streaming in apps/server/src/transports/sse.ts
+- [ ] T053 [P] Create WebSocket event subscription handler in apps/server/src/transports/websocket.ts
+- [ ] T054 [P] Implement SSE event streaming in apps/server/src/transports/sse.ts
 
 ### Checkpoint - A vast part of the integration tests must be passing
 ### Notes - use shadcnui mcp for UI components at any point
