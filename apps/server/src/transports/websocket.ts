@@ -1,5 +1,5 @@
 import type { ServerWebSocket } from "bun";
-import { upgradeWebSocket, websocket } from "hono/bun";
+import { upgradeWebSocket } from "hono/bun";
 import type { Context } from "hono";
 import { z } from "zod";
 import { eventBus } from "../core/bus";

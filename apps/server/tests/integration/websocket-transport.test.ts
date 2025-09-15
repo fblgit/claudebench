@@ -282,7 +282,7 @@ describe("Integration: WebSocket Transport", () => {
 	it("should track subscriptions in Redis", async () => {
 		ws = new WebSocket(WS_URL);
 		
-		let clientId: string;
+		let clientId: string = "";
 		
 		await new Promise((resolve) => {
 			ws.onopen = () => resolve(true);
@@ -296,6 +296,9 @@ describe("Integration: WebSocket Transport", () => {
 		
 		// Wait for welcome message
 		await new Promise(resolve => setTimeout(resolve, 100));
+		
+		// Ensure we have a clientId
+		expect(clientId).toBeTruthy();
 		
 		// Subscribe to multiple events
 		ws.send(JSON.stringify({

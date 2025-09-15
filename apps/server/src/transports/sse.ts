@@ -41,14 +41,9 @@ export async function handleSSEConnection(c: Context) {
 	const clientId = providedId || `sse-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 	
 	// Parse event subscriptions
-	const requestedEvents = eventList ? eventList.split(",").map(e => e.trim()) : [];
+	const requestedEvents = eventList ? eventList.split(",").map(e => e.trim()).filter(e => e.length > 0) : [];
 	
-	// Set appropriate headers for SSE
-	c.header("Content-Type", "text/event-stream");
-	c.header("Cache-Control", "no-cache");
-	c.header("Connection", "keep-alive");
-	c.header("X-Accel-Buffering", "no"); // Disable nginx buffering
-	
+	// streamSSE handles the headers automatically
 	return streamSSE(c, async (stream) => {
 		const client: SSEClient = {
 			id: clientId,

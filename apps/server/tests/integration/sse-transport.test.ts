@@ -48,61 +48,76 @@ describe("Integration: SSE Transport", () => {
 		}
 	});
 	
-	it("should establish SSE connection and receive connected event", async () => {
-		const messages: any[] = [];
+	it("should establish SSE connection and follow SSE protocol specification", async () => {
+		const response = await fetch(SSE_URL);
 		
-		const connectionPromise = new Promise((resolve, reject) => {
-			// Note: EventSource is not available in Bun test environment
-			// We'll use fetch with streaming instead
-			fetch(SSE_URL)
-				.then(response => {
-					if (!response.ok) {
-						reject(new Error(`HTTP ${response.status}`));
-						return;
-					}
-					
-					expect(response.headers.get("Content-Type")).toBe("text/event-stream");
-					expect(response.headers.get("Cache-Control")).toBe("no-cache");
-					expect(response.headers.get("Connection")).toBe("keep-alive");
-					
-					const reader = response.body?.getReader();
-					const decoder = new TextDecoder();
-					
-					reader?.read().then(({ done, value }) => {
-						if (!done) {
-							const text = decoder.decode(value);
-							// Parse SSE format
-							const lines = text.split("\n");
-							let event = "";
-							let data = "";
-							
-							for (const line of lines) {
-								if (line.startsWith("event:")) {
-									event = line.slice(6).trim();
-								} else if (line.startsWith("data:")) {
-									data = line.slice(5).trim();
-								}
-							}
-							
-							if (event === "connected" && data) {
-								messages.push(JSON.parse(data));
-								resolve(true);
-							}
-						}
-					});
-				})
-				.catch(reject);
-		});
+		// Verify HTTP headers for SSE
+		expect(response.ok).toBe(true);
+		expect(response.headers.get("Content-Type")).toBe("text/event-stream");
+		expect(response.headers.get("Cache-Control")).toBe("no-cache");
+		expect(response.headers.get("Connection")).toBe("keep-alive");
 		
-		await connectionPromise;
+		const reader = response.body?.getReader();
+		const decoder = new TextDecoder();
 		
-		expect(messages.length).toBe(1);
-		expect(messages[0].clientId).toBeDefined();
-		expect(messages[0].timestamp).toBeDefined();
-		expect(messages[0].heartbeatInterval).toBe(30000);
+		// Read first chunk
+		const { value } = await reader!.read();
+		const rawText = decoder.decode(value);
+		
+		// Verify SSE protocol format:
+		// 1. Events should be separated by double newlines
+		const events = rawText.split("\n\n");
+		expect(events.length).toBeGreaterThanOrEqual(1);
+		
+		// 2. Parse first event and verify SSE field format
+		const firstEvent = events[0];
+		const lines = firstEvent.split("\n");
+		
+		// Verify SSE fields follow "field: value" format
+		let hasEventField = false;
+		let hasDataField = false;
+		let hasIdField = false;
+		let eventType = "";
+		let eventData = "";
+		
+		for (const line of lines) {
+			// Each line should follow "field: value" format or be empty
+			if (line.trim()) {
+				expect(line).toMatch(/^(event|data|id|retry):\s*.*/);
+				
+				if (line.startsWith("event:")) {
+					hasEventField = true;
+					eventType = line.slice(6).trim();
+				} else if (line.startsWith("data:")) {
+					hasDataField = true;
+					eventData = line.slice(5).trim();
+				} else if (line.startsWith("id:")) {
+					hasIdField = true;
+				}
+			}
+		}
+		
+		// SSE protocol requires at least a data field
+		expect(hasDataField).toBe(true);
+		
+		// Verify our implementation sends event type and id
+		expect(hasEventField).toBe(true);
+		expect(hasIdField).toBe(true);
+		
+		// Verify the connected event
+		expect(eventType).toBe("connected");
+		
+		// Verify data is valid JSON
+		const parsedData = JSON.parse(eventData);
+		expect(parsedData.clientId).toBeDefined();
+		expect(parsedData.timestamp).toBeDefined();
+		expect(parsedData.heartbeatInterval).toBe(30000);
+		
+		// Close the connection
+		reader!.cancel();
 	});
 	
-	it("should receive events for subscribed event types", async () => {
+	it("should receive events for subscribed event types and follow protocol", async () => {
 		const messages: any[] = [];
 		
 		// Subscribe to specific events via query parameter
@@ -111,16 +126,33 @@ describe("Integration: SSE Transport", () => {
 		expect(response.ok).toBe(true);
 		expect(response.headers.get("Content-Type")).toBe("text/event-stream");
 		
-		// Read initial messages
 		const reader = response.body?.getReader();
 		const decoder = new TextDecoder();
 		
-		// Read first chunk (should contain connected and subscribed events)
-		const { value } = await reader!.read();
-		const text = decoder.decode(value);
+		// Read multiple chunks to ensure we get both connected and subscribed events
+		let buffer = "";
+		let attempts = 0;
+		
+		while (attempts < 5) {
+			const { value, done } = await reader!.read();
+			if (done) break;
+			
+			buffer += decoder.decode(value, { stream: true });
+			attempts++;
+			
+			// Check if we have both events
+			if (buffer.includes("event: connected") && buffer.includes("event: subscribed")) {
+				break;
+			}
+			
+			// Small delay between reads
+			if (attempts < 5) {
+				await new Promise(resolve => setTimeout(resolve, 50));
+			}
+		}
 		
 		// Parse SSE messages
-		const events = text.split("\n\n").filter(e => e.trim());
+		const events = buffer.split("\n\n").filter(e => e.trim());
 		
 		for (const eventText of events) {
 			const lines = eventText.split("\n");
@@ -156,6 +188,9 @@ describe("Integration: SSE Transport", () => {
 			type: "test.sse1",
 			payload: { message: "Hello SSE" }
 		});
+		
+		// Close the reader
+		reader!.cancel();
 		
 		// Note: In a real test, we'd continue reading from the stream
 		// But for simplicity, we're just verifying the setup works
@@ -279,6 +314,9 @@ describe("Integration: SSE Transport", () => {
 		
 		expect(clientId).toBeDefined();
 		
+		// Wait a bit for async Redis operations to complete
+		await new Promise(resolve => setTimeout(resolve, 100));
+		
 		// Check Redis for subscription tracking
 		const redis = getRedis();
 		const subKey = `cb:sse:subscriptions:${clientId}`;
@@ -286,6 +324,9 @@ describe("Integration: SSE Transport", () => {
 		
 		expect(subscriptions).toContain("redis.test1");
 		expect(subscriptions).toContain("redis.test2");
+		
+		// Close the connection
+		reader!.cancel();
 	});
 	
 	it("should return statistics via stats endpoint", async () => {
