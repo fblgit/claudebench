@@ -121,42 +121,43 @@
 ### Checkpoint - 245 Passed Tests & 9 Failing (advanced features)
 
 ### MCP Server
-- [ ] T050 Initialize MCP server with Streamable HTTP transport in apps/server/src/mcp/server.ts
-- [ ] T051 Auto-generate MCP tools from handler registry in apps/server/src/mcp/tools.ts
-- [ ] T052 Implement MCP session management in apps/server/src/mcp/session.ts
+- [x] T050 Initialize MCP server with Streamable HTTP transport in apps/server/src/mcp/server.ts
+- [x] T051 Auto-generate MCP tools from handler registry in apps/server/src/mcp/tools.ts
+- [x] T052 Implement MCP session management in apps/server/src/mcp/session.ts
 
 ### WebSocket/SSE
-- [ ] T053 [P] Create WebSocket event subscription handler in apps/server/src/transports/websocket.ts
-- [ ] T054 [P] Implement SSE event streaming in apps/server/src/transports/sse.ts
+- [x] T053 [P] Create WebSocket event subscription handler in apps/server/src/transports/websocket.ts
+- [x] T054 [P] Implement SSE event streaming in apps/server/src/transports/sse.ts
 
 ### Checkpoint - A vast part of the integration tests must be passing
+### Notes - use shadcnui mcp for UI components at any point
 
 ## Phase 3.5: Dashboard UI
 
 ### Setup
-- [ ] T055 [P] Configure TanStack Router in apps/web/src/router.tsx
-- [ ] T056 [P] Create event client service in apps/web/src/services/event-client.ts
-- [ ] T057 [P] Set up TanStack Query for server state in apps/web/src/services/query-client.ts
+- [ ] T055 Configure TanStack Router in apps/web/src/router.tsx
+- [ ] T056 Create event client service in apps/web/src/services/event-client.ts
+- [ ] T057 Set up TanStack Query for server state in apps/web/src/services/query-client.ts
 
 ### Components
-- [ ] T058 [P] Create event stream viewer component in apps/web/src/components/EventStream.tsx
-- [ ] T059 [P] Build task queue display in apps/web/src/components/TaskQueue.tsx
-- [ ] T060 [P] Create instance health monitor in apps/web/src/components/InstanceHealth.tsx
-- [ ] T061 [P] Build metrics dashboard in apps/web/src/components/Metrics.tsx
-- [ ] T062 [P] Create handler manager UI in apps/web/src/components/HandlerManager.tsx
+- [ ] T058 Create event stream viewer component in apps/web/src/components/EventStream.tsx
+- [ ] T059 Build task queue display in apps/web/src/components/TaskQueue.tsx
+- [ ] T060 Create instance health monitor in apps/web/src/components/InstanceHealth.tsx
+- [ ] T061 Build metrics dashboard in apps/web/src/components/Metrics.tsx
+- [ ] T062 Create handler manager UI in apps/web/src/components/HandlerManager.tsx
 
 ### Routes
 - [ ] T063 Create dashboard home route in apps/web/src/routes/index.tsx
-- [x] T064 [P] Create events route in apps/web/src/routes/events.tsx
-- [x] T065 [P] Create tasks route in apps/web/src/routes/tasks.tsx
-- [x] T066 [P] Create system route in apps/web/src/routes/system.tsx
+- [ ] T064 Create events route in apps/web/src/routes/events.tsx
+- [ ] T065 Create tasks route in apps/web/src/routes/tasks.tsx
+- [ ] T066 Create system route in apps/web/src/routes/system.tsx
 
 ## Phase 3.6: CLI Tools
 - [ ] T067 Create CLI entry point in apps/server/src/cli/index.ts
-- [ ] T068 [P] Implement events:watch command in apps/server/src/cli/events.ts
-- [ ] T069 [P] Implement tasks:list command in apps/server/src/cli/tasks.ts
-- [ ] T070 [P] Implement handlers:list command in apps/server/src/cli/handlers.ts
-- [ ] T071 [P] Implement metrics command in apps/server/src/cli/metrics.ts
+- [ ] T068 Implement events:watch command in apps/server/src/cli/events.ts
+- [ ] T069 Implement tasks:list command in apps/server/src/cli/tasks.ts
+- [ ] T070 Implement handlers:list command in apps/server/src/cli/handlers.ts
+- [ ] T071 Implement metrics command in apps/server/src/cli/metrics.ts
 
 ## Phase 3.7: Polish & Documentation
 - [ ] T072 [P] Add unit tests for decorator metadata in apps/server/tests/unit/decorator.test.ts
