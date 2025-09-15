@@ -52,6 +52,25 @@ export const systemMetricsOutput = z.object({
 	memoryUsage: z.number().optional(),
 });
 
+// system.discover - Expose registered handlers and their schemas
+export const systemDiscoverInput = z.object({
+	domain: z.string().optional(), // Optional filter by domain (e.g., "task", "system", "hook")
+});
+
+export const systemDiscoverOutput = z.object({
+	methods: z.array(z.object({
+		name: z.string(), // Event name (e.g., "task.create")
+		description: z.string().optional(),
+		inputSchema: z.any().optional(), // The Zod schema as JSON
+		outputSchema: z.any().optional(), // The Zod schema as JSON
+		metadata: z.object({
+			persist: z.boolean().optional(),
+			rateLimit: z.number().optional(),
+			roles: z.array(z.string()).optional(),
+		}).optional(),
+	})),
+});
+
 export type SystemHealthInput = z.infer<typeof systemHealthInput>;
 export type SystemHealthOutput = z.infer<typeof systemHealthOutput>;
 export type SystemRegisterInput = z.infer<typeof systemRegisterInput>;
@@ -62,3 +81,5 @@ export type SystemGetStateInput = z.infer<typeof systemGetStateInput>;
 export type SystemGetStateOutput = z.infer<typeof systemGetStateOutput>;
 export type SystemMetricsInput = z.infer<typeof systemMetricsInput>;
 export type SystemMetricsOutput = z.infer<typeof systemMetricsOutput>;
+export type SystemDiscoverInput = z.infer<typeof systemDiscoverInput>;
+export type SystemDiscoverOutput = z.infer<typeof systemDiscoverOutput>;

@@ -135,9 +135,9 @@
 ## Phase 3.5: Dashboard UI
 
 ### Setup
-- [ ] T055 Configure TanStack Router in apps/web/src/router.tsx
-- [ ] T056 Create event client service in apps/web/src/services/event-client.ts
-- [ ] T057 Set up TanStack Query for server state in apps/web/src/services/query-client.ts
+- [x] T055 Configure TanStack Router in apps/web/src/router.tsx
+- [x] T056 Create event client service in apps/web/src/services/event-client.ts
+- [x] T057 Set up TanStack Query for server state in apps/web/src/services/query-client.ts
 
 ### Components
 - [ ] T058 Create event stream viewer component in apps/web/src/components/EventStream.tsx
