@@ -49,7 +49,7 @@ async function getOrCreateServer(sessionId: string): Promise<McpServer> {
 		try {
 			// Convert Zod schema to a raw shape for the tool() method
 			// The tool() method expects ZodRawShape, not a ZodObject
-			const inputSchemaShape = handler.inputSchema._def.shape ? handler.inputSchema._def.shape() : {};
+			const inputSchemaShape = handler.inputSchema._def.shape || {};
 			
 			// Use the high-level tool() method which properly handles Zod schemas
 			(server as any).tool(

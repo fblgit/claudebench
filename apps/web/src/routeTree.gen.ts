@@ -8,9 +8,36 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import { createFileRoute } from '@tanstack/react-router'
+
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 
+const TestLazyRouteImport = createFileRoute('/test')()
+const TasksLazyRouteImport = createFileRoute('/tasks')()
+const SystemLazyRouteImport = createFileRoute('/system')()
+const EventsLazyRouteImport = createFileRoute('/events')()
+
+const TestLazyRoute = TestLazyRouteImport.update({
+  id: '/test',
+  path: '/test',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/test.lazy').then((d) => d.Route))
+const TasksLazyRoute = TasksLazyRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/tasks.lazy').then((d) => d.Route))
+const SystemLazyRoute = SystemLazyRouteImport.update({
+  id: '/system',
+  path: '/system',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/system.lazy').then((d) => d.Route))
+const EventsLazyRoute = EventsLazyRouteImport.update({
+  id: '/events',
+  path: '/events',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/events.lazy').then((d) => d.Route))
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +46,72 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/events': typeof EventsLazyRoute
+  '/system': typeof SystemLazyRoute
+  '/tasks': typeof TasksLazyRoute
+  '/test': typeof TestLazyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/events': typeof EventsLazyRoute
+  '/system': typeof SystemLazyRoute
+  '/tasks': typeof TasksLazyRoute
+  '/test': typeof TestLazyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/events': typeof EventsLazyRoute
+  '/system': typeof SystemLazyRoute
+  '/tasks': typeof TasksLazyRoute
+  '/test': typeof TestLazyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/events' | '/system' | '/tasks' | '/test'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/events' | '/system' | '/tasks' | '/test'
+  id: '__root__' | '/' | '/events' | '/system' | '/tasks' | '/test'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  EventsLazyRoute: typeof EventsLazyRoute
+  SystemLazyRoute: typeof SystemLazyRoute
+  TasksLazyRoute: typeof TasksLazyRoute
+  TestLazyRoute: typeof TestLazyRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/test': {
+      id: '/test'
+      path: '/test'
+      fullPath: '/test'
+      preLoaderRoute: typeof TestLazyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tasks': {
+      id: '/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof TasksLazyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/system': {
+      id: '/system'
+      path: '/system'
+      fullPath: '/system'
+      preLoaderRoute: typeof SystemLazyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/events': {
+      id: '/events'
+      path: '/events'
+      fullPath: '/events'
+      preLoaderRoute: typeof EventsLazyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,6 +124,10 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  EventsLazyRoute: EventsLazyRoute,
+  SystemLazyRoute: SystemLazyRoute,
+  TasksLazyRoute: TasksLazyRoute,
+  TestLazyRoute: TestLazyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
