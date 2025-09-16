@@ -204,7 +204,7 @@ class ClaudeBenchHookBridge:
             
         elif event_type in ['Stop', 'stop']:
             # Main agent stop event
-            method = 'system.agent_stop'
+            method = 'hook.agent_stop'
             params = {
                 'instanceId': self.instance_id,
                 'sessionId': self.session_id,
@@ -214,7 +214,7 @@ class ClaudeBenchHookBridge:
             
         elif event_type in ['SubagentStop', 'subagent_stop']:
             # Subagent stop event
-            method = 'system.agent_stop'
+            method = 'hook.agent_stop'
             params = {
                 'instanceId': self.instance_id,
                 'sessionId': self.session_id,
@@ -224,7 +224,7 @@ class ClaudeBenchHookBridge:
             
         elif event_type in ['Notification', 'notification']:
             # Notification event
-            method = 'system.notification'
+            method = 'hook.notification'
             params = {
                 'message': claude_data.get('message', ''),
                 'type': claude_data.get('notification_type', 'info'),
@@ -235,7 +235,7 @@ class ClaudeBenchHookBridge:
             
         elif event_type in ['PreCompact', 'pre_compact']:
             # Pre-compaction event
-            method = 'system.pre_compact'
+            method = 'hook.pre_compact'
             params = {
                 'sessionId': self.session_id,
                 'instanceId': self.instance_id,
