@@ -56,7 +56,7 @@ export function EventStream({
 	const [searchTerm, setSearchTerm] = useState("");
 	const [selectedEvent, setSelectedEvent] = useState<EventMessage | null>(null);
 	
-	const eventSourceRef = useRef<EventSource | null>(null);
+	const connectionRef = useRef<{ ws: WebSocket; subscriptions: Set<string>; close: () => void } | null>(null);
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
 	const pausedEventsRef = useRef<EventMessage[]>([]);
 
@@ -70,40 +70,53 @@ export function EventStream({
 		// Subscribe to all events or specific domain
 		const eventTypes = selectedDomain === "all" ? undefined : [`${selectedDomain}.*`];
 		
-		eventSourceRef.current = client.subscribeToEvents(
+		connectionRef.current = client.subscribeToEvents(
 			eventTypes,
-			(event: MessageEvent) => {
+			(message: any) => {
 				try {
-					const eventData = JSON.parse(event.data) as EventMessage;
-					
-					if (isPaused) {
-						pausedEventsRef.current.push(eventData);
-					} else {
-						setEvents(prev => {
-							const newEvents = [eventData, ...prev];
-							return newEvents.slice(0, maxEvents);
-						});
+					// The WebSocket sends data with type: "event"
+					if (message.type === "event") {
+						const eventData: EventMessage = {
+							id: message.data?.id || `${Date.now()}-${Math.random()}`,
+							type: message.event,
+							timestamp: message.timestamp || Date.now(),
+							payload: message.data,
+							metadata: message.data?.metadata,
+						};
+						
+						if (isPaused) {
+							pausedEventsRef.current.push(eventData);
+						} else {
+							setEvents(prev => {
+								const newEvents = [eventData, ...prev];
+								return newEvents.slice(0, maxEvents);
+							});
+						}
 					}
 				} catch (error) {
-					console.error("Failed to parse event:", error);
+					console.error("Failed to process event:", error);
 				}
 			},
-			(error: Event) => {
-				console.error("EventSource error:", error);
+			(error: Error) => {
+				console.error("WebSocket error:", error);
 				setIsConnected(false);
-				// Attempt to reconnect after 5 seconds
-				setTimeout(connect, 5000);
+			},
+			() => {
+				// onConnect callback
+				setIsConnected(true);
+			},
+			() => {
+				// onDisconnect callback
+				setIsConnected(false);
 			}
 		);
-		
-		setIsConnected(true);
 	}, [selectedDomain, isPaused, maxEvents]);
 
 	// Disconnect from event stream
 	const disconnect = useCallback(() => {
-		if (eventSourceRef.current) {
-			eventSourceRef.current.close();
-			eventSourceRef.current = null;
+		if (connectionRef.current) {
+			connectionRef.current.close();
+			connectionRef.current = null;
 		}
 		setIsConnected(false);
 	}, []);
@@ -299,7 +312,7 @@ export function EventStream({
 							<div className="p-4 space-y-2">
 								{filteredEvents.length === 0 ? (
 									<div className="text-center text-muted-foreground py-8">
-										{isConnected ? "No events yet..." : "Connecting to event stream..."}
+										{isConnected ? "No events yet..." : "Connecting to WebSocket..."}
 									</div>
 								) : (
 									filteredEvents.map((event) => (

@@ -20,7 +20,6 @@ import { jobScheduler } from "./core/jobs";
 import { handleJsonRpcRequest, handleJsonRpcBatch } from "./transports/http";
 import { registerHttpRoutes } from "./transports/http-routes";
 import { createWebSocketHandler, websocket, getWebSocketStats } from "./transports/websocket";
-import { handleSSEConnection, handleSSEExecute, getSSEStats } from "./transports/sse";
 
 // Import MCP handlers
 import { handleMcpPost, handleMcpGet, handleMcpDelete, handleMcpHealth } from "./mcp/handler";
@@ -71,18 +70,10 @@ app.get("/mcp", handleMcpGet);
 app.delete("/mcp", handleMcpDelete);
 app.get("/mcp/health", handleMcpHealth);
 
-// WebSocket endpoint for real-time event subscriptions
+// WebSocket endpoint with upgradeWebSocket handler
 app.get("/ws", createWebSocketHandler());
 
-// SSE endpoint for event streaming
-app.get("/events", handleSSEConnection);
-app.post("/events/execute", handleSSEExecute);
-
-// Real-time transport statistics endpoints
-app.get("/events/stats", (c) => {
-	return c.json(getSSEStats());
-});
-
+// Real-time transport statistics endpoint
 app.get("/ws/stats", (c) => {
 	return c.json(getWebSocketStats());
 });
@@ -206,7 +197,9 @@ if (import.meta.url === `file://${process.argv[1]}` || require.main === module) 
 		if (typeof Bun !== "undefined") {
 			// Bun native server with WebSocket support
 			const server = Bun.serve({
-				fetch: app.fetch,
+				fetch(req, server) {
+					return app.fetch(req, server);
+				},
 				websocket,
 				port: PORT,
 			});
@@ -215,7 +208,6 @@ if (import.meta.url === `file://${process.argv[1]}` || require.main === module) 
 			console.log(`📡 JSONRPC endpoint: http://localhost:${server.port}/rpc`);
 			console.log(`🤖 MCP endpoint: http://localhost:${server.port}/mcp`);
 			console.log(`🔄 WebSocket endpoint: ws://localhost:${server.port}/ws`);
-			console.log(`📊 SSE endpoint: http://localhost:${server.port}/events`);
 			console.log(`📈 Metrics endpoint: http://localhost:${server.port}/metrics`);
 			console.log(`🔧 Health check: http://localhost:${server.port}/`);
 		} else {
@@ -229,7 +221,6 @@ if (import.meta.url === `file://${process.argv[1]}` || require.main === module) 
 			console.log(`📡 JSONRPC endpoint: http://localhost:${PORT}/rpc`);
 			console.log(`🤖 MCP endpoint: http://localhost:${PORT}/mcp`);
 			console.log(`⚠️  WebSocket not supported in Node.js mode`);
-			console.log(`📊 SSE endpoint: http://localhost:${PORT}/events`);
 			console.log(`📈 Metrics endpoint: http://localhost:${PORT}/metrics`);
 			console.log(`🔧 Health check: http://localhost:${PORT}/`);
 		}

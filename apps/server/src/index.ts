@@ -1,7 +1,11 @@
 import { app, initialize } from "./server";
+import { websocket } from "./transports/websocket";
 
-// Export the app for production deployment
-export default app;
+// Export for Bun with WebSocket support
+export default {
+	fetch: app.fetch,
+	websocket,
+};
 
-// Re-export initialize for testing
-export { initialize };
+// Re-export for testing
+export { app, initialize };

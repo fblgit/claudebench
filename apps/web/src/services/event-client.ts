@@ -243,41 +243,127 @@ export class EventClient {
 	}
 
 	/**
-	 * Subscribe to events via Server-Sent Events
+	 * Subscribe to events via WebSocket
 	 */
 	subscribeToEvents(
 		eventTypes?: string[],
-		onMessage?: (event: MessageEvent) => void,
-		onError?: (error: Event) => void
-	): EventSource {
-		const params = new URLSearchParams();
-		if (eventTypes?.length) {
-			params.append("events", eventTypes.join(","));
-		}
-		params.append("sessionId", this.config.sessionId);
+		onMessage?: (data: any) => void,
+		onError?: (error: Error) => void,
+		onConnect?: () => void,
+		onDisconnect?: () => void
+	): WebSocketConnection {
+		const wsUrl = this.config.apiUrl.replace(/^http/, "ws") + "/ws";
+		const ws = new WebSocket(wsUrl);
+		const connection: WebSocketConnection = {
+			ws,
+			subscriptions: new Set(eventTypes || []),
+			close: () => ws.close(),
+		};
 
-		const eventSource = new EventSource(
-			`${this.config.apiUrl}/events?${params.toString()}`
-		);
+		ws.onopen = () => {
+			console.log("WebSocket connected");
+			if (onConnect) onConnect();
+			
+			// Subscribe to requested events
+			if (eventTypes?.length) {
+				ws.send(JSON.stringify({
+					action: "subscribe",
+					events: eventTypes,
+				}));
+			}
+		};
 
-		if (onMessage) {
-			eventSource.onmessage = onMessage;
-		}
-
-		if (onError) {
-			eventSource.onerror = onError;
-		}
-
-		// Handle specific event types
-		eventTypes?.forEach((eventType) => {
-			eventSource.addEventListener(eventType, (event) => {
-				if (onMessage) {
-					onMessage(event as MessageEvent);
+		ws.onmessage = (event) => {
+			try {
+				const data = JSON.parse(event.data);
+				
+				// Handle different message types
+				if (data.type === "event" && onMessage) {
+					onMessage(data);
+				} else if (data.type === "connected") {
+					console.log("WebSocket connection confirmed:", data.clientId);
+				} else if (data.type === "subscribed") {
+					console.log("Subscribed to events:", data.events);
+				} else if (data.type === "error") {
+					if (onError) onError(new Error(data.error.message));
 				}
-			});
-		});
+			} catch (error) {
+				console.error("Failed to parse WebSocket message:", error);
+				if (onError) onError(error as Error);
+			}
+		};
 
-		return eventSource;
+		ws.onerror = (event) => {
+			console.error("WebSocket error:", event);
+			if (onError) onError(new Error("WebSocket error"));
+		};
+
+		ws.onclose = () => {
+			console.log("WebSocket disconnected");
+			if (onDisconnect) onDisconnect();
+			
+			// Auto-reconnect after 5 seconds
+			setTimeout(() => {
+				if (ws.readyState === WebSocket.CLOSED) {
+					this.subscribeToEvents(eventTypes, onMessage, onError, onConnect, onDisconnect);
+				}
+			}, 5000);
+		};
+
+		return connection;
+	}
+
+	/**
+	 * Execute a JSONRPC request via WebSocket
+	 */
+	async executeViaWebSocket<T = any>(
+		ws: WebSocket,
+		method: string,
+		params?: any
+	): Promise<T> {
+		return new Promise((resolve, reject) => {
+			const id = ++this.requestId;
+			
+			const request = {
+				action: "execute",
+				request: {
+					jsonrpc: "2.0",
+					method,
+					params,
+					id,
+				},
+			};
+
+			const handler = (event: MessageEvent) => {
+				try {
+					const data = JSON.parse(event.data);
+					if (data.jsonrpc === "2.0" && data.id === id) {
+						ws.removeEventListener("message", handler);
+						
+						if ("error" in data) {
+							reject(new JsonRpcError(
+								data.error.message,
+								data.error.code,
+								data.error.data
+							));
+						} else {
+							resolve(data.result as T);
+						}
+					}
+				} catch (error) {
+					// Continue listening for the right message
+				}
+			};
+
+			ws.addEventListener("message", handler);
+			ws.send(JSON.stringify(request));
+
+			// Timeout after configured time
+			setTimeout(() => {
+				ws.removeEventListener("message", handler);
+				reject(new Error("Request timeout"));
+			}, this.config.timeout);
+		});
 	}
 
 	/**
@@ -324,6 +410,15 @@ export class EventClient {
 	private sleep(ms: number): Promise<void> {
 		return new Promise((resolve) => setTimeout(resolve, ms));
 	}
+}
+
+/**
+ * WebSocket connection interface
+ */
+interface WebSocketConnection {
+	ws: WebSocket;
+	subscriptions: Set<string>;
+	close: () => void;
 }
 
 /**

@@ -1,10 +1,13 @@
 import type { ServerWebSocket } from "bun";
-import { upgradeWebSocket } from "hono/bun";
+import { createBunWebSocket } from "hono/bun";
 import type { Context } from "hono";
 import { z } from "zod";
 import { eventBus } from "../core/bus";
 import { registry } from "../core/registry";
 import { getRedis, redisKey } from "../core/redis";
+
+// Create Bun WebSocket handlers
+const { upgradeWebSocket, websocket } = createBunWebSocket();
 
 // WebSocket connection state
 interface WSClient {
@@ -15,7 +18,7 @@ interface WSClient {
 }
 
 // Map of WebSocket connections
-const clients = new Map<ServerWebSocket<WSClient>, WSClient>();
+const clients = new Map<any, WSClient>();
 
 // JSONRPC 2.0 Request schema (same as HTTP)
 const JsonRpcRequestSchema = z.object({
@@ -48,99 +51,6 @@ const WSActionSchema = z.discriminatedUnion("action", [
 		action: z.literal("ping"),
 	}),
 ]);
-
-/**
- * Create WebSocket upgrade handler
- */
-export const createWebSocketHandler = () => {
-	return upgradeWebSocket((c: Context) => {
-		const clientId = `ws-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-		
-		return {
-			onOpen(event, ws) {
-				const client: WSClient = {
-					id: clientId,
-					subscriptions: new Set(),
-					metadata: {
-						connectedAt: Date.now(),
-						userAgent: c.req.header("User-Agent"),
-					},
-				};
-				
-				clients.set(ws as any, client);
-				
-				// Send welcome message
-				ws.send(JSON.stringify({
-					type: "connected",
-					clientId,
-					timestamp: Date.now(),
-				}));
-				
-				console.log(`WebSocket client connected: ${clientId}`);
-			},
-			
-			async onMessage(event, ws) {
-				const client = clients.get(ws as any);
-				if (!client) return;
-				
-				try {
-					const data = typeof event.data === "string" 
-						? JSON.parse(event.data)
-						: event.data;
-					
-					// Validate WebSocket action
-					const action = WSActionSchema.parse(data);
-					
-					switch (action.action) {
-						case "subscribe":
-							await handleSubscribe(client, action.events, ws);
-							break;
-							
-						case "unsubscribe":
-							await handleUnsubscribe(client, action.events, ws);
-							break;
-							
-						case "execute":
-							await handleExecute(client, action.request, ws);
-							break;
-							
-						case "ping":
-							ws.send(JSON.stringify({ type: "pong", timestamp: Date.now() }));
-							break;
-					}
-				} catch (error: any) {
-					// Send error response
-					ws.send(JSON.stringify({
-						type: "error",
-						error: {
-							message: error.message || "Invalid request",
-							code: error.name === "ZodError" ? -32602 : -32603,
-						},
-						timestamp: Date.now(),
-					}));
-				}
-			},
-			
-			onClose(event, ws) {
-				const client = clients.get(ws as any);
-				if (!client) return;
-				
-				// Clean up subscriptions
-				for (const eventType of client.subscriptions) {
-					eventBus.subscribe(eventType, async () => {}, client.id).catch(() => {});
-				}
-				
-				clients.delete(ws as any);
-				console.log(`WebSocket client disconnected: ${client.id}`);
-			},
-			
-			onError(event, ws) {
-				const client = clients.get(ws as any);
-				console.error(`WebSocket error for client ${client?.id}:`, event);
-			},
-		};
-	});
-};
 
 /**
  * Handle event subscription
@@ -268,6 +178,93 @@ async function handleExecute(
 }
 
 /**
+ * Create WebSocket handler using Hono's upgradeWebSocket
+ */
+export const createWebSocketHandler = () => {
+	return upgradeWebSocket((c: Context) => {
+		const clientId = `ws-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+		let client: WSClient;
+		
+		return {
+			onOpen(_event, ws) {
+				client = {
+					id: clientId,
+					subscriptions: new Set(),
+					metadata: {
+						connectedAt: Date.now(),
+						userAgent: c.req.header("User-Agent"),
+					},
+				};
+				
+				clients.set(ws, client);
+				
+				// Send welcome message
+				ws.send(JSON.stringify({
+					type: "connected",
+					clientId,
+					timestamp: Date.now(),
+				}));
+				
+				console.log(`WebSocket client connected: ${clientId}`);
+			},
+			
+			async onMessage(event, ws) {
+				if (!client) return;
+				
+				try {
+					const data = typeof event.data === "string" 
+						? JSON.parse(event.data)
+						: event.data;
+					
+					// Validate WebSocket action
+					const action = WSActionSchema.parse(data);
+					
+					switch (action.action) {
+						case "subscribe":
+							await handleSubscribe(client, action.events, ws);
+							break;
+							
+						case "unsubscribe":
+							await handleUnsubscribe(client, action.events, ws);
+							break;
+							
+						case "execute":
+							await handleExecute(client, action.request, ws);
+							break;
+							
+						case "ping":
+							ws.send(JSON.stringify({ type: "pong", timestamp: Date.now() }));
+							break;
+					}
+				} catch (error: any) {
+					// Send error response
+					ws.send(JSON.stringify({
+						type: "error",
+						error: {
+							message: error.message || "Invalid request",
+							code: error.name === "ZodError" ? -32602 : -32603,
+						},
+						timestamp: Date.now(),
+					}));
+				}
+			},
+			
+			onClose(_event, ws) {
+				if (!client) return;
+				
+				// Clean up subscriptions
+				for (const eventType of client.subscriptions) {
+					eventBus.subscribe(eventType, async () => {}, client.id).catch(() => {});
+				}
+				
+				clients.delete(ws);
+				console.log(`WebSocket client disconnected: ${client.id}`);
+			},
+		};
+	});
+};
+
+/**
  * Broadcast event to all subscribed WebSocket clients
  */
 export async function broadcastToWebSockets(
@@ -277,7 +274,7 @@ export async function broadcastToWebSockets(
 	for (const [ws, client] of clients.entries()) {
 		if (client.subscriptions.has(eventType)) {
 			try {
-				(ws as any).send(JSON.stringify({
+				ws.send(JSON.stringify({
 					type: "event",
 					event: eventType,
 					data,
@@ -315,84 +312,5 @@ export function getWebSocketStats() {
 	return stats;
 }
 
-// Export the websocket handler for Bun
-// This needs to be an object with message, open, close handlers
-export const websocket = {
-	message(ws: any, message: string | Buffer) {
-		const client = clients.get(ws);
-		if (!client) return;
-		
-		// Handle the message using the same logic from onMessage
-		try {
-			const data = typeof message === "string" 
-				? JSON.parse(message)
-				: JSON.parse(message.toString());
-			
-			// Validate WebSocket action
-			const action = WSActionSchema.parse(data);
-			
-			switch (action.action) {
-				case "subscribe":
-					handleSubscribe(client, action.events, ws);
-					break;
-					
-				case "unsubscribe":
-					handleUnsubscribe(client, action.events, ws);
-					break;
-					
-				case "execute":
-					handleExecute(client, action.request, ws);
-					break;
-					
-				case "ping":
-					ws.send(JSON.stringify({ type: "pong", timestamp: Date.now() }));
-					break;
-			}
-		} catch (error: any) {
-			// Send error response
-			ws.send(JSON.stringify({
-				type: "error",
-				error: {
-					message: error.message || "Invalid request",
-					code: error.name === "ZodError" ? -32602 : -32603,
-				},
-				timestamp: Date.now(),
-			}));
-		}
-	},
-	
-	open(ws: any) {
-		const clientId = `ws-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-		const client: WSClient = {
-			id: clientId,
-			subscriptions: new Set(),
-			metadata: {
-				connectedAt: Date.now(),
-			},
-		};
-		
-		clients.set(ws, client);
-		
-		// Send welcome message
-		ws.send(JSON.stringify({
-			type: "connected",
-			clientId,
-			timestamp: Date.now(),
-		}));
-		
-		console.log(`WebSocket client connected: ${clientId}`);
-	},
-	
-	close(ws: any) {
-		const client = clients.get(ws);
-		if (!client) return;
-		
-		// Clean up subscriptions
-		for (const eventType of client.subscriptions) {
-			eventBus.subscribe(eventType, async () => {}, client.id).catch(() => {});
-		}
-		
-		clients.delete(ws);
-		console.log(`WebSocket client disconnected: ${client.id}`);
-	},
-};
+// Export the websocket handler for Bun.serve
+export { websocket };
