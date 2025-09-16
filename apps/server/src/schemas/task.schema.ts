@@ -104,3 +104,35 @@ export const taskClaimOutput = z.object({
 
 export type TaskClaimInput = z.infer<typeof taskClaimInput>;
 export type TaskClaimOutput = z.infer<typeof taskClaimOutput>;
+
+// task.list - NEW for listing/filtering tasks
+export const taskListInput = z.object({
+	status: TaskStatus.optional(),
+	assignedTo: z.string().optional(),
+	priority: z.number().int().min(0).max(100).optional(),
+	limit: z.number().int().min(1).max(1000).default(100),
+	offset: z.number().int().min(0).default(0),
+	orderBy: z.enum(["createdAt", "updatedAt", "priority", "status", "assignedTo"]).default("createdAt"),
+	order: z.enum(["asc", "desc"]).default("desc"),
+});
+
+export const taskListOutput = z.object({
+	tasks: z.array(z.object({
+		id: z.string(),
+		text: z.string(),
+		status: TaskStatus,
+		priority: z.number(),
+		assignedTo: z.string().nullable(),
+		metadata: z.record(z.string(), z.unknown()).nullable(),
+		result: z.unknown().nullable(),
+		error: z.string().nullable(),
+		createdAt: z.string().datetime(),
+		updatedAt: z.string().datetime(),
+		completedAt: z.string().datetime().nullable(),
+	})),
+	totalCount: z.number(),
+	hasMore: z.boolean(),
+});
+
+export type TaskListInput = z.infer<typeof taskListInput>;
+export type TaskListOutput = z.infer<typeof taskListOutput>;

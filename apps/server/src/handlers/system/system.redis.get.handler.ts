@@ -89,8 +89,8 @@ export class SystemRedisGetHandler {
 					break;
 					
 				case "stream":
-					const streamInfo = await ctx.redis.stream.xinfo("STREAM", key).catch(() => null);
-					if (streamInfo) {
+					const streamInfo = await ctx.redis.stream.xinfo("STREAM", key).catch(() => ([] as any[]));
+					if (streamInfo && Array.isArray(streamInfo) && streamInfo.length > 1) {
 						size = parseInt(streamInfo[1] as string); // length is at index 1
 						const streamData = await ctx.redis.stream.xrevrange(key, "+", "-", "COUNT", limit);
 						data = this.formatStreamData(streamData, format, size, limit);

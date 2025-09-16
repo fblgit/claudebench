@@ -121,7 +121,7 @@ export class TaskCompleteHandler {
 					data: {
 						status: result.status as any,
 						completedAt: new Date(completedAt),
-						result: parsedResult, // Store complete result in dedicated field
+						result: parsedResult as any, // Store complete result in dedicated field
 						metadata: {
 							...(taskData.metadata ? JSON.parse(taskData.metadata) : {}),
 							duration,
@@ -143,12 +143,12 @@ export class TaskCompleteHandler {
 						data: {
 							status: result.status as any,
 							completedAt: new Date(completedAt),
-							error: `Failed to store result: ${error.message}`,
+							error: `Failed to store result: ${error instanceof Error ? error.message : String(error)}`,
 							metadata: {
 								...(taskData.metadata ? JSON.parse(taskData.metadata) : {}),
 								duration,
 								completedBy: input.workerId || taskData.assignedTo,
-								persistenceError: error.message,
+								persistenceError: error instanceof Error ? error.message : String(error),
 							},
 						},
 					});

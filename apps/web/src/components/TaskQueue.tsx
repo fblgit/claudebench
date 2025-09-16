@@ -86,10 +86,14 @@ export function TaskQueue({
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
 	
 	// Queries and Mutations
-	// Use custom query with reduced polling since we have WebSocket for real-time updates
-	const { data: systemState, isLoading, refetch } = useEventQuery(
-		"system.get_state", 
-		{},
+	// Use new task.list handler for comprehensive task data
+	const { data: taskListData, isLoading, refetch } = useEventQuery(
+		"task.list", 
+		{
+			limit: 1000, // Get all tasks for now
+			orderBy: "createdAt",
+			order: "desc"
+		},
 		{ 
 			refetchInterval: 30000, // Poll every 30 seconds
 		}
@@ -185,12 +189,12 @@ export function TaskQueue({
 		setIsConnected(false);
 	}, []);
 	
-	// Initialize tasks from system state
+	// Initialize tasks from task list data
 	useEffect(() => {
-		if (systemState?.tasks) {
-			setTasks(systemState.tasks as Task[]);
+		if (taskListData?.tasks) {
+			setTasks(taskListData.tasks as Task[]);
 		}
-	}, [systemState]);
+	}, [taskListData]);
 	
 	// Connect to WebSocket on mount
 	useEffect(() => {

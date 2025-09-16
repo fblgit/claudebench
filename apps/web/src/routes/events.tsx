@@ -70,7 +70,7 @@ function EventsComponent() {
 					
 					// Add to recent events
 					setRecentEvents((prev) => {
-						const status = eventType.includes("error") || eventType.includes("failed") 
+						const status: "error" | "success" | "info" = eventType.includes("error") || eventType.includes("failed") 
 							? "error" 
 							: eventType.includes("complete") || eventType.includes("success")
 							? "success"

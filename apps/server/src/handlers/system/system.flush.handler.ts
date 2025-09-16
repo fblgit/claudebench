@@ -14,7 +14,6 @@ const flushOutput = z.object({
 	}),
 	postgres: z.object({
 		tasksDeleted: z.number(),
-		eventsDeleted: z.number(),
 	}).optional(),
 	timestamp: z.string(),
 });
@@ -81,21 +80,18 @@ export class SystemFlushHandler {
 				// Delete all tasks
 				const tasksDeleted = await ctx.prisma.task.deleteMany({});
 				
-				// Delete all events  
-				const eventsDeleted = await ctx.prisma.event.deleteMany({});
+				// No Event model in schema - events are handled by Redis streams
 				
 				postgresResult = {
 					tasksDeleted: tasksDeleted.count,
-					eventsDeleted: eventsDeleted.count,
 				};
 				
-				console.log(`[FLUSH] PostgreSQL: Deleted ${tasksDeleted.count} tasks and ${eventsDeleted.count} events`);
+				console.log(`[FLUSH] PostgreSQL: Deleted ${tasksDeleted.count} tasks (no Event model in schema)`);
 			} catch (error: any) {
 				console.error("[FLUSH] Error clearing PostgreSQL:", error?.message);
 				// Don't fail the whole operation if Postgres fails
 				postgresResult = {
 					tasksDeleted: 0,
-					eventsDeleted: 0,
 				};
 			}
 		}

@@ -172,13 +172,24 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 
 	// Queries and Mutations
 	const { 
-		data: systemState, 
+		data: taskListData, 
 		isLoading, 
 		refetch: refetchState 
 	} = useEventQuery(
+		"task.list",
+		{
+			limit: 1000, // Get all tasks for kanban
+			orderBy: "createdAt",
+			order: "desc"
+		},
+		{ refetchInterval: 10000 }
+	);
+	
+	// Get instances separately using system.get_state (instances are less critical)
+	const { data: systemState } = useEventQuery(
 		"system.get_state",
 		{},
-		{ refetchInterval: 10000 }
+		{ refetchInterval: 30000 } // Less frequent polling for instances
 	);
 	
 	const createTaskMutation = useCreateTask();
@@ -222,10 +233,10 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 		};
 	}, [refetchState]);
 
-	// Update tasks from system state
+	// Update tasks from task list data
 	useEffect(() => {
-		if (systemState?.tasks) {
-			const taskList = systemState.tasks.map((task: any) => ({
+		if (taskListData?.tasks) {
+			const taskList = taskListData.tasks.map((task: any) => ({
 				id: task.id,
 				text: task.text || task.title || "Untitled Task",
 				status: task.status || "pending",
@@ -262,7 +273,7 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 			});
 			setInstances(instanceList);
 		}
-	}, [systemState]);
+	}, [taskListData]);
 
 	// Organize tasks into columns
 	useEffect(() => {
