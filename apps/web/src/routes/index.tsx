@@ -18,41 +18,37 @@ const TITLE_TEXT = `
 
 function HomeComponent() {
   return (
-    <div className="container mx-auto px-4 py-4">
-      <div className="mb-6">
+    <div className="container mx-auto px-4 py-4 h-full flex flex-col">
+      <div className="mb-6 flex-shrink-0">
         <pre className="overflow-x-auto font-mono text-xs sm:text-sm text-center">{TITLE_TEXT}</pre>
         <p className="text-center text-muted-foreground mt-2">
           Redis-first event-driven architecture for Claude Code
         </p>
       </div>
       
-      <Tabs defaultValue="events" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+      <Tabs defaultValue="events" className="w-full flex-1 flex flex-col min-h-0">
+        <TabsList className="grid w-full grid-cols-4 flex-shrink-0">
           <TabsTrigger value="events">Events</TabsTrigger>
           <TabsTrigger value="tasks">Tasks</TabsTrigger>
           <TabsTrigger value="system">System</TabsTrigger>
           <TabsTrigger value="handlers">Handlers</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="events" className="mt-4">
-          <div className="h-[600px]">
-            <EventStream />
-          </div>
+        <TabsContent value="events" className="mt-4 flex-1 min-h-0">
+          <EventStream className="h-full" />
         </TabsContent>
         
-        <TabsContent value="tasks" className="mt-4">
-          <div className="h-[600px]">
-            <TaskQueue />
-          </div>
+        <TabsContent value="tasks" className="mt-4 flex-1 min-h-0">
+          <TaskQueue className="h-full" />
         </TabsContent>
         
-        <TabsContent value="system" className="mt-4">
+        <TabsContent value="system" className="mt-4 flex-1 min-h-0">
           <div className="rounded-lg border p-8 text-center text-muted-foreground">
             System Health component coming soon (T060)
           </div>
         </TabsContent>
         
-        <TabsContent value="handlers" className="mt-4">
+        <TabsContent value="handlers" className="mt-4 flex-1 min-h-0">
           <div className="rounded-lg border p-8 text-center text-muted-foreground">
             Handler Manager component coming soon (T062)
           </div>

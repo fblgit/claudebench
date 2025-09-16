@@ -126,11 +126,11 @@
 - [x] T052 Implement MCP session management in apps/server/src/mcp/session.ts
 
 ### WebSocket/SSE
-- [ ] T053 [P] Create WebSocket event subscription handler in apps/server/src/transports/websocket.ts
-- [ ] T054 [P] Implement SSE event streaming in apps/server/src/transports/sse.ts
+- [x] T053 [P] Create WebSocket event subscription handler in apps/server/src/transports/websocket.ts
+- [x] T054 [P] Implement SSE event streaming in apps/server/src/transports/sse.ts
 
 ### Checkpoint - A vast part of the integration tests must be passing
-### Notes - use shadcnui mcp for UI components at any point
+### Notes - use shadcnui mcp for UI components at any point && prefer websocket by default
 
 ## Phase 3.5: Dashboard UI
 
@@ -140,7 +140,7 @@
 - [x] T057 Set up TanStack Query for server state in apps/web/src/services/query-client.ts
 
 ### Components
-- [ ] T058 Create event stream viewer component in apps/web/src/components/EventStream.tsx
+- [x] T058 Create event stream viewer component in apps/web/src/components/EventStream.tsx
 - [ ] T059 Build task queue display in apps/web/src/components/TaskQueue.tsx
 - [ ] T060 Create instance health monitor in apps/web/src/components/InstanceHealth.tsx
 - [ ] T061 Build metrics dashboard in apps/web/src/components/Metrics.tsx

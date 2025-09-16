@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,12 +54,14 @@ interface TaskQueueProps {
 	maxTasks?: number;
 	autoRefresh?: boolean;
 	showFilters?: boolean;
+	className?: string;
 }
 
 export function TaskQueue({ 
 	maxTasks = 100,
 	autoRefresh = true,
-	showFilters = true
+	showFilters = true,
+	className
 }: TaskQueueProps) {
 	// State
 	const [tasks, setTasks] = useState<Task[]>([]);
@@ -305,8 +308,8 @@ export function TaskQueue({
 	}, [tasks]);
 	
 	return (
-		<Card className="flex flex-col h-full">
-			<CardHeader className="pb-3">
+		<Card className={cn("flex flex-col", className)}>
+			<CardHeader className="pb-3 flex-shrink-0">
 				<div className="flex items-center justify-between">
 					<div>
 						<CardTitle className="flex items-center gap-2">
