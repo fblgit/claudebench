@@ -30,6 +30,22 @@ export class TodoWriteHookHandler {
 		const sessionId = ctx.metadata?.sessionId || "session-123";
 		const instanceId = ctx.instanceId || "default";
 		
+		// Auto-register the instance if it doesn't exist (for Claude Code instances)
+		const instanceKey = `cb:instance:${instanceId}`;
+		const instanceExists = await ctx.redis.stream.exists(instanceKey);
+		if (!instanceExists) {
+			try {
+				// Register the instance with basic worker role
+				await registry.executeHandler("system.register", {
+					id: instanceId,
+					roles: ["worker"],
+				});
+			} catch (error: any) {
+				console.warn(`Could not auto-register instance ${instanceId}:`, error?.message);
+				// Continue anyway - task creation will still work
+			}
+		}
+		
 		// Use TodoManager for all Redis operations
 		// 1. Get previous state BEFORE updating current state
 		const previous = await todoManager.getCurrentState(instanceId);
@@ -69,11 +85,133 @@ export class TodoWriteHookHandler {
 					// Map the created task to this todo
 					await todoManager.mapTodoToTask(todo.content, taskResult.id, sessionId);
 					
+					// If todo is already in_progress, assign it to this instance
+					if (todo.status === "in_progress") {
+						try {
+							await registry.executeHandler("task.assign", {
+								taskId: taskResult.id,
+								instanceId: instanceId,
+							});
+						} catch (error: any) {
+							console.error(`Failed to assign task ${taskResult.id}:`, error?.message || error);
+							// Log the full error for debugging
+							if (error?.stack) console.error("Stack:", error.stack);
+						}
+					}
+					
 					// Also emit our own task event for tracking
 					await todoManager.emitTaskCreateEvent(taskResult.id, todo);
-				} catch (error) {
+				} catch (error: any) {
 					// Log errors but continue with other todos
-					console.error(`Failed to create task for todo "${todo.content}":`, error);
+					console.error(`Failed to create task for todo "${todo.content}":`, error?.message || error);
+					if (error?.stack) console.error("Stack:", error.stack);
+				}
+			}
+		}
+		
+		// 4b. Process status changes for existing todos (update tasks)
+		if (changes.statusChanges.length > 0) {
+			for (const todo of changes.statusChanges) {
+				// Get the task ID for this todo
+				const taskId = await todoManager.getTaskForTodo(todo.content, sessionId);
+				if (!taskId) {
+					// If no task exists for this todo, create one
+					try {
+						const taskResult = await registry.executeHandler("task.create", {
+							text: todo.content,
+							priority: todo.status === "in_progress" ? 75 : 50,
+							metadata: {
+								source: "todo_write",
+								activeForm: todo.activeForm,
+								sessionId,
+							},
+						});
+						await todoManager.mapTodoToTask(todo.content, taskResult.id, sessionId);
+						
+						// If todo is in_progress, assign it
+						if (todo.status === "in_progress") {
+							await registry.executeHandler("task.assign", {
+								taskId: taskResult.id,
+								instanceId: instanceId,
+							});
+						}
+					} catch (error: any) {
+						console.error(`Failed to create task for changed todo "${todo.content}":`, error?.message || error);
+						if (error?.stack) console.error("Stack:", error.stack);
+					}
+					continue;
+				}
+				
+				try {
+					// Map todo status to task status
+					let taskStatus: string;
+					if (todo.status === "completed") {
+						// For completed todos, we need to handle the case where the task wasn't assigned
+						// First, try to complete it normally
+						try {
+							await registry.executeHandler("task.complete", {
+								id: taskId,
+								workerId: instanceId,
+								result: {
+									completedBy: "todo_write",
+									completedAt: new Date().toISOString(),
+								},
+							});
+							continue;
+						} catch (completeError: any) {
+							// If it fails because it's not assigned, update status directly
+							if (completeError?.message?.includes("not assigned")) {
+								// Just update the status to completed
+								await registry.executeHandler("task.update", {
+									id: taskId,
+									updates: {
+										status: "completed",
+										metadata: {
+											completedBy: "todo_write",
+											completedAt: new Date().toISOString(),
+											activeForm: todo.activeForm,
+										},
+									},
+								});
+								continue;
+							}
+							// Re-throw other errors
+							throw completeError;
+						}
+					} else if (todo.status === "in_progress") {
+						taskStatus = "in_progress";
+					} else {
+						taskStatus = "pending";
+					}
+					
+					// Update the task with new status and activeForm
+					await registry.executeHandler("task.update", {
+						id: taskId,
+						updates: {
+							status: taskStatus,
+							priority: todo.status === "in_progress" ? 75 : 50,
+							metadata: {
+								activeForm: todo.activeForm,
+								lastUpdatedBy: "todo_write",
+							},
+						},
+					});
+					
+					// If todo is now in_progress, assign it to this instance
+					if (todo.status === "in_progress") {
+						try {
+							await registry.executeHandler("task.assign", {
+								taskId: taskId,
+								instanceId: instanceId,
+							});
+						} catch (error: any) {
+							console.error(`Failed to assign task ${taskId}:`, error?.message || error);
+							if (error?.stack) console.error("Stack:", error.stack);
+						}
+					}
+				} catch (error: any) {
+					console.error(`Failed to update task for todo "${todo.content}":`, error?.message || error);
+					if (error?.stack) console.error("Stack:", error.stack);
 				}
 			}
 		}

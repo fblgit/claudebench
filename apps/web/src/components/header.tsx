@@ -4,7 +4,9 @@ import { ModeToggle } from "./mode-toggle";
 export default function Header() {
   const links = [
     { to: "/", label: "Home" },
+    { to: "/events", label: "Events" },
     { to: "/tasks", label: "Tasks" },
+    { to: "/system", label: "System" },
   ] as const;
 
   return (

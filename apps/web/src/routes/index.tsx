@@ -25,7 +25,7 @@ function HomeComponent() {
       <div className="mb-6 flex-shrink-0">
         <pre className="overflow-x-auto font-mono text-xs sm:text-sm text-center">{TITLE_TEXT}</pre>
         <p className="text-center text-muted-foreground mt-2">
-          Redis-first event-driven architecture for Claude Code
+          -=- Claude Code Bench: tasking and routing workspace -=-
         </p>
       </div>
       

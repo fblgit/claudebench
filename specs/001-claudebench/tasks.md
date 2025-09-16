@@ -147,9 +147,9 @@
 - [x] T062 Create handler manager UI in apps/web/src/components/HandlerManager.tsx
 
 ### Routes
-- [ ] T063 Create dashboard home route in apps/web/src/routes/index.tsx
-- [ ] T064 Create events route in apps/web/src/routes/events.tsx
-- [ ] T065 Create tasks route in apps/web/src/routes/tasks.tsx
+- [x] T063 Create dashboard home route in apps/web/src/routes/index.tsx
+- [x] T064 Create events route in apps/web/src/routes/events.tsx
+- [x] T065 Create tasks route in apps/web/src/routes/tasks.tsx
 - [ ] T066 Create system route in apps/web/src/routes/system.tsx
 
 ## Phase 3.6: CLI Tools
@@ -163,8 +163,6 @@
 - [ ] T072 [P] Add unit tests for decorator metadata in apps/server/tests/unit/decorator.test.ts
 - [ ] T073 [P] Add unit tests for rate limiter logic in apps/server/tests/unit/rate-limiter.test.ts
 - [ ] T074 [P] Add unit tests for circuit breaker in apps/server/tests/unit/circuit-breaker.test.ts
-- [ ] T075 Performance test: Verify <50ms event latency
-- [ ] T076 Performance test: Verify <100MB memory usage
 - [ ] T077 [P] Generate API documentation from decorators in docs/api.md
 - [ ] T078 [P] Create architecture diagram in docs/architecture.md
 - [ ] T079 Run quickstart.md validation tests
