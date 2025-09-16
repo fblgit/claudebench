@@ -10,13 +10,13 @@ import { redisKey } from "@/core/redis";
 	inputSchema: taskCompleteInput,
 	outputSchema: taskCompleteOutput,
 	persist: true,
-	rateLimit: 20,
+	rateLimit: 100, // Increased for development
 	description: "Mark a task as completed or failed",
 })
 export class TaskCompleteHandler {
 	@Instrumented(0) // No caching - this operation changes state
 	@Resilient({
-		rateLimit: { limit: 20, windowMs: 60000 }, // 20 requests per minute
+		rateLimit: { limit: 100, windowMs: 60000 }, // 100 requests per minute (increased for development)
 		timeout: 5000, // 5 second timeout
 		circuitBreaker: { 
 			threshold: 5, 

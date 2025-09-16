@@ -498,13 +498,13 @@ export function useEventMutation<TParams = any, TResult = any>(
  * Convenience hooks for common queries
  */
 export const useSystemHealth = () => 
-	useEventQuery("system.health", {}, { refetchInterval: 5000 });
+	useEventQuery("system.health", {}, { refetchInterval: 30000 }); // 30 seconds
 
 export const useSystemState = () => 
-	useEventQuery("system.get_state", {}, { refetchInterval: 2000 });
+	useEventQuery("system.get_state", {}, { refetchInterval: 30000 }); // 30 seconds
 
 export const useSystemMetrics = () => 
-	useEventQuery("system.metrics", {}, { refetchInterval: 3000 });
+	useEventQuery("system.metrics", {}, { refetchInterval: 30000 }); // 30 seconds
 
 /**
  * Convenience hooks for common mutations

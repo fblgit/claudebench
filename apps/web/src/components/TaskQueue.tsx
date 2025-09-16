@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { 
 	getEventClient,
-	useSystemState,
+	useEventQuery,
 	useCreateTask,
 	useUpdateTask,
 	useCompleteTask,
@@ -86,7 +86,14 @@ export function TaskQueue({
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
 	
 	// Queries and Mutations
-	const { data: systemState, isLoading, refetch } = useSystemState();
+	// Use custom query with reduced polling since we have WebSocket for real-time updates
+	const { data: systemState, isLoading, refetch } = useEventQuery(
+		"system.get_state", 
+		{},
+		{ 
+			refetchInterval: 30000, // Poll every 30 seconds
+		}
+	);
 	const createTaskMutation = useCreateTask();
 	const updateTaskMutation = useUpdateTask();
 	const completeTaskMutation = useCompleteTask();
@@ -103,35 +110,51 @@ export function TaskQueue({
 				try {
 					if (message.type === "event") {
 						const eventType = message.event;
-						const eventData = message.data;
+						// Backend sends events with {type, payload, metadata} structure
+						const eventPayload = message.data.payload;
+						const eventMetadata = message.data.metadata;
 						
 						// Handle different task events
 						if (eventType === "task.created") {
+							// Backend sends: {id, text, status, priority, createdAt}
 							setTasks(prev => {
 								const newTask: Task = {
-									id: eventData.id,
-									text: eventData.text,
-									status: eventData.status,
-									priority: eventData.priority,
-									createdAt: eventData.createdAt,
-									metadata: eventData.metadata
+									id: eventPayload.id,
+									text: eventPayload.text,
+									status: eventPayload.status,
+									priority: eventPayload.priority,
+									createdAt: eventPayload.createdAt,
+									metadata: eventMetadata
 								};
 								return [newTask, ...prev].slice(0, maxTasks);
 							});
 						} else if (eventType === "task.updated") {
+							// Backend sends full task object: {id, text, status, priority, createdAt, updatedAt}
 							setTasks(prev => prev.map(task => 
-								task.id === eventData.id ? { ...task, ...eventData } : task
+								task.id === eventPayload.id 
+									? { ...task, ...eventPayload, metadata: { ...task.metadata, ...eventMetadata } }
+									: task
 							));
 						} else if (eventType === "task.completed") {
+							// Backend sends: {id, status, duration}
 							setTasks(prev => prev.map(task => 
-								task.id === eventData.id 
-									? { ...task, status: eventData.status, updatedAt: eventData.completedAt }
+								task.id === eventPayload.id 
+									? { ...task, status: eventPayload.status, updatedAt: new Date().toISOString() }
 									: task
 							));
 						} else if (eventType === "task.assigned") {
+							// Backend sends: {taskId, instanceId, previousAssignment}
+							// Status remains "pending" per backend logic
 							setTasks(prev => prev.map(task => 
-								task.id === eventData.taskId 
-									? { ...task, status: "in_progress", assignedTo: eventData.instanceId }
+								task.id === eventPayload.taskId 
+									? { ...task, assignedTo: eventPayload.instanceId }
+									: task
+							));
+						} else if (eventType === "task.claimed") {
+							// Backend sends: {taskId, workerId}
+							setTasks(prev => prev.map(task => 
+								task.id === eventPayload.taskId 
+									? { ...task, status: "in_progress", assignedTo: eventPayload.workerId }
 									: task
 							));
 						}

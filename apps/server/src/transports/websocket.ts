@@ -53,6 +53,25 @@ const WSActionSchema = z.discriminatedUnion("action", [
 ]);
 
 /**
+ * Check if an event type matches a subscription pattern
+ */
+function matchesPattern(eventType: string, pattern: string): boolean {
+	// Exact match
+	if (eventType === pattern) return true;
+	
+	// Global wildcard
+	if (pattern === "*") return true;
+	
+	// Pattern wildcard (e.g., "task.*" matches "task.created", "task.updated", etc.)
+	if (pattern.endsWith(".*")) {
+		const prefix = pattern.slice(0, -2); // Remove ".*"
+		return eventType.startsWith(prefix + ".");
+	}
+	
+	return false;
+}
+
+/**
  * Handle event subscription
  */
 async function handleSubscribe(
@@ -62,48 +81,15 @@ async function handleSubscribe(
 ): Promise<void> {
 	const redis = getRedis();
 	
-	// Check if wildcard subscription is requested
-	if (events.includes("*")) {
-		// For wildcard, we'll mark the client as subscribing to all events
-		client.subscriptions.add("*");
+	for (const pattern of events) {
+		if (client.subscriptions.has(pattern)) continue;
 		
-		// Track wildcard subscription in Redis
-		const subKey = redisKey("ws:subscriptions", client.id);
-		await redis.stream.sadd(subKey, "*");
-		await redis.stream.expire(subKey, 3600); // 1 hour TTL
-		
-		// Send confirmation
-		ws.send(JSON.stringify({
-			type: "subscribed",
-			events: ["*"],
-			timestamp: Date.now(),
-		}));
-		return;
-	}
-	
-	for (const eventType of events) {
-		if (client.subscriptions.has(eventType)) continue;
-		
-		// Subscribe to event bus
-		await eventBus.subscribe(
-			eventType,
-			async (event) => {
-				// Send event to WebSocket client
-				ws.send(JSON.stringify({
-					type: "event",
-					event: eventType,
-					data: event,
-					timestamp: Date.now(),
-				}));
-			},
-			client.id
-		);
-		
-		client.subscriptions.add(eventType);
+		// Add pattern to client's subscriptions
+		client.subscriptions.add(pattern);
 		
 		// Track subscription in Redis
 		const subKey = redisKey("ws:subscriptions", client.id);
-		await redis.stream.sadd(subKey, eventType);
+		await redis.stream.sadd(subKey, pattern);
 		await redis.stream.expire(subKey, 3600); // 1 hour TTL
 	}
 	
@@ -291,8 +277,16 @@ export async function broadcastToWebSockets(
 	data: any
 ): Promise<void> {
 	for (const [ws, client] of clients.entries()) {
-		// Check if client has wildcard subscription or specific event subscription
-		if (client.subscriptions.has("*") || client.subscriptions.has(eventType)) {
+		// Check if any of the client's subscription patterns match this event
+		let shouldSend = false;
+		for (const pattern of client.subscriptions) {
+			if (matchesPattern(eventType, pattern)) {
+				shouldSend = true;
+				break;
+			}
+		}
+		
+		if (shouldSend) {
 			try {
 				ws.send(JSON.stringify({
 					type: "event",
