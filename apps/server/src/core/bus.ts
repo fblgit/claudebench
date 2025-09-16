@@ -96,6 +96,10 @@ export class EventBus {
 		// Publish to Redis pub/sub for real-time
 		await this.redis.pub.publish(event.type, JSON.stringify(eventData));
 		
+		// Broadcast to WebSocket clients
+		const { broadcastToWebSockets } = await import("../transports/websocket");
+		await broadcastToWebSockets(event.type, eventData);
+		
 		// Add to partition if metadata contains partition key
 		if (event.metadata?.partitionKey) {
 			await redisScripts.partitionEvent(

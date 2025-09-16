@@ -264,13 +264,12 @@ export class EventClient {
 			console.log("WebSocket connected");
 			if (onConnect) onConnect();
 			
-			// Subscribe to requested events
-			if (eventTypes?.length) {
-				ws.send(JSON.stringify({
-					action: "subscribe",
-					events: eventTypes,
-				}));
-			}
+			// Subscribe to events - if none specified, subscribe to all
+			const eventsToSubscribe = eventTypes?.length ? eventTypes : ["*"];
+			ws.send(JSON.stringify({
+				action: "subscribe",
+				events: eventsToSubscribe,
+			}));
 		};
 
 		ws.onmessage = (event) => {

@@ -62,6 +62,25 @@ async function handleSubscribe(
 ): Promise<void> {
 	const redis = getRedis();
 	
+	// Check if wildcard subscription is requested
+	if (events.includes("*")) {
+		// For wildcard, we'll mark the client as subscribing to all events
+		client.subscriptions.add("*");
+		
+		// Track wildcard subscription in Redis
+		const subKey = redisKey("ws:subscriptions", client.id);
+		await redis.stream.sadd(subKey, "*");
+		await redis.stream.expire(subKey, 3600); // 1 hour TTL
+		
+		// Send confirmation
+		ws.send(JSON.stringify({
+			type: "subscribed",
+			events: ["*"],
+			timestamp: Date.now(),
+		}));
+		return;
+	}
+	
 	for (const eventType of events) {
 		if (client.subscriptions.has(eventType)) continue;
 		
@@ -272,7 +291,8 @@ export async function broadcastToWebSockets(
 	data: any
 ): Promise<void> {
 	for (const [ws, client] of clients.entries()) {
-		if (client.subscriptions.has(eventType)) {
+		// Check if client has wildcard subscription or specific event subscription
+		if (client.subscriptions.has("*") || client.subscriptions.has(eventType)) {
 			try {
 				ws.send(JSON.stringify({
 					type: "event",
