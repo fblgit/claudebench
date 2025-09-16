@@ -11,6 +11,9 @@ import { redisKey } from "@/core/redis";
 	persist: false,
 	rateLimit: 1000,
 	description: "Process tool execution results",
+	mcp: {
+		visible: false, // Hook handlers are internal infrastructure, not user-facing tools
+	}
 })
 export class PostToolHookHandler {
 	@Instrumented(60) // Cache for 1 minute - post-tool results change frequently

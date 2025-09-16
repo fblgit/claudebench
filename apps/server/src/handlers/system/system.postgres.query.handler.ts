@@ -10,6 +10,58 @@ import type { SystemPostgresQueryInput, SystemPostgresQueryOutput } from "@/sche
 	persist: false,
 	rateLimit: 50, // Moderate rate limit for database queries
 	description: "Query PostgreSQL table data with filtering and pagination",
+	mcp: {
+		title: "PostgreSQL Query Tool",
+		metadata: {
+			examples: [
+				{
+					description: "Query all tasks with pagination",
+					input: {
+						table: "Task",
+						limit: 10,
+						offset: 0
+					}
+				},
+				{
+					description: "Query completed tasks ordered by completion date",
+					input: {
+						table: "Task",
+						where: "status = 'completed'",
+						orderBy: "completedAt DESC",
+						limit: 20
+					}
+				},
+				{
+					description: "Get specific task fields",
+					input: {
+						table: "Task",
+						columns: ["id", "text", "status", "createdAt"],
+						limit: 50
+					}
+				}
+			],
+			tags: ["troubleshooting", "database", "debugging", "admin", "postgresql"],
+			useCases: [
+				"Investigating data inconsistencies in the database",
+				"Debugging task states and workflow issues",
+				"Analyzing system data for troubleshooting",
+				"Verifying data persistence and integrity"
+			],
+			prerequisites: [
+				"PostgreSQL connection must be active",
+				"Admin privileges required for database access",
+				"Target table must exist in the specified schema"
+			],
+			warnings: [
+				"This tool is for troubleshooting purposes only",
+				"Complex queries may impact database performance",
+				"WHERE and ORDER BY clauses are sanitized for security",
+				"Large result sets are limited by the limit parameter",
+				"Only SELECT operations are allowed - no data modification"
+			],
+			documentation: "https://www.postgresql.org/docs/current/sql-select.html"
+		}
+	}
 })
 export class SystemPostgresQueryHandler {
 	@Instrumented(60) // Cache for 1 minute for identical queries

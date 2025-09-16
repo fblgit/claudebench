@@ -12,6 +12,48 @@ import { redisKey } from "@/core/redis";
 	persist: true,
 	rateLimit: 100, // Increased for development
 	description: "Mark a task as completed or failed",
+	mcp: {
+		title: "Complete Task",
+		metadata: {
+			examples: [
+				{
+					description: "Complete a task with detailed results",
+					input: {
+						id: "t-12345",
+						result: {
+							documentsReviewed: 15,
+							issuesFound: 3,
+							timeSpent: "2h 30m"
+						},
+						workerId: "worker-123"
+					}
+				},
+				{
+					description: "Complete a simple task",
+					input: {
+						id: "t-67890"
+					}
+				}
+			],
+			tags: ["task-management", "completion", "workflow"],
+			useCases: [
+				"Marking work items as finished",
+				"Recording task completion with results",
+				"Updating task status in project workflows",
+				"Closing completed tickets and issues"
+			],
+			prerequisites: [
+				"Task must exist and be in 'pending' or 'in_progress' status",
+				"User must be the assigned worker or have admin privileges"
+			],
+			warnings: [
+				"Tasks must be assigned before they can be completed",
+				"Only assigned workers can complete their own tasks",
+				"This action cannot be undone - use task.update to change status instead",
+				"Large result objects are stored in PostgreSQL and may impact performance"
+			]
+		}
+	}
 })
 export class TaskCompleteHandler {
 	@Instrumented(0) // No caching - this operation changes state

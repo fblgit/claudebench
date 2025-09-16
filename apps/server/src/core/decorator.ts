@@ -1,6 +1,32 @@
 import "reflect-metadata";
 import type { z } from "zod";
 
+export interface McpConfig {
+	/** Whether this handler should be exposed via MCP (default: true) */
+	visible?: boolean;
+	/** Custom title for MCP tool display (defaults to generated from event name) */
+	title?: string;
+	/** Additional metadata for the MCP tool */
+	metadata?: {
+		/** Usage examples for the tool */
+		examples?: Array<{
+			description: string;
+			input: Record<string, any>;
+			output?: Record<string, any>;
+		}>;
+		/** Tags for categorizing the tool */
+		tags?: string[];
+		/** Documentation links */
+		documentation?: string;
+		/** Warning messages to display to LLMs */
+		warnings?: string[];
+		/** Prerequisites or requirements */
+		prerequisites?: string[];
+		/** Expected use cases */
+		useCases?: string[];
+	};
+}
+
 export interface EventHandlerConfig {
 	event: string;
 	inputSchema: z.ZodSchema<any>;
@@ -9,6 +35,8 @@ export interface EventHandlerConfig {
 	roles?: string[];
 	rateLimit?: number;
 	description?: string;
+	/** MCP-specific configuration */
+	mcp?: McpConfig;
 }
 
 export interface HandlerMetadata extends EventHandlerConfig {
@@ -50,11 +78,59 @@ export function getAllHandlers(): HandlerMetadata[] {
 
 // Helper to generate MCP tool definition from handler
 export function toMcpTool(metadata: HandlerMetadata) {
-	return {
-		name: metadata.event.replace(".", "__"),
-		description: metadata.description || `Handle ${metadata.event} event`,
+	// Skip tools that are explicitly hidden from MCP
+	if (metadata.mcp?.visible === false) {
+		return null;
+	}
+
+	const toolName = metadata.event.replace(".", "__");
+	const title = metadata.mcp?.title || 
+		metadata.event.split('.').map(word => 
+			word.charAt(0).toUpperCase() + word.slice(1)
+		).join(' ');
+	
+	// Build enhanced description with metadata
+	let description = metadata.description || `Handle ${metadata.event} event`;
+	
+	// Add metadata sections to description
+	if (metadata.mcp?.metadata) {
+		const { warnings, prerequisites, useCases, documentation } = metadata.mcp.metadata;
+		
+		if (warnings?.length) {
+			description += `\n\n⚠️  WARNINGS:\n${warnings.map(w => `• ${w}`).join('\n')}`;
+		}
+		
+		if (prerequisites?.length) {
+			description += `\n\nPREREQUISITES:\n${prerequisites.map(p => `• ${p}`).join('\n')}`;
+		}
+		
+		if (useCases?.length) {
+			description += `\n\nUSE CASES:\n${useCases.map(u => `• ${u}`).join('\n')}`;
+		}
+		
+		if (documentation) {
+			description += `\n\nDocumentation: ${documentation}`;
+		}
+	}
+
+	const tool: any = {
+		name: toolName,
+		title,
+		description,
 		inputSchema: metadata.inputSchema,
 	};
+
+	// Add examples if provided
+	if (metadata.mcp?.metadata?.examples?.length) {
+		tool.examples = metadata.mcp.metadata.examples;
+	}
+
+	// Add tags if provided
+	if (metadata.mcp?.metadata?.tags?.length) {
+		tool.tags = metadata.mcp.metadata.tags;
+	}
+
+	return tool;
 }
 
 // Helper to generate HTTP route from handler

@@ -11,6 +11,48 @@ import { redisScripts } from "@/core/redis-scripts";
 	persist: true,
 	rateLimit: 10,
 	description: "Create a new task and add it to the queue",
+	mcp: {
+		title: "Create Task",
+		metadata: {
+			examples: [
+				{
+					description: "Create a simple development task",
+					input: {
+						text: "Review the new API documentation",
+						priority: 75
+					}
+				},
+				{
+					description: "Create a high-priority bug fix task",
+					input: {
+						text: "Fix authentication bug in login flow",
+						priority: 95,
+						metadata: {
+							assignee: "developer@company.com",
+							sprint: "sprint-2025-01",
+							severity: "high"
+						}
+					}
+				}
+			],
+			tags: ["task-management", "workflow", "productivity"],
+			useCases: [
+				"Creating work items for team management",
+				"Adding todos to project workflows",
+				"Tracking bug reports and feature requests",
+				"Planning sprint tasks and deliverables"
+			],
+			prerequisites: [
+				"Valid authentication session",
+				"Permission to create tasks in the workspace"
+			],
+			warnings: [
+				"Tasks are created in 'pending' status and must be explicitly assigned",
+				"Priority values range from 0-100 (higher = more important)",
+				"Large metadata objects may impact performance"
+			]
+		}
+	}
 })
 export class TaskCreateHandler {
 	@Instrumented(0) // No caching - this operation creates new resources

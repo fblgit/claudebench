@@ -107,7 +107,9 @@ export class HandlerRegistry {
 	}
 
 	getMcpTools() {
-		return this.getAllHandlers().map(toMcpTool);
+		return this.getAllHandlers()
+			.map(toMcpTool)
+			.filter(tool => tool !== null);
 	}
 	
 	// Set handler-specific metrics that tests expect

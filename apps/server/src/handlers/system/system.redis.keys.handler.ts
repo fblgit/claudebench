@@ -10,6 +10,53 @@ import type { SystemRedisKeysInput, SystemRedisKeysOutput } from "@/schemas/syst
 	persist: false,
 	rateLimit: 50, // Lower rate limit for potentially expensive operations
 	description: "Scan Redis keys with pattern matching and pagination",
+	mcp: {
+		title: "Redis Key Scanner",
+		metadata: {
+			examples: [
+				{
+					description: "Scan for task-related keys",
+					input: {
+						pattern: "cb:task:*",
+						count: 50
+					}
+				},
+				{
+					description: "Check circuit breaker states",
+					input: {
+						pattern: "cb:circuit:*",
+						count: 20
+					}
+				},
+				{
+					description: "Paginate through all ClaudeBench keys",
+					input: {
+						pattern: "cb:*",
+						cursor: 0,
+						count: 100
+					}
+				}
+			],
+			tags: ["troubleshooting", "redis", "debugging", "admin"],
+			useCases: [
+				"Debugging Redis key patterns during development",
+				"Investigating system state during troubleshooting",
+				"Monitoring key distribution for performance analysis",
+				"Finding leaked or orphaned keys in Redis"
+			],
+			prerequisites: [
+				"Redis connection must be active",
+				"Admin privileges recommended for system inspection"
+			],
+			warnings: [
+				"Large patterns may impact Redis performance",
+				"Use narrow patterns to avoid scanning too many keys",
+				"This tool is for troubleshooting purposes only",
+				"SCAN operations can be expensive on large datasets"
+			],
+			documentation: "https://redis.io/commands/scan"
+		}
+	}
 })
 export class SystemRedisKeysHandler {
 	@Instrumented(60) // Cache for 1 minute

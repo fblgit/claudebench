@@ -11,6 +11,9 @@ import { hookValidator } from "@/core/hook-validator";
 	persist: false,
 	rateLimit: 1000,
 	description: "Validate tool execution before it happens",
+	mcp: {
+		visible: false, // Hook handlers are internal infrastructure, not user-facing tools
+	}
 })
 export class PreToolHookHandler {
 	@Instrumented(300) // Cache for 5 minutes - handles caching, metrics, and audit
