@@ -103,17 +103,28 @@ class ClaudeEventRelay:
     
     def forward_event(self, channel: str, event_data: Any):
         """Forward event to Claude Code via stdout"""
-        # Filter out events from the relay script itself to reduce noise
+        # Filter out events from our own instance to reduce noise
         if isinstance(event_data, dict):
             payload = event_data.get('payload', {})
             if isinstance(payload, dict):
+                # Check if this event is from our own instance
+                event_instance_id = payload.get('instanceId')
+                event_session_id = payload.get('sessionId')
+                
+                # Skip events that originated from this relay instance
+                if event_instance_id == self.instance_id:
+                    if self.debug:
+                        self.log('DEBUG', f"Filtered own instance event from {channel}", event_type=event_data.get('type'))
+                    return
+                
+                # Also filter relay script events (existing logic)
                 params = payload.get('params', {})
                 if isinstance(params, dict):
                     command = params.get('command', '')
                     if 'claude_event_relay.py' in command:
                         # Skip forwarding events about the relay itself
                         if self.debug:
-                            self.log('DEBUG', f"Filtered self-referential event from {channel}")
+                            self.log('DEBUG', f"Filtered self-referential relay event from {channel}")
                         return
         
         # This is the critical function - it sends events to Claude Code

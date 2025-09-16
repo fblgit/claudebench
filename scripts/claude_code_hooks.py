@@ -52,7 +52,8 @@ class ClaudeBenchHookBridge:
         self.debug = os.environ.get('CLAUDEBENCH_DEBUG', '').lower() in ('true', '1', 'yes')
         
         # Instance ID for this Claude Code session (will be updated from input data if available)
-        self.instance_id = f"claude-code-{self.session_id[:8]}"
+        # Use CLAUDE_INSTANCE_ID from environment if set, otherwise generate from session
+        self.instance_id = os.environ.get('CLAUDE_INSTANCE_ID', f"claude-code-{self.session_id[:8]}")
     
     def debug_print(self, message: str):
         """Print debug message to stderr if debug mode is enabled"""
@@ -105,7 +106,9 @@ class ClaudeBenchHookBridge:
         # Extract session_id from Claude Code input (overrides environment variable)
         if 'session_id' in claude_data:
             self.session_id = claude_data['session_id']
-            self.instance_id = f"claude-code-{self.session_id[:8]}"
+            # Only update instance_id if CLAUDE_INSTANCE_ID is not set in environment
+            if 'CLAUDE_INSTANCE_ID' not in os.environ:
+                self.instance_id = f"claude-code-{self.session_id[:8]}"
         
         # Extract common fields from Claude Code
         tool_name = claude_data.get('tool_name', '')

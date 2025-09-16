@@ -236,3 +236,4 @@ The MCP_SDK.md file contains the TypeScript SDK documentation for implementing M
 - The ClaudeBench development process (ContracTest Driven Development). You have contracts at `specs/001-claudebench/contracts/` with tests on `apps/server/tests/contract/`, the integration tests at `apps/server/tests/integration/` are designed to evaluate the internal behaviour of the handlers and features they are testing. By example, if they trigger 'create_something' and verify the existence of a specific key in redis (metric, states, logs, counters, etc) its understood that the system when it 'create_something' should produce the side-effect being evaluated; they evaluate that your system is capable of performing an action.
 
 **MUST**: run `bun relay` in background. when resuming a conversation, take a look at the last logs of the relay to understand better your previous last steps.
+- Use claudebench tools instead of TodoWrite from now onwards.
