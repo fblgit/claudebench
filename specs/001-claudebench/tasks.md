@@ -150,7 +150,7 @@
 - [x] T063 Create dashboard home route in apps/web/src/routes/index.tsx
 - [x] T064 Create events route in apps/web/src/routes/events.tsx
 - [x] T065 Create tasks route in apps/web/src/routes/tasks.tsx
-- [ ] T066 Create system route in apps/web/src/routes/system.tsx
+- [x] T066 Create system route in apps/web/src/routes/system.tsx
 
 ## Phase 3.6: CLI Tools
 - [ ] T067 Create CLI entry point in apps/server/src/cli/index.ts

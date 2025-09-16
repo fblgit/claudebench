@@ -80,7 +80,8 @@ async function getOrCreateServer(sessionId: string): Promise<McpServer> {
 					
 					// The tool() method already validates params with the schema
 					// So params here are already validated
-					const result = await registry.executeHandler(handler.event, params);
+					// Pass sessionId as clientId for instance identification
+					const result = await registry.executeHandler(handler.event, params, sessionId);
 					
 					// Return in MCP format
 					return {

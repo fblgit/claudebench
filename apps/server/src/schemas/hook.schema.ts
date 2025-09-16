@@ -60,6 +60,10 @@ const todoItem = z.object({
 
 export const hookTodoWriteInput = z.object({
 	todos: z.array(todoItem),
+	sessionId: z.string().optional(),
+	instanceId: z.string().optional(),
+	timestamp: z.number().optional(),
+	previousTodos: z.array(todoItem).optional(),
 });
 
 export const hookTodoWriteOutput = z.object({

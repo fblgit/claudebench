@@ -143,7 +143,7 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 	const [createDialogOpen, setCreateDialogOpen] = useState(false);
 	const [newTaskText, setNewTaskText] = useState("");
 	const [newTaskPriority, setNewTaskPriority] = useState([50]);
-	const [newTaskAssignTo, setNewTaskAssignTo] = useState<string>("");
+	const [newTaskAssignTo, setNewTaskAssignTo] = useState<string>("none");
 	const [newTaskRoles, setNewTaskRoles] = useState<string[]>([]);
 	const [newTaskTags, setNewTaskTags] = useState("");
 	const [newTaskDueDate, setNewTaskDueDate] = useState("");
@@ -239,12 +239,27 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 		}
 		
 		if (systemState?.instances) {
-			const instanceList = systemState.instances.map((inst: any) => ({
-				id: inst.id || inst.instanceId,
-				roles: inst.roles || [],
-				status: inst.status,
-				health: inst.health,
-			}));
+			const instanceList = systemState.instances.map((inst: any) => {
+				let roles: string[] = [];
+				if (inst.roles) {
+					if (Array.isArray(inst.roles)) {
+						roles = inst.roles;
+					} else if (typeof inst.roles === 'string') {
+						try {
+							const parsed = JSON.parse(inst.roles);
+							roles = Array.isArray(parsed) ? parsed : [parsed];
+						} catch {
+							roles = [inst.roles];
+						}
+					}
+				}
+				return {
+					id: inst.id || inst.instanceId,
+					roles,
+					status: inst.status,
+					health: inst.health,
+				};
+			});
 			setInstances(instanceList);
 		}
 	}, [systemState]);
@@ -405,7 +420,7 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 			});
 
 			// Assign to instance if specified
-			if (newTaskAssignTo && result.id) {
+			if (newTaskAssignTo && newTaskAssignTo !== "none" && result.id) {
 				await assignTaskMutation.mutateAsync({
 					taskId: result.id,
 					instanceId: newTaskAssignTo,
@@ -415,7 +430,7 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 			// Reset form
 			setNewTaskText("");
 			setNewTaskPriority([50]);
-			setNewTaskAssignTo("");
+			setNewTaskAssignTo("none");
 			setNewTaskRoles([]);
 			setNewTaskTags("");
 			setNewTaskDueDate("");
@@ -584,10 +599,10 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 													<SelectValue placeholder="Select instance..." />
 												</SelectTrigger>
 												<SelectContent>
-													<SelectItem value="">None</SelectItem>
+													<SelectItem value="none">None</SelectItem>
 													{instances.map((instance) => (
 														<SelectItem key={instance.id} value={instance.id}>
-															{instance.id} ({instance.roles.join(", ")})
+															{instance.id} ({instance.roles.length > 0 ? instance.roles.join(", ") : "no roles"})
 														</SelectItem>
 													))}
 												</SelectContent>

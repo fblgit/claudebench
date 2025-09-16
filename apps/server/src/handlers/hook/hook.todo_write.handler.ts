@@ -27,8 +27,9 @@ export class TodoWriteHookHandler {
 		}
 	})
 	async handle(input: HookTodoWriteInput, ctx: EventContext): Promise<HookTodoWriteOutput> {
-		const sessionId = ctx.metadata?.sessionId || "session-123";
-		const instanceId = ctx.instanceId || "default";
+		// Use instanceId from input (Claude Code hooks) or from context
+		const instanceId = input.instanceId || ctx.metadata?.clientId || ctx.instanceId || "default";
+		const sessionId = input.sessionId || ctx.metadata?.sessionId || instanceId || "session-123";
 		
 		// Auto-register the instance if it doesn't exist (for Claude Code instances)
 		const instanceKey = `cb:instance:${instanceId}`;
@@ -85,15 +86,28 @@ export class TodoWriteHookHandler {
 					// Map the created task to this todo
 					await todoManager.mapTodoToTask(todo.content, taskResult.id, sessionId);
 					
-					// If todo is already in_progress, assign it to this instance
+					// If todo is already in_progress, assign it and update status
 					if (todo.status === "in_progress") {
 						try {
+							// First assign the task
 							await registry.executeHandler("task.assign", {
 								taskId: taskResult.id,
 								instanceId: instanceId,
 							});
+							
+							// Then update status to in_progress
+							await registry.executeHandler("task.update", {
+								id: taskResult.id,
+								updates: {
+									status: "in_progress",
+									metadata: {
+										startedBy: "todo_write",
+										startedAt: new Date().toISOString(),
+									},
+								},
+							});
 						} catch (error: any) {
-							console.error(`Failed to assign task ${taskResult.id}:`, error?.message || error);
+							console.error(`Failed to assign/start task ${taskResult.id}:`, error?.message || error);
 							// Log the full error for debugging
 							if (error?.stack) console.error("Stack:", error.stack);
 						}
@@ -128,11 +142,21 @@ export class TodoWriteHookHandler {
 						});
 						await todoManager.mapTodoToTask(todo.content, taskResult.id, sessionId);
 						
-						// If todo is in_progress, assign it
+						// If todo is in_progress, assign it and update status
 						if (todo.status === "in_progress") {
 							await registry.executeHandler("task.assign", {
 								taskId: taskResult.id,
 								instanceId: instanceId,
+							});
+							await registry.executeHandler("task.update", {
+								id: taskResult.id,
+								updates: {
+									status: "in_progress",
+									metadata: {
+										startedBy: "todo_write",
+										startedAt: new Date().toISOString(),
+									},
+								},
 							});
 						}
 					} catch (error: any) {
@@ -184,6 +208,25 @@ export class TodoWriteHookHandler {
 						taskStatus = "pending";
 					}
 					
+					// If todo is now in_progress, assign it to this instance first
+					if (todo.status === "in_progress") {
+						try {
+							// Try to assign the task to this instance
+							await registry.executeHandler("task.assign", {
+								taskId: taskId,
+								instanceId: instanceId,
+							});
+						} catch (assignError: any) {
+							// If already assigned, that's ok - we'll still update the status
+							if (!assignError?.message?.includes("already assigned")) {
+								console.error(`Failed to assign task ${taskId}:`, assignError?.message || assignError);
+								if (assignError?.stack) console.error("Stack:", assignError.stack);
+								// Skip updating to in_progress if we can't assign
+								taskStatus = "pending";
+							}
+						}
+					}
+					
 					// Update the task with new status and activeForm
 					await registry.executeHandler("task.update", {
 						id: taskId,
@@ -196,19 +239,6 @@ export class TodoWriteHookHandler {
 							},
 						},
 					});
-					
-					// If todo is now in_progress, assign it to this instance
-					if (todo.status === "in_progress") {
-						try {
-							await registry.executeHandler("task.assign", {
-								taskId: taskId,
-								instanceId: instanceId,
-							});
-						} catch (error: any) {
-							console.error(`Failed to assign task ${taskId}:`, error?.message || error);
-							if (error?.stack) console.error("Stack:", error.stack);
-						}
-					}
 				} catch (error: any) {
 					console.error(`Failed to update task for todo "${todo.content}":`, error?.message || error);
 					if (error?.stack) console.error("Stack:", error.stack);

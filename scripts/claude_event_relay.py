@@ -118,11 +118,7 @@ class ClaudeEventRelay:
         
         # This is the critical function - it sends events to Claude Code
         event = {
-            'type': 'CLAUDEBENCH_EVENT',
             'timestamp': datetime.now().isoformat(),
-            'channel': channel,
-            'relay_id': self.instance_id,
-            'session_id': self.session_id,
             'data': event_data
         }
         
@@ -248,7 +244,10 @@ class ClaudeEventRelay:
             self.log('ERROR', f"Unregistration error: {str(e)}")
     
     async def heartbeat_loop(self):
-        """Send periodic heartbeats to maintain registration"""
+        """Send periodic heartbeats to maintain registration with auto-reconnect"""
+        consecutive_failures = 0
+        max_consecutive_failures = 3
+        
         while self.running:
             try:
                 result = await self.make_jsonrpc_request('system.heartbeat', {
@@ -256,20 +255,34 @@ class ClaudeEventRelay:
                 })
                 
                 self.metrics['heartbeats_sent'] += 1
+                consecutive_failures = 0  # Reset failure counter on success
                 
                 if not result.get('alive'):
                     self.log('WARN', "Heartbeat indicated instance not alive, re-registering")
-                    await self.register()
+                    self.registered = False
+                    if await self.register():
+                        self.log('INFO', "Successfully re-registered after heartbeat failure")
                 
                 if self.debug and self.metrics['heartbeats_sent'] % 4 == 0:  # Log every 4th heartbeat
                     self.log('DEBUG', f"Heartbeat #{self.metrics['heartbeats_sent']}")
                 
             except Exception as e:
-                self.log('ERROR', f"Heartbeat error: {str(e)}")
-                # Try to re-register on heartbeat failure
-                if self.registered:
-                    await asyncio.sleep(2)
-                    await self.register()
+                consecutive_failures += 1
+                self.log('ERROR', f"Heartbeat error ({consecutive_failures}/{max_consecutive_failures}): {str(e)}")
+                
+                # After multiple consecutive failures, try to re-register
+                if consecutive_failures >= max_consecutive_failures:
+                    self.log('WARN', f"Too many heartbeat failures, attempting re-registration")
+                    self.registered = False
+                    
+                    # Wait a bit before re-registration attempt
+                    await asyncio.sleep(5)
+                    
+                    if await self.register():
+                        self.log('INFO', "Successfully re-registered after connection issues")
+                        consecutive_failures = 0
+                    else:
+                        self.log('ERROR', "Re-registration failed, will retry on next heartbeat")
             
             # Wait for next heartbeat
             await asyncio.sleep(self.heartbeat_interval)
@@ -323,45 +336,88 @@ class ClaudeEventRelay:
             return False
     
     async def event_subscription_loop(self):
-        """Listen for Redis events and forward to Claude Code"""
-        if not self.pubsub:
-            self.log('WARN', "No Redis subscription, event loop disabled")
-            return
+        """Listen for Redis events and forward to Claude Code with auto-reconnect"""
+        reconnect_delay = 1  # Start with 1 second delay
+        max_reconnect_delay = 30  # Max 30 seconds between reconnections
         
-        if self.debug:
-            self.log('INFO', "Starting event subscription loop")
-        
-        try:
-            async for message in self.pubsub.listen():
-                if message['type'] in ('message', 'pmessage'):
-                    self.metrics['events_received'] += 1
-                    
-                    # Parse the event data
-                    channel = message.get('channel') or message.get('pattern')
-                    data_str = message.get('data')
-                    
+        while self.running:
+            try:
+                if not self.pubsub:
+                    self.log('INFO', "Setting up Redis subscription...")
+                    if not await self.setup_redis_subscription():
+                        self.log('WARN', f"Redis setup failed, retrying in {reconnect_delay}s")
+                        await asyncio.sleep(reconnect_delay)
+                        reconnect_delay = min(reconnect_delay * 2, max_reconnect_delay)
+                        continue
+                
+                if self.debug:
+                    self.log('INFO', "Starting event subscription loop")
+                
+                # Reset reconnect delay on successful connection
+                reconnect_delay = 1
+                
+                async for message in self.pubsub.listen():
+                    if not self.running:
+                        break
+                        
+                    if message['type'] in ('message', 'pmessage'):
+                        self.metrics['events_received'] += 1
+                        
+                        # Parse the event data
+                        channel = message.get('channel') or message.get('pattern')
+                        data_str = message.get('data')
+                        
+                        try:
+                            # Try to parse as JSON
+                            event_data = json.loads(data_str) if isinstance(data_str, str) else data_str
+                        except json.JSONDecodeError:
+                            # If not JSON, forward as string
+                            event_data = {'raw': data_str}
+                        
+                        # Forward to Claude Code
+                        self.forward_event(channel, event_data)
+                        
+                    elif message['type'] == 'subscribe':
+                        if self.debug:
+                            self.log('DEBUG', f"Subscribed to {message['channel']}")
+                    elif message['type'] == 'psubscribe':
+                        if self.debug:
+                            self.log('DEBUG', f"Pattern subscribed to {message['channel']}")
+                        
+            except asyncio.CancelledError:
+                self.log('INFO', "Event subscription loop cancelled")
+                break
+            except Exception as e:
+                self.log('ERROR', f"Event subscription error: {str(e)}")
+                self.metrics['errors'] += 1
+                
+                # Clean up broken connections
+                if self.pubsub:
                     try:
-                        # Try to parse as JSON
-                        event_data = json.loads(data_str) if isinstance(data_str, str) else data_str
-                    except json.JSONDecodeError:
-                        # If not JSON, forward as string
-                        event_data = {'raw': data_str}
+                        await self.pubsub.close()
+                    except:
+                        pass
+                    self.pubsub = None
+                
+                if self.redis_client:
+                    try:
+                        await self.redis_client.close()
+                    except:
+                        pass
+                    self.redis_client = None
+                
+                # Re-register with ClaudeBench after Redis reconnection
+                if self.running:
+                    self.log('INFO', f"Attempting Redis reconnection in {reconnect_delay}s")
+                    await asyncio.sleep(reconnect_delay)
+                    reconnect_delay = min(reconnect_delay * 2, max_reconnect_delay)
                     
-                    # Forward to Claude Code
-                    self.forward_event(channel, event_data)
-                    
-                elif message['type'] == 'subscribe':
-                    if self.debug:
-                        self.log('DEBUG', f"Subscribed to {message['channel']}")
-                elif message['type'] == 'psubscribe':
-                    if self.debug:
-                        self.log('DEBUG', f"Pattern subscribed to {message['channel']}")
-                    
-        except asyncio.CancelledError:
-            self.log('INFO', "Event subscription loop cancelled")
-        except Exception as e:
-            self.log('ERROR', f"Event subscription error: {str(e)}", traceback=traceback.format_exc())
-            self.metrics['errors'] += 1
+                    # Re-register after reconnection
+                    self.registered = False
+                    if await self.register():
+                        self.log('INFO', "Successfully re-registered after Redis reconnection")
+                    else:
+                        self.log('WARN', "Failed to re-register after Redis reconnection")
     
     async def shutdown(self):
         """Graceful shutdown procedure"""

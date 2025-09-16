@@ -701,6 +701,13 @@ local updates = cjson.decode(updates_json)
 local current_status = redis.call('hget', task_key, 'status')
 local current_priority = tonumber(redis.call('hget', task_key, 'priority'))
 
+-- CRITICAL: Prevent regression of completed tasks (but allow retry of failed tasks)
+if current_status == 'completed' and updates.status then
+  if updates.status ~= 'completed' then
+    return {0, 'Cannot change status of completed task to ' .. updates.status}
+  end
+end
+
 -- Apply updates
 redis.call('hset', task_key, 'updatedAt', updated_at)
 

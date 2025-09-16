@@ -98,14 +98,29 @@ export function InstanceManager({ onInstancesChange, className }: InstanceManage
 	// Update instances from system state
 	useEffect(() => {
 		if (systemState?.instances) {
-			const instanceList = systemState.instances.map((inst: any) => ({
-				id: inst.id || inst.instanceId,
-				roles: inst.roles || [],
-				status: inst.status || "ACTIVE",
-				health: inst.health || "healthy",
-				lastSeen: inst.lastSeen || inst.lastHeartbeat || new Date().toISOString(),
-				taskCount: inst.taskCount || 0,
-			}));
+			const instanceList = systemState.instances.map((inst: any) => {
+				let roles: string[] = [];
+				if (inst.roles) {
+					if (Array.isArray(inst.roles)) {
+						roles = inst.roles;
+					} else if (typeof inst.roles === 'string') {
+						try {
+							const parsed = JSON.parse(inst.roles);
+							roles = Array.isArray(parsed) ? parsed : [parsed];
+						} catch {
+							roles = [inst.roles];
+						}
+					}
+				}
+				return {
+					id: inst.id || inst.instanceId,
+					roles,
+					status: inst.status || "ACTIVE",
+					health: inst.health || "healthy",
+					lastSeen: inst.lastSeen || inst.lastHeartbeat || new Date().toISOString(),
+					taskCount: inst.taskCount || 0,
+				};
+			});
 			setInstances(instanceList);
 			onInstancesChange?.(instanceList);
 		}
@@ -415,12 +430,12 @@ export function InstanceManager({ onInstancesChange, className }: InstanceManage
 													<div className="flex items-center gap-4 text-xs text-muted-foreground">
 														<div className="flex items-center gap-1">
 															<Clock className="h-3 w-3" />
-															{instance.lastSeen
-																? `Last seen ${formatDistanceToNow(
-																		new Date(instance.lastSeen),
-																		{ addSuffix: true }
-																	)}`
-																: "Never"}
+															{(() => {
+																if (!instance.lastSeen) return "Never";
+																const date = new Date(instance.lastSeen);
+																if (isNaN(date.getTime())) return "Invalid date";
+																return `Last seen ${formatDistanceToNow(date, { addSuffix: true })}`;
+															})()}
 														</div>
 														{instance.taskCount !== undefined && (
 															<div className="flex items-center gap-1">
