@@ -6,12 +6,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
 	ChartContainer, 
 	ChartTooltip, 
 	ChartTooltipContent,
-	ChartLegend,
-	ChartLegendContent,
 	type ChartConfig 
 } from "@/components/ui/chart";
 import { 
@@ -28,17 +30,15 @@ import {
 	RadialBarChart,
 	RadialBar,
 	PolarGrid,
-	PolarAngleAxis,
-	PolarRadiusAxis
+	Cell,
+	Pie,
+	PieChart
 } from "recharts";
 import { 
 	getEventClient,
-	useSystemMetrics,
-	useEventQuery
+	useSystemMetrics
 } from "@/services/event-client";
 import { 
-	TrendingUp,
-	TrendingDown,
 	Activity,
 	Zap,
 	BarChart3,
@@ -48,16 +48,24 @@ import {
 	MemoryStick,
 	Network,
 	RefreshCw,
-	Calendar,
-	Clock,
-	AlertTriangle,
 	CheckCircle,
-	Hash,
-	ArrowUp,
-	ArrowDown,
-	Minus
+	XCircle,
+	AlertTriangle,
+	Shield,
+	Clock,
+	TrendingUp,
+	TrendingDown,
+	Minus,
+	Info,
+	AlertCircle,
+	CheckCircle2,
+	Ban,
+	ShieldOff,
+	ShieldCheck,
+	Gauge
 } from "lucide-react";
 
+// Enhanced metrics data interface
 interface MetricsData {
 	eventsProcessed?: number;
 	tasksCompleted?: number;
@@ -113,241 +121,232 @@ interface MetricsData {
 	};
 }
 
-interface HistoricalDataPoint {
-	timestamp: string;
-	time: string;
-	eventsProcessed: number;
-	tasksCompleted: number;
-	averageLatency: number;
-	memoryUsage: number;
+interface EventMetrics {
+	name: string;
+	domain: string;
+	circuit: {
+		success: number;
+		failure: number;
+		opened: number;
+		rejected: number;
+		fallback: number;
+		total: number;
+		rate: number;
+	};
+	rateLimit: {
+		allowed: number;
+		rejected: number;
+		total: number;
+		rate: number;
+	};
+	timeout: {
+		completed: number;
+		timedOut: number;
+		total: number;
+		rate: number;
+	};
+	health: number;
 }
 
 interface MetricsProps {
 	className?: string;
-	showCharts?: boolean;
-	autoRefresh?: boolean;
 }
 
-export function Metrics({ 
-	className,
-	showCharts = true,
-	autoRefresh = true
-}: MetricsProps) {
+// Helper function to parse event metrics from counters
+function parseEventMetrics(counters: MetricsData['counters']): EventMetrics[] {
+	if (!counters) return [];
+
+	const eventMap = new Map<string, EventMetrics>();
+
+	// Process circuit breaker metrics
+	if (counters.circuit) {
+		Object.entries(counters.circuit).forEach(([key, value]) => {
+			const [eventName, metric] = key.split(':');
+			if (!eventMap.has(eventName)) {
+				const [domain] = eventName.split('.');
+				eventMap.set(eventName, {
+					name: eventName,
+					domain,
+					circuit: { success: 0, failure: 0, opened: 0, rejected: 0, fallback: 0, total: 0, rate: 0 },
+					rateLimit: { allowed: 0, rejected: 0, total: 0, rate: 0 },
+					timeout: { completed: 0, timedOut: 0, total: 0, rate: 0 },
+					health: 0
+				});
+			}
+			const event = eventMap.get(eventName)!;
+			switch (metric) {
+				case 'success': event.circuit.success = value; break;
+				case 'failure': event.circuit.failure = value; break;
+				case 'opened': event.circuit.opened = value; break;
+				case 'rejected': event.circuit.rejected = value; break;
+				case 'fallback': event.circuit.fallback = value; break;
+			}
+		});
+	}
+
+	// Process rate limit metrics
+	if (counters.ratelimit) {
+		Object.entries(counters.ratelimit).forEach(([key, value]) => {
+			const [eventName, metric] = key.split(':');
+			if (!eventMap.has(eventName)) {
+				const [domain] = eventName.split('.');
+				eventMap.set(eventName, {
+					name: eventName,
+					domain,
+					circuit: { success: 0, failure: 0, opened: 0, rejected: 0, fallback: 0, total: 0, rate: 0 },
+					rateLimit: { allowed: 0, rejected: 0, total: 0, rate: 0 },
+					timeout: { completed: 0, timedOut: 0, total: 0, rate: 0 },
+					health: 0
+				});
+			}
+			const event = eventMap.get(eventName)!;
+			if (metric === 'allowed') event.rateLimit.allowed = value;
+			// Note: rejected count not in current data, would need to be added
+		});
+	}
+
+	// Process timeout metrics
+	if (counters.timeout) {
+		Object.entries(counters.timeout).forEach(([key, value]) => {
+			const [eventName, metric] = key.split(':');
+			if (!eventMap.has(eventName)) {
+				const [domain] = eventName.split('.');
+				eventMap.set(eventName, {
+					name: eventName,
+					domain,
+					circuit: { success: 0, failure: 0, opened: 0, rejected: 0, fallback: 0, total: 0, rate: 0 },
+					rateLimit: { allowed: 0, rejected: 0, total: 0, rate: 0 },
+					timeout: { completed: 0, timedOut: 0, total: 0, rate: 0 },
+					health: 0
+				});
+			}
+			const event = eventMap.get(eventName)!;
+			if (metric === 'completed') event.timeout.completed = value;
+			// Note: timedOut count not in current data
+		});
+	}
+
+	// Calculate totals and health scores
+	eventMap.forEach((event) => {
+		// Circuit totals
+		event.circuit.total = event.circuit.success + event.circuit.failure;
+		event.circuit.rate = event.circuit.total > 0 
+			? (event.circuit.success / event.circuit.total) * 100 
+			: 100;
+
+		// Rate limit totals
+		event.rateLimit.total = event.rateLimit.allowed + event.rateLimit.rejected;
+		event.rateLimit.rate = event.rateLimit.total > 0 
+			? (event.rateLimit.allowed / event.rateLimit.total) * 100 
+			: 100;
+
+		// Timeout totals
+		event.timeout.total = event.timeout.completed + event.timeout.timedOut;
+		event.timeout.rate = event.timeout.total > 0 
+			? (event.timeout.completed / event.timeout.total) * 100 
+			: 100;
+
+		// Calculate overall health (weighted average)
+		const circuitHealth = event.circuit.rate;
+		const rateLimitHealth = event.rateLimit.rate;
+		const timeoutHealth = event.timeout.rate;
+		
+		// Penalize heavily for circuit breaker trips
+		const tripPenalty = event.circuit.opened > 0 ? 20 : 0;
+		
+		event.health = Math.max(0, Math.min(100, 
+			(circuitHealth * 0.5 + rateLimitHealth * 0.25 + timeoutHealth * 0.25) - tripPenalty
+		));
+	});
+
+	return Array.from(eventMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// Calculate overall system health score
+function calculateSystemHealth(metrics: MetricsData): number {
+	let score = 100;
+	let weights = 0;
+
+	// Circuit breaker health (40% weight)
+	if (metrics.circuitBreaker) {
+		const cbHealth = metrics.circuitBreaker.successRate;
+		score = score * 0.6 + cbHealth * 0.4;
+		weights += 0.4;
+	}
+
+	// Cache performance (20% weight)
+	if (metrics.cache?.hitRate) {
+		const cacheHealth = metrics.cache.hitRate;
+		score = score * 0.8 + cacheHealth * 0.2;
+		weights += 0.2;
+	}
+
+	// Queue health (20% weight)
+	if (metrics.queue) {
+		const queueHealth = metrics.queue.depth < 10 ? 100 : 
+							metrics.queue.depth < 50 ? 80 : 
+							metrics.queue.depth < 100 ? 60 : 40;
+		score = score * 0.8 + queueHealth * 0.2;
+		weights += 0.2;
+	}
+
+	// Memory usage (20% weight)
+	if (metrics.memoryUsage) {
+		const memHealth = metrics.memoryUsage < 100 ? 100 :
+						  metrics.memoryUsage < 200 ? 80 :
+						  metrics.memoryUsage < 500 ? 60 : 40;
+		score = score * 0.8 + memHealth * 0.2;
+		weights += 0.2;
+	}
+
+	return Math.round(score);
+}
+
+// Get health status color and icon
+function getHealthStatus(health: number) {
+	if (health >= 90) return { color: "text-green-600", icon: <CheckCircle2 className="h-4 w-4" />, label: "Excellent" };
+	if (health >= 70) return { color: "text-blue-600", icon: <CheckCircle className="h-4 w-4" />, label: "Good" };
+	if (health >= 50) return { color: "text-yellow-600", icon: <AlertTriangle className="h-4 w-4" />, label: "Warning" };
+	return { color: "text-red-600", icon: <XCircle className="h-4 w-4" />, label: "Critical" };
+}
+
+export function Metrics({ className }: MetricsProps) {
 	// State
-	const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([]);
 	const [timeWindow, setTimeWindow] = useState<"1h" | "6h" | "24h" | "7d">("1h");
-	const [isConnected, setIsConnected] = useState(false);
-	const [selectedMetric, setSelectedMetric] = useState<"all" | "events" | "tasks" | "latency" | "memory">("all");
+	const [selectedDomain, setSelectedDomain] = useState<string>("all");
 	
-	// Queries - request detailed metrics
+	// Fetch metrics data with detailed flag
 	const { data: metricsData, refetch: refetchMetrics, isLoading } = useSystemMetrics({ detailed: true });
 	
-	// Calculate refresh interval based on time window
-	const refreshInterval = useMemo(() => {
-		switch (timeWindow) {
-			case "1h": return 5000; // 5 seconds
-			case "6h": return 30000; // 30 seconds
-			case "24h": return 60000; // 1 minute
-			case "7d": return 300000; // 5 minutes
-			default: return 30000;
-		}
-	}, [timeWindow]);
+	// Parse event metrics from counters
+	const eventMetrics = useMemo(() => parseEventMetrics(metricsData?.counters), [metricsData?.counters]);
 	
-	// WebSocket connection for real-time updates
-	const connectWebSocket = useCallback(() => {
-		const client = getEventClient();
-		
-		const connection = client.subscribeToEvents(
-			["system.metrics", "task.completed"],
-			(message: any) => {
-				try {
-					if (message.type === "event") {
-						// Trigger metrics refresh when relevant events occur
-						refetchMetrics();
-					}
-				} catch (error) {
-					console.error("Failed to process metrics event:", error);
-				}
-			},
-			(error: Error) => {
-				console.error("WebSocket error:", error);
-				setIsConnected(false);
-			},
-			() => {
-				setIsConnected(true);
-			},
-			() => {
-				setIsConnected(false);
-			}
-		);
-		
-		return () => connection.close();
-	}, [refetchMetrics]);
+	// Get unique domains
+	const domains = useMemo(() => {
+		const domainSet = new Set(eventMetrics.map(e => e.domain));
+		return ["all", ...Array.from(domainSet)];
+	}, [eventMetrics]);
 	
-	// Connect to WebSocket on mount
-	useEffect(() => {
-		if (autoRefresh) {
-			const cleanup = connectWebSocket();
-			return cleanup;
-		}
-	}, [connectWebSocket, autoRefresh]);
+	// Filter events by domain
+	const filteredEvents = useMemo(() => {
+		if (selectedDomain === "all") return eventMetrics;
+		return eventMetrics.filter(e => e.domain === selectedDomain);
+	}, [eventMetrics, selectedDomain]);
 	
-	// Update historical data
-	useEffect(() => {
-		if (metricsData) {
-			const now = new Date();
-			const newPoint: HistoricalDataPoint = {
-				timestamp: now.toISOString(),
-				time: now.toLocaleTimeString("en-US", { 
-					hour: "2-digit", 
-					minute: "2-digit",
-					hour12: false 
-				}),
-				eventsProcessed: metricsData.eventsProcessed || 0,
-				tasksCompleted: metricsData.tasksCompleted || 0,
-				averageLatency: metricsData.averageLatency || 0,
-				memoryUsage: metricsData.memoryUsage || 0,
-			};
-			
-			setHistoricalData(prev => {
-				const updated = [...prev, newPoint];
-				// Keep only the last N points based on time window
-				const maxPoints = timeWindow === "1h" ? 60 : 
-								 timeWindow === "6h" ? 72 : 
-								 timeWindow === "24h" ? 96 : 168;
-				return updated.slice(-maxPoints);
-			});
-		}
-	}, [metricsData, timeWindow]);
-	
-	// Auto-refresh metrics
-	useEffect(() => {
-		if (autoRefresh) {
-			const interval = setInterval(() => {
-				refetchMetrics();
-			}, refreshInterval);
-			
-			return () => clearInterval(interval);
-		}
-	}, [autoRefresh, refreshInterval, refetchMetrics]);
-	
-	// Calculate trends
-	const trends = useMemo(() => {
-		if (historicalData.length < 2) {
-			return {
-				events: { value: 0, direction: "neutral" as const },
-				tasks: { value: 0, direction: "neutral" as const },
-				latency: { value: 0, direction: "neutral" as const },
-				memory: { value: 0, direction: "neutral" as const },
-			};
-		}
-		
-		const recent = historicalData[historicalData.length - 1];
-		const previous = historicalData[historicalData.length - 2];
-		
-		const eventsTrend = recent.eventsProcessed - previous.eventsProcessed;
-		const tasksTrend = recent.tasksCompleted - previous.tasksCompleted;
-		const latencyTrend = recent.averageLatency - previous.averageLatency;
-		const memoryTrend = recent.memoryUsage - previous.memoryUsage;
-		
-		return {
-			events: {
-				value: Math.abs(eventsTrend),
-				direction: (eventsTrend > 0 ? "up" : eventsTrend < 0 ? "down" : "neutral") as "up" | "down" | "neutral"
-			},
-			tasks: {
-				value: Math.abs(tasksTrend),
-				direction: (tasksTrend > 0 ? "up" : tasksTrend < 0 ? "down" : "neutral") as "up" | "down" | "neutral"
-			},
-			latency: {
-				value: Math.abs(latencyTrend),
-				direction: (latencyTrend > 0 ? "up" : latencyTrend < 0 ? "down" : "neutral") as "up" | "down" | "neutral"
-			},
-			memory: {
-				value: Math.abs(memoryTrend),
-				direction: (memoryTrend > 0 ? "up" : memoryTrend < 0 ? "down" : "neutral") as "up" | "down" | "neutral"
-			},
-		};
-	}, [historicalData]);
-	
-	// Get trend icon
-	const getTrendIcon = (direction: "up" | "down" | "neutral") => {
-		switch (direction) {
-			case "up": return <ArrowUp className="h-3 w-3" />;
-			case "down": return <ArrowDown className="h-3 w-3" />;
-			case "neutral": return <Minus className="h-3 w-3" />;
-		}
-	};
-	
-	// Get trend color (for metrics where lower is better like latency)
-	const getTrendColor = (direction: "up" | "down" | "neutral", invertGood = false) => {
-		if (direction === "neutral") return "text-muted-foreground";
-		if (invertGood) {
-			return direction === "up" ? "text-red-600" : "text-green-600";
-		}
-		return direction === "up" ? "text-green-600" : "text-red-600";
-	};
-	
-	// Chart configurations
-	const chartConfig: ChartConfig = {
-		eventsProcessed: {
-			label: "Events",
-			color: "hsl(var(--chart-1))",
-		},
-		tasksCompleted: {
-			label: "Tasks",
-			color: "hsl(var(--chart-2))",
-		},
-		averageLatency: {
-			label: "Latency",
-			color: "hsl(var(--chart-3))",
-		},
-		memoryUsage: {
-			label: "Memory",
-			color: "hsl(var(--chart-4))",
-		},
-	};
-	
-	// Performance score calculation
-	const performanceScore = useMemo(() => {
-		if (!metricsData) return 0;
-		
-		let score = 100;
-		
-		// Deduct points for high latency
-		if (metricsData.averageLatency) {
-			if (metricsData.averageLatency > 100) score -= 20;
-			else if (metricsData.averageLatency > 50) score -= 10;
-		}
-		
-		// Deduct points for high memory usage
-		if (metricsData.memoryUsage) {
-			if (metricsData.memoryUsage > 1000) score -= 30;
-			else if (metricsData.memoryUsage > 500) score -= 15;
-		}
-		
-		return Math.max(0, score);
+	// Calculate system health
+	const systemHealth = useMemo(() => calculateSystemHealth(metricsData || {}), [metricsData]);
+	const healthStatus = getHealthStatus(systemHealth);
+
+	// Prepare chart data for resilience metrics
+	const resilienceData = useMemo(() => {
+		if (!metricsData?.circuitBreaker) return [];
+		return [
+			{ name: "Success", value: metricsData.circuitBreaker.totalSuccesses, fill: "#10b981" },
+			{ name: "Failures", value: metricsData.circuitBreaker.totalFailures, fill: "#ef4444" },
+			{ name: "Trips", value: metricsData.circuitBreaker.totalTrips, fill: "#f59e0b" }
+		];
 	}, [metricsData]);
-	
-	// Get performance status
-	const getPerformanceStatus = () => {
-		if (performanceScore >= 80) return { label: "Excellent", color: "text-green-600", icon: <CheckCircle className="h-5 w-5" /> };
-		if (performanceScore >= 60) return { label: "Good", color: "text-blue-600", icon: <CheckCircle className="h-5 w-5" /> };
-		if (performanceScore >= 40) return { label: "Fair", color: "text-yellow-600", icon: <AlertTriangle className="h-5 w-5" /> };
-		return { label: "Poor", color: "text-red-600", icon: <AlertTriangle className="h-5 w-5" /> };
-	};
-	
-	const performanceStatus = getPerformanceStatus();
-	
-	// Radial chart data for performance score
-	const radialData = [{
-		name: "Performance",
-		value: performanceScore,
-		fill: performanceScore >= 80 ? "hsl(142, 76%, 36%)" : 
-			  performanceScore >= 60 ? "hsl(217, 91%, 60%)" :
-			  performanceScore >= 40 ? "hsl(48, 96%, 53%)" : "hsl(0, 84%, 60%)"
-	}];
-	
+
 	return (
 		<Card className={cn("flex flex-col", className)}>
 			<CardHeader className="pb-3 flex-shrink-0">
@@ -355,23 +354,24 @@ export function Metrics({
 					<div>
 						<CardTitle className="flex items-center gap-2">
 							<BarChart3 className="h-5 w-5" />
-							System Metrics
+							System Metrics Dashboard
 						</CardTitle>
 						<CardDescription>
-							Real-time performance monitoring and analytics
+							Comprehensive monitoring of system health and resilience
 						</CardDescription>
 					</div>
 					<div className="flex items-center gap-2">
-						<Badge variant={isConnected ? "default" : "secondary"}>
-							{isConnected ? "Live" : "Offline"}
+						<Badge variant="outline" className={cn("gap-1", healthStatus.color)}>
+							{healthStatus.icon}
+							Health: {systemHealth}%
 						</Badge>
-						<Badge 
-							variant="outline" 
-							className={cn("gap-1", performanceStatus.color)}
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => refetchMetrics()}
 						>
-							{performanceStatus.icon}
-							{performanceStatus.label}
-						</Badge>
+							<RefreshCw className="h-4 w-4" />
+						</Button>
 					</div>
 				</div>
 			</CardHeader>
@@ -379,6 +379,19 @@ export function Metrics({
 			<CardContent className="flex-1 flex flex-col gap-4 pb-4">
 				{/* Controls */}
 				<div className="flex flex-wrap gap-2">
+					<Select value={selectedDomain} onValueChange={setSelectedDomain}>
+						<SelectTrigger className="w-[150px]">
+							<SelectValue placeholder="Filter by domain" />
+						</SelectTrigger>
+						<SelectContent>
+							{domains.map(domain => (
+								<SelectItem key={domain} value={domain}>
+									{domain === "all" ? "All Domains" : domain}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+					
 					<Select value={timeWindow} onValueChange={(v: any) => setTimeWindow(v)}>
 						<SelectTrigger className="w-[150px]">
 							<SelectValue placeholder="Time window" />
@@ -390,449 +403,461 @@ export function Metrics({
 							<SelectItem value="7d">Last 7 days</SelectItem>
 						</SelectContent>
 					</Select>
-					
-					<Select value={selectedMetric} onValueChange={(v: any) => setSelectedMetric(v)}>
-						<SelectTrigger className="w-[150px]">
-							<SelectValue placeholder="Metric filter" />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="all">All metrics</SelectItem>
-							<SelectItem value="events">Events</SelectItem>
-							<SelectItem value="tasks">Tasks</SelectItem>
-							<SelectItem value="latency">Latency</SelectItem>
-							<SelectItem value="memory">Memory</SelectItem>
-						</SelectContent>
-					</Select>
-					
-					<div className="flex-1" />
-					
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={() => refetchMetrics()}
-					>
-						<RefreshCw className="h-4 w-4" />
-					</Button>
 				</div>
-				
-				{/* Key Metrics Cards */}
-				<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-					<Card>
-						<CardHeader className="pb-2">
-							<CardTitle className="text-sm font-medium flex items-center justify-between">
-								<span className="flex items-center gap-2">
-									<Activity className="h-4 w-4" />
-									Events Processed
-								</span>
-								<span className={cn("flex items-center gap-1 text-xs", getTrendColor(trends.events.direction))}>
-									{getTrendIcon(trends.events.direction)}
-									{trends.events.value}
-								</span>
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-bold">
-								{metricsData?.eventsProcessed?.toLocaleString() || "0"}
-							</div>
-							<p className="text-xs text-muted-foreground mt-1">
-								Total events
-							</p>
-							<Progress 
-								value={Math.min(100, (metricsData?.eventsProcessed || 0) / 100)} 
-								className="mt-2"
-							/>
-						</CardContent>
+
+				{/* Key Metrics Overview - Compact */}
+				<div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+					<Card className="p-3">
+						<div className="flex items-center justify-between">
+							<Activity className="h-4 w-4 text-muted-foreground" />
+							<span className="text-2xl font-bold">{metricsData?.eventsProcessed || 0}</span>
+						</div>
+						<p className="text-xs text-muted-foreground mt-1">Events</p>
 					</Card>
 					
-					<Card>
-						<CardHeader className="pb-2">
-							<CardTitle className="text-sm font-medium flex items-center justify-between">
-								<span className="flex items-center gap-2">
-									<CheckCircle className="h-4 w-4" />
-									Tasks Completed
-								</span>
-								<span className={cn("flex items-center gap-1 text-xs", getTrendColor(trends.tasks.direction))}>
-									{getTrendIcon(trends.tasks.direction)}
-									{trends.tasks.value}
-								</span>
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-bold">
-								{metricsData?.tasksCompleted?.toLocaleString() || "0"}
-							</div>
-							<p className="text-xs text-muted-foreground mt-1">
-								Finished tasks
-							</p>
-							<Progress 
-								value={Math.min(100, (metricsData?.tasksCompleted || 0) / 50)} 
-								className="mt-2"
-							/>
-						</CardContent>
+					<Card className="p-3">
+						<div className="flex items-center justify-between">
+							<CheckCircle className="h-4 w-4 text-muted-foreground" />
+							<span className="text-2xl font-bold">{metricsData?.tasksCompleted || 0}</span>
+						</div>
+						<p className="text-xs text-muted-foreground mt-1">Tasks</p>
 					</Card>
 					
-					<Card>
-						<CardHeader className="pb-2">
-							<CardTitle className="text-sm font-medium flex items-center justify-between">
-								<span className="flex items-center gap-2">
-									<Timer className="h-4 w-4" />
-									Avg Latency
-								</span>
-								<span className={cn("flex items-center gap-1 text-xs", getTrendColor(trends.latency.direction, true))}>
-									{getTrendIcon(trends.latency.direction)}
-									{trends.latency.value.toFixed(1)}
-								</span>
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-bold">
-								{metricsData?.averageLatency?.toFixed(1) || "0"} ms
-							</div>
-							<p className="text-xs text-muted-foreground mt-1">
-								Response time
-							</p>
-							<Progress 
-								value={Math.max(0, 100 - (metricsData?.averageLatency || 0))} 
-								className="mt-2"
-							/>
-						</CardContent>
+					<Card className="p-3">
+						<div className="flex items-center justify-between">
+							<Timer className="h-4 w-4 text-muted-foreground" />
+							<span className="text-2xl font-bold">{metricsData?.averageLatency?.toFixed(1) || 0}</span>
+						</div>
+						<p className="text-xs text-muted-foreground mt-1">Latency (ms)</p>
 					</Card>
 					
-					<Card>
-						<CardHeader className="pb-2">
-							<CardTitle className="text-sm font-medium flex items-center justify-between">
-								<span className="flex items-center gap-2">
-									<MemoryStick className="h-4 w-4" />
-									Memory Usage
-								</span>
-								<span className={cn("flex items-center gap-1 text-xs", getTrendColor(trends.memory.direction, true))}>
-									{getTrendIcon(trends.memory.direction)}
-									{trends.memory.value.toFixed(1)}
-								</span>
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-bold">
-								{metricsData?.memoryUsage?.toFixed(1) || "0"} MB
-							</div>
-							<p className="text-xs text-muted-foreground mt-1">
-								Heap used
-							</p>
-							<Progress 
-								value={Math.min(100, (metricsData?.memoryUsage || 0) / 10)} 
-								className="mt-2"
-							/>
-						</CardContent>
+					<Card className="p-3">
+						<div className="flex items-center justify-between">
+							<MemoryStick className="h-4 w-4 text-muted-foreground" />
+							<span className="text-2xl font-bold">{metricsData?.memoryUsage?.toFixed(0) || 0}</span>
+						</div>
+						<p className="text-xs text-muted-foreground mt-1">Memory (MB)</p>
+					</Card>
+					
+					<Card className="p-3">
+						<div className="flex items-center justify-between">
+							<Gauge className="h-4 w-4 text-muted-foreground" />
+							<span className="text-2xl font-bold">{metricsData?.global?.throughput?.toFixed(1) || 0}</span>
+						</div>
+						<p className="text-xs text-muted-foreground mt-1">Throughput</p>
 					</Card>
 				</div>
-				
-				{/* Performance Score */}
+
+				{/* Event Metrics Table */}
+				<Card>
+					<CardHeader className="pb-3">
+						<CardTitle className="text-sm font-medium flex items-center gap-2">
+							<Shield className="h-4 w-4" />
+							Event Resilience Metrics
+						</CardTitle>
+						<CardDescription className="text-xs">
+							Per-event breakdown of circuit breakers, rate limits, and timeouts
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<ScrollArea className="h-[400px] w-full">
+							<Table>
+								<TableHeader>
+									<TableRow>
+										<TableHead className="w-[250px]">Event</TableHead>
+										<TableHead className="text-center min-w-[180px]">Circuit Breaker</TableHead>
+										<TableHead className="text-center min-w-[150px]">Rate Limit</TableHead>
+										<TableHead className="text-center min-w-[150px]">Timeout</TableHead>
+										<TableHead className="text-center min-w-[120px]">Health</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{filteredEvents.length === 0 ? (
+										<TableRow>
+											<TableCell colSpan={5} className="text-center text-muted-foreground">
+												No event metrics available
+											</TableCell>
+										</TableRow>
+									) : (
+										<Accordion type="single" collapsible className="w-full">
+											{filteredEvents.map((event) => {
+												const eventHealth = getHealthStatus(event.health);
+												return (
+													<AccordionItem key={event.name} value={event.name} className="border-0">
+														<TableRow className="border-b hover:bg-muted/50">
+															<TableCell className="font-medium py-3">
+																<AccordionTrigger className="py-0 hover:no-underline">
+																	<div className="flex items-center gap-2">
+																		<Badge variant="outline" className="text-xs">
+																			{event.domain}
+																		</Badge>
+																		<span className="text-sm">{event.name}</span>
+																	</div>
+																</AccordionTrigger>
+															</TableCell>
+															<TableCell className="text-center py-3 px-4">
+																<div className="flex items-center justify-center gap-1 flex-wrap min-h-[28px]">
+																	{(event.circuit.success === 0 && event.circuit.failure === 0 && event.circuit.opened === 0) ? (
+																		<span className="text-muted-foreground text-xs">—</span>
+																	) : null}
+																	{event.circuit.success > 0 && (
+																		<Tooltip>
+																			<TooltipTrigger>
+																				<Badge variant="default" className="gap-0.5 text-xs px-2 py-0.5">
+																					<CheckCircle className="h-3 w-3" />
+																					{event.circuit.success}
+																				</Badge>
+																			</TooltipTrigger>
+																			<TooltipContent>Successful requests</TooltipContent>
+																		</Tooltip>
+																	)}
+																	{event.circuit.failure > 0 && (
+																		<Tooltip>
+																			<TooltipTrigger>
+																				<Badge variant="destructive" className="gap-0.5 text-xs px-2 py-0.5">
+																					<XCircle className="h-3 w-3" />
+																					{event.circuit.failure}
+																				</Badge>
+																			</TooltipTrigger>
+																			<TooltipContent>Failed requests</TooltipContent>
+																		</Tooltip>
+																	)}
+																	{event.circuit.opened > 0 && (
+																		<Tooltip>
+																			<TooltipTrigger>
+																				<Badge variant="outline" className="gap-0.5 text-xs px-2 py-0.5 text-yellow-600 border-yellow-600">
+																					<AlertTriangle className="h-3 w-3" />
+																					{event.circuit.opened}
+																				</Badge>
+																			</TooltipTrigger>
+																			<TooltipContent>Circuit opened (tripped)</TooltipContent>
+																		</Tooltip>
+																	)}
+																</div>
+															</TableCell>
+															<TableCell className="text-center py-3 px-4">
+																<div className="flex items-center justify-center gap-1 flex-wrap min-h-[28px]">
+																	{(event.rateLimit.allowed === 0 && event.rateLimit.rejected === 0) ? (
+																		<span className="text-muted-foreground text-xs">—</span>
+																	) : null}
+																	{event.rateLimit.allowed > 0 && (
+																		<Tooltip>
+																			<TooltipTrigger>
+																				<Badge variant="default" className="gap-0.5 text-xs px-2 py-0.5">
+																					<CheckCircle className="h-3 w-3" />
+																					{event.rateLimit.allowed}
+																				</Badge>
+																			</TooltipTrigger>
+																			<TooltipContent>Requests allowed</TooltipContent>
+																		</Tooltip>
+																	)}
+																	{event.rateLimit.rejected > 0 && (
+																		<Tooltip>
+																			<TooltipTrigger>
+																				<Badge variant="destructive" className="gap-0.5 text-xs px-2 py-0.5">
+																					<Ban className="h-3 w-3" />
+																					{event.rateLimit.rejected}
+																				</Badge>
+																			</TooltipTrigger>
+																			<TooltipContent>Requests rate limited</TooltipContent>
+																		</Tooltip>
+																	)}
+																</div>
+															</TableCell>
+															<TableCell className="text-center py-3 px-4">
+																<div className="flex items-center justify-center gap-1 flex-wrap min-h-[28px]">
+																	{(event.timeout.completed === 0 && event.timeout.timedOut === 0) ? (
+																		<span className="text-muted-foreground text-xs">—</span>
+																	) : null}
+																	{event.timeout.completed > 0 && (
+																		<Tooltip>
+																			<TooltipTrigger>
+																				<Badge variant="default" className="gap-0.5 text-xs px-2 py-0.5">
+																					<Clock className="h-3 w-3" />
+																					{event.timeout.completed}
+																				</Badge>
+																			</TooltipTrigger>
+																			<TooltipContent>Completed within timeout</TooltipContent>
+																		</Tooltip>
+																	)}
+																	{event.timeout.timedOut > 0 && (
+																		<Tooltip>
+																			<TooltipTrigger>
+																				<Badge variant="destructive" className="gap-0.5 text-xs px-2 py-0.5">
+																					<AlertCircle className="h-3 w-3" />
+																					{event.timeout.timedOut}
+																				</Badge>
+																			</TooltipTrigger>
+																			<TooltipContent>Timed out</TooltipContent>
+																		</Tooltip>
+																	)}
+																</div>
+															</TableCell>
+															<TableCell className="text-center py-3 px-4">
+																<div className="flex items-center justify-center gap-1">
+																	<span className={cn("flex items-center gap-1 text-sm", eventHealth.color)}>
+																		{eventHealth.icon}
+																		<span className="font-bold">{Math.round(event.health)}%</span>
+																	</span>
+																</div>
+															</TableCell>
+														</TableRow>
+														<AccordionContent>
+															<TableRow>
+																<TableCell colSpan={5}>
+																	<div className="p-4 space-y-3">
+																		<div className="grid grid-cols-3 gap-4">
+																			{/* Circuit Breaker Details */}
+																			<div className="space-y-2">
+																				<h4 className="text-sm font-medium flex items-center gap-1">
+																					<Zap className="h-3 w-3" />
+																					Circuit Breaker Details
+																				</h4>
+																				<div className="space-y-1 text-xs">
+																					<div className="flex justify-between">
+																						<span className="text-muted-foreground">Success Rate:</span>
+																						<span className="font-mono">{event.circuit.rate.toFixed(1)}%</span>
+																					</div>
+																					<div className="flex justify-between">
+																						<span className="text-muted-foreground">Total Requests:</span>
+																						<span className="font-mono">{event.circuit.total}</span>
+																					</div>
+																					{event.circuit.rejected > 0 && (
+																						<div className="flex justify-between">
+																							<span className="text-muted-foreground">Rejected:</span>
+																							<span className="font-mono text-yellow-600">{event.circuit.rejected}</span>
+																						</div>
+																					)}
+																					{event.circuit.fallback > 0 && (
+																						<div className="flex justify-between">
+																							<span className="text-muted-foreground">Fallback Used:</span>
+																							<span className="font-mono text-blue-600">{event.circuit.fallback}</span>
+																						</div>
+																					)}
+																				</div>
+																			</div>
+
+																			{/* Rate Limit Details */}
+																			<div className="space-y-2">
+																				<h4 className="text-sm font-medium flex items-center gap-1">
+																					<Shield className="h-3 w-3" />
+																					Rate Limit Details
+																				</h4>
+																				<div className="space-y-1 text-xs">
+																					<div className="flex justify-between">
+																						<span className="text-muted-foreground">Allow Rate:</span>
+																						<span className="font-mono">{event.rateLimit.rate.toFixed(1)}%</span>
+																					</div>
+																					<div className="flex justify-between">
+																						<span className="text-muted-foreground">Total Requests:</span>
+																						<span className="font-mono">{event.rateLimit.total}</span>
+																					</div>
+																				</div>
+																			</div>
+
+																			{/* Timeout Details */}
+																			<div className="space-y-2">
+																				<h4 className="text-sm font-medium flex items-center gap-1">
+																					<Clock className="h-3 w-3" />
+																					Timeout Details
+																				</h4>
+																				<div className="space-y-1 text-xs">
+																					<div className="flex justify-between">
+																						<span className="text-muted-foreground">Completion Rate:</span>
+																						<span className="font-mono">{event.timeout.rate.toFixed(1)}%</span>
+																					</div>
+																					<div className="flex justify-between">
+																						<span className="text-muted-foreground">Total Requests:</span>
+																						<span className="font-mono">{event.timeout.total}</span>
+																					</div>
+																				</div>
+																			</div>
+																		</div>
+																		
+																		{/* Health Score Breakdown */}
+																		<div className="border-t pt-3">
+																			<h4 className="text-sm font-medium mb-2">Health Score Breakdown</h4>
+																			<div className="flex items-center gap-2">
+																				<Progress value={event.health} className="flex-1" />
+																				<span className={cn("text-sm font-bold", eventHealth.color)}>
+																					{eventHealth.label}
+																				</span>
+																			</div>
+																		</div>
+																	</div>
+																</TableCell>
+															</TableRow>
+														</AccordionContent>
+													</AccordionItem>
+												);
+											})}
+										</Accordion>
+									)}
+								</TableBody>
+							</Table>
+						</ScrollArea>
+					</CardContent>
+				</Card>
+
+				{/* Resilience Dashboard */}
 				<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-					<Card className="md:col-span-1">
-						<CardHeader className="pb-2">
-							<CardTitle className="text-sm font-medium">
-								Performance Score
-							</CardTitle>
-							<CardDescription className="text-xs">
-								Overall system health
-							</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<ChartContainer config={{
-								performance: {
-									label: "Performance",
-									color: "hsl(var(--chart-1))",
-								},
-							}} className="h-[200px]">
-								<ResponsiveContainer width="100%" height="100%">
-									<RadialBarChart 
-										cx="50%" 
-										cy="50%" 
-										innerRadius="60%" 
-										outerRadius="90%" 
-										data={radialData}
-										startAngle={90}
-										endAngle={-270}
-									>
-										<PolarGrid gridType="circle" />
-										<RadialBar dataKey="value" cornerRadius={10} fill="currentColor" className="fill-primary" />
-										<text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle">
-											<tspan className="text-3xl font-bold">{performanceScore}</tspan>
-											<tspan x="50%" y="50%" dy="1.5em" className="text-xs text-muted-foreground">Score</tspan>
-										</text>
-									</RadialBarChart>
-								</ResponsiveContainer>
-							</ChartContainer>
-						</CardContent>
-					</Card>
-					
-					{/* Charts */}
-					{showCharts && historicalData.length > 0 && (
-						<Card className="md:col-span-2">
+					{/* Circuit Breaker Overview */}
+					{metricsData?.circuitBreaker && (
+						<Card>
 							<CardHeader className="pb-2">
-								<CardTitle className="text-sm font-medium">
-									Metrics Trends
+								<CardTitle className="text-sm font-medium flex items-center gap-2">
+									<Zap className="h-4 w-4" />
+									Circuit Breaker Status
 								</CardTitle>
-								<CardDescription className="text-xs">
-									Historical data for {timeWindow === "1h" ? "the last hour" : 
-													   timeWindow === "6h" ? "the last 6 hours" :
-													   timeWindow === "24h" ? "the last 24 hours" : "the last 7 days"}
-								</CardDescription>
 							</CardHeader>
 							<CardContent>
-								<Tabs defaultValue="combined" className="w-full">
-									<TabsList className="grid w-full grid-cols-2">
-										<TabsTrigger value="combined">Combined</TabsTrigger>
-										<TabsTrigger value="individual">Individual</TabsTrigger>
-									</TabsList>
-									
-									<TabsContent value="combined" className="mt-4">
-										<ChartContainer config={chartConfig} className="h-[200px]">
-											<ResponsiveContainer width="100%" height="100%">
-												<LineChart data={historicalData}>
-													<CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-													<XAxis 
-														dataKey="time" 
-														className="text-xs"
-														tick={{ fill: 'currentColor' }}
-													/>
-													<YAxis 
-														className="text-xs"
-														tick={{ fill: 'currentColor' }}
-													/>
-													<ChartTooltip content={<ChartTooltipContent />} />
-													<ChartLegend />
-													{(selectedMetric === "all" || selectedMetric === "events") && (
-														<Line 
-															type="monotone" 
-															dataKey="eventsProcessed" 
-															stroke="hsl(var(--chart-1))"
-															strokeWidth={2}
-															dot={false}
-														/>
-													)}
-													{(selectedMetric === "all" || selectedMetric === "tasks") && (
-														<Line 
-															type="monotone" 
-															dataKey="tasksCompleted" 
-															stroke="hsl(var(--chart-2))"
-															strokeWidth={2}
-															dot={false}
-														/>
-													)}
-													{(selectedMetric === "all" || selectedMetric === "latency") && (
-														<Line 
-															type="monotone" 
-															dataKey="averageLatency" 
-															stroke="hsl(var(--chart-3))"
-															strokeWidth={2}
-															dot={false}
-														/>
-													)}
-													{(selectedMetric === "all" || selectedMetric === "memory") && (
-														<Line 
-															type="monotone" 
-															dataKey="memoryUsage" 
-															stroke="hsl(var(--chart-4))"
-															strokeWidth={2}
-															dot={false}
-														/>
-													)}
-												</LineChart>
-											</ResponsiveContainer>
-										</ChartContainer>
-									</TabsContent>
-									
-									<TabsContent value="individual" className="mt-4">
-										<div className="grid grid-cols-2 gap-2">
-											<ChartContainer config={chartConfig} className="h-[100px]">
-												<ResponsiveContainer width="100%" height="100%">
-													<AreaChart data={historicalData}>
-														<CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-														<XAxis dataKey="time" hide />
-														<YAxis hide />
-														<ChartTooltip content={<ChartTooltipContent />} />
-														<Area 
-															type="monotone" 
-															dataKey="eventsProcessed" 
-															stroke="hsl(var(--chart-1))"
-															fill="hsl(var(--chart-1))"
-															fillOpacity={0.2}
-														/>
-													</AreaChart>
-												</ResponsiveContainer>
-											</ChartContainer>
-											
-											<ChartContainer config={chartConfig} className="h-[100px]">
-												<ResponsiveContainer width="100%" height="100%">
-													<AreaChart data={historicalData}>
-														<CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-														<XAxis dataKey="time" hide />
-														<YAxis hide />
-														<ChartTooltip content={<ChartTooltipContent />} />
-														<Area 
-															type="monotone" 
-															dataKey="tasksCompleted" 
-															stroke="hsl(var(--chart-2))"
-															fill="hsl(var(--chart-2))"
-															fillOpacity={0.2}
-														/>
-													</AreaChart>
-												</ResponsiveContainer>
-											</ChartContainer>
-											
-											<ChartContainer config={chartConfig} className="h-[100px]">
-												<ResponsiveContainer width="100%" height="100%">
-													<AreaChart data={historicalData}>
-														<CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-														<XAxis dataKey="time" hide />
-														<YAxis hide />
-														<ChartTooltip content={<ChartTooltipContent />} />
-														<Area 
-															type="monotone" 
-															dataKey="averageLatency" 
-															stroke="hsl(var(--chart-3))"
-															fill="hsl(var(--chart-3))"
-															fillOpacity={0.2}
-														/>
-													</AreaChart>
-												</ResponsiveContainer>
-											</ChartContainer>
-											
-											<ChartContainer config={chartConfig} className="h-[100px]">
-												<ResponsiveContainer width="100%" height="100%">
-													<AreaChart data={historicalData}>
-														<CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-														<XAxis dataKey="time" hide />
-														<YAxis hide />
-														<ChartTooltip content={<ChartTooltipContent />} />
-														<Area 
-															type="monotone" 
-															dataKey="memoryUsage" 
-															stroke="hsl(var(--chart-4))"
-															fill="hsl(var(--chart-4))"
-															fillOpacity={0.2}
-														/>
-													</AreaChart>
-												</ResponsiveContainer>
-											</ChartContainer>
-										</div>
-									</TabsContent>
-								</Tabs>
+								<ChartContainer 
+									config={{
+										success: { label: "Success", color: "hsl(var(--chart-1))" },
+										failure: { label: "Failures", color: "hsl(var(--chart-2))" },
+										trips: { label: "Trips", color: "hsl(var(--chart-3))" }
+									}}
+									className="h-[150px]"
+								>
+									<ResponsiveContainer width="100%" height="100%">
+										<PieChart>
+											<Pie
+												data={resilienceData}
+												cx="50%"
+												cy="50%"
+												innerRadius={40}
+												outerRadius={60}
+												paddingAngle={2}
+												dataKey="value"
+											>
+												{resilienceData.map((entry, index) => (
+													<Cell key={`cell-${index}`} fill={entry.fill} />
+												))}
+											</Pie>
+											<ChartTooltip content={<ChartTooltipContent />} />
+										</PieChart>
+									</ResponsiveContainer>
+								</ChartContainer>
+								<div className="mt-2 text-center">
+									<div className="text-2xl font-bold">{metricsData.circuitBreaker.successRate.toFixed(1)}%</div>
+									<div className="text-xs text-muted-foreground">Success Rate</div>
+								</div>
 							</CardContent>
 						</Card>
 					)}
-				</div>
 
-				{/* Circuit Breaker & Cache Metrics */}
-				{(metricsData?.circuitBreaker || metricsData?.cache) && (
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-						{/* Circuit Breaker */}
-						{metricsData?.circuitBreaker && (
-							<Card>
-								<CardHeader className="pb-2">
-									<CardTitle className="text-sm font-medium flex items-center gap-2">
-										<Zap className="h-4 w-4" />
-										Circuit Breaker Status
-									</CardTitle>
-									<CardDescription className="text-xs">
-										System resilience metrics
-									</CardDescription>
-								</CardHeader>
-								<CardContent className="space-y-2">
-									<div className="flex justify-between items-center">
-										<span className="text-sm text-muted-foreground">Success Rate</span>
-										<div className="flex items-center gap-2">
-											<span className="text-sm font-bold">
-												{metricsData.circuitBreaker.successRate.toFixed(1)}%
-											</span>
-											<Progress 
-												value={metricsData.circuitBreaker.successRate} 
-												className="w-20"
-											/>
-										</div>
-									</div>
-									<div className="grid grid-cols-3 gap-2 text-center">
-										<div>
-											<div className="text-2xl font-bold text-green-600">
-												{metricsData.circuitBreaker.totalSuccesses}
-											</div>
-											<div className="text-xs text-muted-foreground">Successes</div>
-										</div>
-										<div>
-											<div className="text-2xl font-bold text-red-600">
-												{metricsData.circuitBreaker.totalFailures}
-											</div>
-											<div className="text-xs text-muted-foreground">Failures</div>
-										</div>
-										<div>
-											<div className="text-2xl font-bold text-yellow-600">
-												{metricsData.circuitBreaker.totalTrips}
-											</div>
-											<div className="text-xs text-muted-foreground">Trips</div>
-										</div>
-									</div>
-								</CardContent>
-							</Card>
-						)}
-
-						{/* Cache Performance */}
-						{metricsData?.cache && (
-							<Card>
-								<CardHeader className="pb-2">
-									<CardTitle className="text-sm font-medium flex items-center gap-2">
-										<Database className="h-4 w-4" />
-										Cache Performance
-									</CardTitle>
-									<CardDescription className="text-xs">
-										Cache hit/miss statistics
-									</CardDescription>
-								</CardHeader>
-								<CardContent className="space-y-2">
-									{metricsData.cache.hitRate !== undefined && (
-										<div className="flex justify-between items-center">
+					{/* Cache Performance */}
+					{metricsData?.cache && (
+						<Card>
+							<CardHeader className="pb-2">
+								<CardTitle className="text-sm font-medium flex items-center gap-2">
+									<Database className="h-4 w-4" />
+									Cache Performance
+								</CardTitle>
+							</CardHeader>
+							<CardContent>
+								<div className="space-y-3">
+									<div>
+										<div className="flex justify-between items-center mb-1">
 											<span className="text-sm text-muted-foreground">Hit Rate</span>
-											<div className="flex items-center gap-2">
-												<span className="text-sm font-bold">
-													{metricsData.cache.hitRate.toFixed(1)}%
-												</span>
-												<Progress 
-													value={metricsData.cache.hitRate} 
-													className="w-20"
-												/>
-											</div>
+											<span className="text-sm font-bold">
+												{metricsData.cache.hitRate?.toFixed(1) || 0}%
+											</span>
 										</div>
-									)}
+										<Progress value={metricsData.cache.hitRate || 0} />
+									</div>
 									<div className="grid grid-cols-3 gap-2 text-center">
 										<div>
-											<div className="text-2xl font-bold text-green-600">
+											<div className="text-lg font-bold text-green-600">
 												{metricsData.cache.hits}
 											</div>
 											<div className="text-xs text-muted-foreground">Hits</div>
 										</div>
 										<div>
-											<div className="text-2xl font-bold text-red-600">
+											<div className="text-lg font-bold text-red-600">
 												{metricsData.cache.misses}
 											</div>
 											<div className="text-xs text-muted-foreground">Misses</div>
 										</div>
 										<div>
-											<div className="text-2xl font-bold text-blue-600">
+											<div className="text-lg font-bold text-blue-600">
 												{metricsData.cache.sets}
 											</div>
 											<div className="text-xs text-muted-foreground">Sets</div>
 										</div>
 									</div>
+								</div>
+							</CardContent>
+						</Card>
+					)}
+
+					{/* Queue Status */}
+					{metricsData?.queue && (
+						<Card>
+							<CardHeader className="pb-2">
+								<CardTitle className="text-sm font-medium flex items-center gap-2">
+									<Activity className="h-4 w-4" />
+									Queue Status
+								</CardTitle>
+							</CardHeader>
+							<CardContent>
+								<div className="space-y-3">
+									<div className="grid grid-cols-2 gap-2">
+										<div className="text-center">
+											<div className="text-2xl font-bold">{metricsData.queue.depth}</div>
+											<div className="text-xs text-muted-foreground">Queue Depth</div>
+										</div>
+										<div className="text-center">
+											<div className="text-2xl font-bold">{metricsData.queue.pending}</div>
+											<div className="text-xs text-muted-foreground">Pending</div>
+										</div>
+									</div>
+									<div className="border-t pt-2">
+										<div className="flex justify-between items-center">
+											<span className="text-sm text-muted-foreground">Throughput</span>
+											<span className="text-sm font-bold">
+												{metricsData.queue.throughput.toFixed(1)} req/s
+											</span>
+										</div>
+									</div>
+								</div>
+							</CardContent>
+						</Card>
+					)}
+				</div>
+
+				{/* Infrastructure Metrics */}
+				{(metricsData?.scaling || metricsData?.current || metricsData?.global) && (
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+						{/* Scaling & Load */}
+						{metricsData?.scaling && (
+							<Card>
+								<CardHeader className="pb-2">
+									<CardTitle className="text-sm font-medium flex items-center gap-2">
+										<Cpu className="h-4 w-4" />
+										Scaling & Load Distribution
+									</CardTitle>
+								</CardHeader>
+								<CardContent>
+									<div className="grid grid-cols-3 gap-4 text-center">
+										<div>
+											<div className="text-2xl font-bold">{metricsData.scaling.instanceCount || 0}</div>
+											<div className="text-xs text-muted-foreground">Instances</div>
+										</div>
+										<div>
+											<div className="text-2xl font-bold">{metricsData.scaling.totalLoad || 0}</div>
+											<div className="text-xs text-muted-foreground">Total Load</div>
+										</div>
+										<div>
+											<div className="text-2xl font-bold">{metricsData.scaling.loadBalance || 0}%</div>
+											<div className="text-xs text-muted-foreground">Balance</div>
+										</div>
+									</div>
 								</CardContent>
 							</Card>
 						)}
-					</div>
-				)}
 
-				{/* Global & Scaling Metrics */}
-				{(metricsData?.global || metricsData?.scaling) && (
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-						{/* Global Stats */}
+						{/* Global Statistics */}
 						{metricsData?.global && (
 							<Card>
 								<CardHeader className="pb-2">
@@ -840,199 +865,44 @@ export function Metrics({
 										<Network className="h-4 w-4" />
 										Global Statistics
 									</CardTitle>
-									<CardDescription className="text-xs">
-										Overall system metrics
-									</CardDescription>
-								</CardHeader>
-								<CardContent className="space-y-3">
-									<div className="grid grid-cols-2 gap-2">
-										{metricsData.global.taskSuccess !== undefined && (
-											<div className="flex items-center justify-between">
-												<span className="text-xs text-muted-foreground">Task Success</span>
-												<Badge variant="default" className="text-xs">
-													{metricsData.global.taskSuccess}
-												</Badge>
-											</div>
-										)}
-										{metricsData.global.taskFailure !== undefined && (
-											<div className="flex items-center justify-between">
-												<span className="text-xs text-muted-foreground">Task Failure</span>
-												<Badge variant="destructive" className="text-xs">
-													{metricsData.global.taskFailure}
-												</Badge>
-											</div>
-										)}
-										{metricsData.global.systemSuccess !== undefined && (
-											<div className="flex items-center justify-between">
-												<span className="text-xs text-muted-foreground">System Success</span>
-												<Badge variant="default" className="text-xs">
-													{metricsData.global.systemSuccess}
-												</Badge>
-											</div>
-										)}
-										{metricsData.global.totalEvents !== undefined && (
-											<div className="flex items-center justify-between">
-												<span className="text-xs text-muted-foreground">Total Events</span>
-												<Badge variant="outline" className="text-xs">
-													{metricsData.global.totalEvents}
-												</Badge>
-											</div>
-										)}
-									</div>
-									{metricsData.global.throughput !== undefined && (
-										<div className="flex justify-between items-center">
-											<span className="text-sm text-muted-foreground">Throughput</span>
-											<span className="text-sm font-bold">
-												{metricsData.global.throughput.toFixed(1)} req/s
-											</span>
-										</div>
-									)}
-								</CardContent>
-							</Card>
-						)}
-
-						{/* Scaling Info */}
-						{metricsData?.scaling && (
-							<Card>
-								<CardHeader className="pb-2">
-									<CardTitle className="text-sm font-medium flex items-center gap-2">
-										<Cpu className="h-4 w-4" />
-										Scaling Metrics
-									</CardTitle>
-									<CardDescription className="text-xs">
-										Instance and load distribution
-									</CardDescription>
-								</CardHeader>
-								<CardContent className="space-y-3">
-									<div className="grid grid-cols-3 gap-2 text-center">
-										{metricsData.scaling.instanceCount !== undefined && (
-											<div>
-												<div className="text-2xl font-bold">
-													{metricsData.scaling.instanceCount}
-												</div>
-												<div className="text-xs text-muted-foreground">Instances</div>
-											</div>
-										)}
-										{metricsData.scaling.totalLoad !== undefined && (
-											<div>
-												<div className="text-2xl font-bold">
-													{metricsData.scaling.totalLoad}
-												</div>
-												<div className="text-xs text-muted-foreground">Total Load</div>
-											</div>
-										)}
-										{metricsData.scaling.loadBalance !== undefined && (
-											<div>
-												<div className="text-2xl font-bold">
-													{metricsData.scaling.loadBalance}%
-												</div>
-												<div className="text-xs text-muted-foreground">Balance</div>
-											</div>
-										)}
-									</div>
-								</CardContent>
-							</Card>
-						)}
-					</div>
-				)}
-
-				{/* System Info */}
-				{(metricsData?.current || metricsData?.mcpCalls !== undefined) && (
-					<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-						{/* Current State */}
-						{metricsData?.current && (
-							<Card className="md:col-span-2">
-								<CardHeader className="pb-2">
-									<CardTitle className="text-sm font-medium flex items-center gap-2">
-										<Activity className="h-4 w-4" />
-										Current System State
-									</CardTitle>
-									<CardDescription className="text-xs">
-										Real-time system metrics
-									</CardDescription>
 								</CardHeader>
 								<CardContent>
-									<div className="grid grid-cols-3 gap-4">
-										{metricsData.current.eventsTotal !== undefined && (
-											<div>
-												<div className="text-lg font-bold">
-													{metricsData.current.eventsTotal}
+									<div className="space-y-2">
+										<div className="grid grid-cols-2 gap-2 text-sm">
+											{metricsData.global.taskSuccess !== undefined && (
+												<div className="flex justify-between">
+													<span className="text-muted-foreground">Task Success:</span>
+													<Badge variant="default">{metricsData.global.taskSuccess}</Badge>
 												</div>
-												<div className="text-xs text-muted-foreground">Total Events</div>
-											</div>
-										)}
-										{metricsData.current.instancesActive !== undefined && (
-											<div>
-												<div className="text-lg font-bold">
-													{metricsData.current.instancesActive}
+											)}
+											{metricsData.global.taskFailure !== undefined && (
+												<div className="flex justify-between">
+													<span className="text-muted-foreground">Task Failure:</span>
+													<Badge variant="destructive">{metricsData.global.taskFailure}</Badge>
 												</div>
-												<div className="text-xs text-muted-foreground">Active Instances</div>
-											</div>
-										)}
-										{metricsData.current.queueDepth !== undefined && (
-											<div>
-												<div className="text-lg font-bold">
-													{metricsData.current.queueDepth}
+											)}
+											{metricsData.global.systemSuccess !== undefined && (
+												<div className="flex justify-between">
+													<span className="text-muted-foreground">System Success:</span>
+													<Badge variant="default">{metricsData.global.systemSuccess}</Badge>
 												</div>
-												<div className="text-xs text-muted-foreground">Queue Depth</div>
-											</div>
-										)}
-										{metricsData.current.tasksPending !== undefined && (
-											<div>
-												<div className="text-lg font-bold">
-													{metricsData.current.tasksPending}
+											)}
+											{metricsData.global.totalEvents !== undefined && (
+												<div className="flex justify-between">
+													<span className="text-muted-foreground">Total Events:</span>
+													<Badge variant="outline">{metricsData.global.totalEvents}</Badge>
 												</div>
-												<div className="text-xs text-muted-foreground">Pending Tasks</div>
-											</div>
-										)}
-										{metricsData.current.tasksCompleted !== undefined && (
-											<div>
-												<div className="text-lg font-bold">
-													{metricsData.current.tasksCompleted}
-												</div>
-												<div className="text-xs text-muted-foreground">Completed Tasks</div>
-											</div>
-										)}
-										{metricsData.current.metricsStartTime && (
-											<div>
-												<div className="text-xs font-mono">
-													{new Date(metricsData.current.metricsStartTime).toLocaleTimeString()}
-												</div>
-												<div className="text-xs text-muted-foreground">Started At</div>
-											</div>
-										)}
-									</div>
-								</CardContent>
-							</Card>
-						)}
-
-						{/* MCP Calls */}
-						{metricsData?.mcpCalls !== undefined && (
-							<Card>
-								<CardHeader className="pb-2">
-									<CardTitle className="text-sm font-medium flex items-center gap-2">
-										<Hash className="h-4 w-4" />
-										MCP Calls
-									</CardTitle>
-									<CardDescription className="text-xs">
-										Model Context Protocol
-									</CardDescription>
-								</CardHeader>
-								<CardContent className="flex items-center justify-center">
-									<div className="text-center">
-										<div className="text-4xl font-bold text-primary">
-											{metricsData.mcpCalls}
+											)}
 										</div>
-										<div className="text-xs text-muted-foreground mt-1">Total Calls</div>
 									</div>
 								</CardContent>
 							</Card>
 						)}
 					</div>
 				)}
-				
+
 				{/* Loading state */}
-				{isLoading && historicalData.length === 0 && (
+				{isLoading && (
 					<div className="text-center text-muted-foreground py-8">
 						Loading metrics data...
 					</div>

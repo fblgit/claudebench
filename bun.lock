@@ -4,6 +4,8 @@
     "": {
       "name": "claudebench",
       "dependencies": {
+        "@radix-ui/react-accordion": "^1.2.12",
+        "@radix-ui/react-tooltip": "^1.2.8",
         "fetch-to-node": "^2.1.0",
       },
       "devDependencies": {
