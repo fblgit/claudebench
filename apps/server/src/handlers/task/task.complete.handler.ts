@@ -61,18 +61,59 @@ export class TaskCompleteHandler {
 		
 		// Persist to PostgreSQL if configured
 		if (ctx.persist) {
-			await ctx.prisma.task.update({
-				where: { id: taskId },
-				data: {
-					status: result.status as any,
-					completedAt: new Date(completedAt),
-					metadata: {
-						...(taskData.metadata ? JSON.parse(taskData.metadata) : {}),
-						result: input.result,
-						duration,
+			try {
+				// Parse result if it's a string
+				let parsedResult = input.result;
+				if (typeof input.result === 'string') {
+					try {
+						parsedResult = JSON.parse(input.result);
+					} catch {
+						// Keep as string if not valid JSON
+					}
+				}
+				
+				// Store result directly in the result field, not in metadata
+				// PostgreSQL JSON fields can handle up to 1GB of data
+				await ctx.prisma.task.update({
+					where: { id: taskId },
+					data: {
+						status: result.status as any,
+						completedAt: new Date(completedAt),
+						result: parsedResult, // Store complete result in dedicated field
+						metadata: {
+							...(taskData.metadata ? JSON.parse(taskData.metadata) : {}),
+							duration,
+							completedBy: input.workerId || taskData.assignedTo,
+							resultSize: JSON.stringify(parsedResult).length, // Track size for monitoring
+						},
 					},
-				},
-			});
+				});
+				
+				console.log(`Task ${taskId} completed and persisted. Result size: ${JSON.stringify(parsedResult).length} bytes`);
+			} catch (error) {
+				// Log error but don't fail the task completion
+				console.error(`Failed to persist task ${taskId} to database:`, error);
+				
+				// Still try to update status even if result storage fails
+				try {
+					await ctx.prisma.task.update({
+						where: { id: taskId },
+						data: {
+							status: result.status as any,
+							completedAt: new Date(completedAt),
+							error: `Failed to store result: ${error.message}`,
+							metadata: {
+								...(taskData.metadata ? JSON.parse(taskData.metadata) : {}),
+								duration,
+								completedBy: input.workerId || taskData.assignedTo,
+								persistenceError: error.message,
+							},
+						},
+					});
+				} catch (fallbackError) {
+					console.error(`Failed to update task status for ${taskId}:`, fallbackError);
+				}
+			}
 		}
 		
 		// Publish event

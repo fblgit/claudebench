@@ -28,7 +28,11 @@
     "test:web": "turbo -F web test",
     "test:contract": "turbo -F server test:contract",
     "test:integration": "turbo -F server test:integration",
-    "test:watch": "turbo -F server test:watch"
+    "test:watch": "turbo -F server test:watch",
+    "relay": "bun scripts/relay.ts",
+    "relay:worker1": "bun scripts/relay.ts worker-1",
+    "relay:worker2": "bun scripts/relay.ts worker-2",
+    "relay:worker3": "bun scripts/relay.ts worker-3"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",

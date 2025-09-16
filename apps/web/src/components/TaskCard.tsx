@@ -281,11 +281,19 @@ export function TaskCard({
 
 					{/* Timestamps */}
 					<div className="mt-2 text-xs text-muted-foreground">
-						Created {formatDistanceToNow(new Date(task.createdAt), { addSuffix: true })}
-						{task.updatedAt && task.updatedAt !== task.createdAt && (
-							<span className="ml-2">
-								• Updated {formatDistanceToNow(new Date(task.updatedAt), { addSuffix: true })}
-							</span>
+						{task.createdAt && !isNaN(Date.parse(task.createdAt)) ? (
+							<>
+								Created {formatDistanceToNow(new Date(task.createdAt), { addSuffix: true })}
+								{task.updatedAt && 
+								 task.updatedAt !== task.createdAt && 
+								 !isNaN(Date.parse(task.updatedAt)) && (
+									<span className="ml-2">
+										• Updated {formatDistanceToNow(new Date(task.updatedAt), { addSuffix: true })}
+									</span>
+								)}
+							</>
+						) : (
+							<span className="text-muted-foreground/50">No timestamp available</span>
 						)}
 					</div>
 				</CardContent>

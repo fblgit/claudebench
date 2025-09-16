@@ -12,3 +12,4 @@ export { SystemRedisKeysHandler } from "./system.redis.keys.handler";
 export { SystemRedisGetHandler } from "./system.redis.get.handler";
 export { SystemPostgresTablesHandler } from "./system.postgres.tables.handler";
 export { SystemPostgresQueryHandler } from "./system.postgres.query.handler";
+export { SystemFlushHandler } from "./system.flush.handler";
