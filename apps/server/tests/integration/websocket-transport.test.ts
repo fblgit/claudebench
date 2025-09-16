@@ -279,6 +279,90 @@ describe("Integration: WebSocket Transport", () => {
 		expect(messages[0].error).toBeDefined();
 	});
 	
+	it("should handle wildcard subscriptions for task.* events", async () => {
+		const messages: any[] = [];
+		
+		ws = new WebSocket(WS_URL);
+		
+		await new Promise((resolve) => {
+			ws.onopen = () => resolve(true);
+			ws.onmessage = (event) => {
+				messages.push(JSON.parse(event.data));
+			};
+		});
+		
+		// Clear welcome message
+		messages.length = 0;
+		
+		// Subscribe to task.* wildcard pattern
+		ws.send(JSON.stringify({
+			action: "subscribe",
+			events: ["task.*"]
+		}));
+		
+		// Wait for subscription confirmation
+		await new Promise(resolve => setTimeout(resolve, 100));
+		
+		expect(messages.length).toBe(1);
+		expect(messages[0].type).toBe("subscribed");
+		expect(messages[0].events).toContain("task.*");
+		
+		// Clear messages
+		messages.length = 0;
+		
+		// Create a task (this should trigger task.created event)
+		const response = await fetch(`http://localhost:${PORT}/rpc`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				jsonrpc: "2.0",
+				method: "task.create",
+				params: { text: "Test task for wildcard" },
+				id: "test-create"
+			})
+		});
+		
+		const createResult = await response.json();
+		expect(createResult.result).toBeDefined();
+		const taskId = createResult.result.id;
+		
+		// Wait for task.created event
+		await new Promise(resolve => setTimeout(resolve, 200));
+		
+		// Should have received task.created event
+		const createdEvent = messages.find(m => m.type === "event" && m.event === "task.created");
+		expect(createdEvent).toBeDefined();
+		expect(createdEvent.data.payload.id).toBe(taskId);
+		expect(createdEvent.data.payload.text).toBe("Test task for wildcard");
+		
+		// Update the task (should trigger task.updated event)
+		const updateResponse = await fetch(`http://localhost:${PORT}/rpc`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				jsonrpc: "2.0",
+				method: "task.update",
+				params: { 
+					id: taskId,
+					updates: { priority: 75 }
+				},
+				id: "test-update"
+			})
+		});
+		
+		const updateResult = await updateResponse.json();
+		expect(updateResult.result).toBeDefined();
+		
+		// Wait for task.updated event
+		await new Promise(resolve => setTimeout(resolve, 200));
+		
+		// Should have received task.updated event
+		const updatedEvent = messages.find(m => m.type === "event" && m.event === "task.updated");
+		expect(updatedEvent).toBeDefined();
+		expect(updatedEvent.data.payload.id).toBe(taskId);
+		expect(updatedEvent.data.payload.priority).toBe(75);
+	});
+	
 	it("should track subscriptions in Redis", async () => {
 		ws = new WebSocket(WS_URL);
 		

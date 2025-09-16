@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,12 +41,14 @@ interface EventStreamProps {
 	maxEvents?: number;
 	autoScroll?: boolean;
 	showFilters?: boolean;
+	className?: string;
 }
 
 export function EventStream({ 
 	maxEvents = 100, 
 	autoScroll: initialAutoScroll = true,
-	showFilters = true 
+	showFilters = true,
+	className
 }: EventStreamProps) {
 	const [events, setEvents] = useState<EventMessage[]>([]);
 	const [filteredEvents, setFilteredEvents] = useState<EventMessage[]>([]);
@@ -213,7 +216,7 @@ export function EventStream({
 	};
 
 	return (
-		<Card className="flex flex-col h-full">
+		<Card className={cn("flex flex-col", className)}>
 			<CardHeader className="pb-3">
 				<div className="flex items-center justify-between">
 					<div>
