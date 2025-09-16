@@ -43,13 +43,64 @@ export const systemGetStateOutput = z.object({
 });
 
 // system.metrics - Aligned with JSONRPC contract
-export const systemMetricsInput = z.object({});
+export const systemMetricsInput = z.object({
+	detailed: z.boolean().optional(), // Request detailed metrics
+});
 
 export const systemMetricsOutput = z.object({
 	eventsProcessed: z.number().optional(),
 	tasksCompleted: z.number().optional(),
 	averageLatency: z.number().optional(),
 	memoryUsage: z.number().optional(),
+	// Extended metrics (when detailed=true)
+	circuitBreaker: z.object({
+		totalSuccesses: z.number(),
+		totalFailures: z.number(),
+		totalTrips: z.number(),
+		successRate: z.number(),
+	}).optional(),
+	queue: z.object({
+		depth: z.number(),
+		pending: z.number(),
+		throughput: z.number(),
+	}).optional(),
+	cache: z.object({
+		hits: z.number(),
+		misses: z.number(),
+		sets: z.number(),
+		hitRate: z.number().optional(),
+	}).optional(),
+	counters: z.object({
+		circuit: z.record(z.string(), z.number()).optional(),
+		ratelimit: z.record(z.string(), z.number()).optional(),
+		timeout: z.record(z.string(), z.number()).optional(),
+	}).optional(),
+	global: z.object({
+		taskSuccess: z.number().optional(),
+		taskFailure: z.number().optional(),
+		systemSuccess: z.number().optional(),
+		totalEvents: z.number().optional(),
+		totalTasks: z.number().optional(),
+		avgLatency: z.number().optional(),
+		throughput: z.number().optional(),
+	}).optional(),
+	scaling: z.object({
+		instanceCount: z.number().optional(),
+		loadBalance: z.number().optional(),
+		totalLoad: z.number().optional(),
+	}).optional(),
+	current: z.object({
+		eventsTotal: z.number().optional(),
+		queueDepth: z.number().optional(),
+		instancesActive: z.number().optional(),
+		tasksPending: z.number().optional(),
+		tasksCompleted: z.number().optional(),
+		metricsStartTime: z.number().optional(),
+	}).optional(),
+	mcpCalls: z.number().optional(),
+	systemHealthCheck: z.object({
+		lastCheck: z.number().optional(),
+	}).optional(),
 });
 
 // system.discover - Expose registered handlers and their schemas

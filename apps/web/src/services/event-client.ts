@@ -503,8 +503,8 @@ export const useSystemHealth = () =>
 export const useSystemState = () => 
 	useEventQuery("system.get_state", {}, { refetchInterval: 30000 }); // 30 seconds
 
-export const useSystemMetrics = () => 
-	useEventQuery("system.metrics", {}, { refetchInterval: 30000 }); // 30 seconds
+export const useSystemMetrics = (params = {}) => 
+	useEventQuery("system.metrics", params, { refetchInterval: 30000 }); // 30 seconds
 
 /**
  * Convenience hooks for common mutations

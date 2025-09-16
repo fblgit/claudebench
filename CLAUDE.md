@@ -2,6 +2,31 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## ⚠️ CRITICAL: DO NOT INVENT CODE SIGNATURES
+
+**STOP BEING LAZY. READ THE ACTUAL CODE.**
+
+When working with this codebase, you MUST:
+1. **ALWAYS read the actual source files** to get correct method signatures, event payloads, and data structures
+2. **NEVER assume or guess** what a function returns, what parameters it takes, or what shape data has
+3. **NEVER invent property names** - if you're writing `event.data` vs `event.payload`, CHECK THE ACTUAL CODE
+4. **ALWAYS verify event names** - is it `task.created` or `task.create`? READ THE HANDLER
+5. **ALWAYS check the actual TypeScript interfaces** - don't guess field names or types
+
+### Examples of LAZY BEHAVIOR to AVOID:
+- ❌ Assuming event structure without checking: "The event probably has a `data` field"
+- ❌ Guessing method names: "There's probably a `getTask()` method"  
+- ❌ Inventing field names: "The task object probably has `completedAt`"
+- ❌ Making up event names: "It's probably `task.created`" without verifying
+
+### CORRECT APPROACH:
+- ✅ Read the handler file to see exact event structure
+- ✅ Check the actual method implementation for return types
+- ✅ Look at the schema/interface files for exact field names
+- ✅ Grep for the actual event name in the codebase
+
+**The backend is the source of truth. The frontend MUST align with backend contracts, NOT vice versa.**
+
 ## Project Overview
 
 ClaudeBench is a modern TypeScript monorepo implementing a Redis-first event-driven architecture. The project uses Turborepo for orchestration, Bun as runtime, and follows a clean separation between backend (Hono) and frontend (React + TanStack Router).

@@ -142,8 +142,8 @@
 ### Components
 - [x] T058 Create event stream viewer component in apps/web/src/components/EventStream.tsx
 - [x] T059 Build task queue display in apps/web/src/components/TaskQueue.tsx
-- [ ] T060 Create instance health monitor in apps/web/src/components/InstanceHealth.tsx
-- [ ] T061 Build metrics dashboard in apps/web/src/components/Metrics.tsx
+- [x] T060 Create instance health monitor in apps/web/src/components/InstanceHealth.tsx
+- [x] T061 Build metrics dashboard in apps/web/src/components/Metrics.tsx
 - [ ] T062 Create handler manager UI in apps/web/src/components/HandlerManager.tsx
 
 ### Routes

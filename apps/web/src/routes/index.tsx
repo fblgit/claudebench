@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { EventStream } from "@/components/EventStream";
 import { TaskQueue } from "@/components/TaskQueue";
 import { InstanceHealth } from "@/components/InstanceHealth";
+import { Metrics } from "@/components/Metrics";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/")({
@@ -28,10 +29,11 @@ function HomeComponent() {
       </div>
       
       <Tabs defaultValue="events" className="w-full flex-1 flex flex-col min-h-0">
-        <TabsList className="grid w-full grid-cols-4 flex-shrink-0">
+        <TabsList className="grid w-full grid-cols-5 flex-shrink-0">
           <TabsTrigger value="events">Events</TabsTrigger>
           <TabsTrigger value="tasks">Tasks</TabsTrigger>
           <TabsTrigger value="system">System</TabsTrigger>
+          <TabsTrigger value="metrics">Metrics</TabsTrigger>
           <TabsTrigger value="handlers">Handlers</TabsTrigger>
         </TabsList>
         
@@ -45,6 +47,10 @@ function HomeComponent() {
         
         <TabsContent value="system" className="mt-4 flex-1 min-h-0">
           <InstanceHealth className="h-full" />
+        </TabsContent>
+        
+        <TabsContent value="metrics" className="mt-4 flex-1 min-h-0">
+          <Metrics className="h-full" />
         </TabsContent>
         
         <TabsContent value="handlers" className="mt-4 flex-1 min-h-0">
