@@ -144,3 +144,19 @@ export type SystemMetricsInput = z.infer<typeof systemMetricsInput>;
 export type SystemMetricsOutput = z.infer<typeof systemMetricsOutput>;
 export type SystemDiscoverInput = z.infer<typeof systemDiscoverInput>;
 export type SystemDiscoverOutput = z.infer<typeof systemDiscoverOutput>;
+
+// system.unregister - Clean up instance registration on session end
+// NOTE: This stays in system domain as it's about ClaudeBench instance management
+export const systemUnregisterInput = z.object({
+	instanceId: z.string().min(1),
+	sessionId: z.string().min(1),
+	timestamp: z.number(),
+});
+
+export const systemUnregisterOutput = z.object({
+	unregistered: z.boolean(),
+	tasksReassigned: z.number().optional(),
+});
+
+export type SystemUnregisterInput = z.infer<typeof systemUnregisterInput>;
+export type SystemUnregisterOutput = z.infer<typeof systemUnregisterOutput>;

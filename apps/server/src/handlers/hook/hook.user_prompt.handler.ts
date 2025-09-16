@@ -74,10 +74,16 @@ export class UserPromptHookHandler {
 			}
 		}
 		
-		// Publish event
+		// Publish event with full details
 		await ctx.publish({
 			type: "hook.user_prompt.executed",
 			payload: {
+				originalPrompt: input.prompt,
+				modifiedPrompt: modifiedPrompt,
+				context: input.context,
+				sessionId: input.sessionId,
+				instanceId: input.instanceId,
+				timestamp: input.timestamp,
 				modified: !!modifiedPrompt,
 			},
 		});

@@ -104,11 +104,18 @@ export class PostToolHookHandler {
 			}
 		}
 		
-		// Publish post-tool event
+		// Publish post-tool event with full details
 		await ctx.publish({
 			type: "hook.post_tool.executed",
 			payload: {
 				tool: input.tool,
+				params: input.params,
+				result: input.result,
+				sessionId: input.sessionId,
+				instanceId: input.instanceId,
+				timestamp: input.timestamp,
+				executionTime: input.executionTime,
+				success: input.success,
 				hasError,
 				processed: true,
 			},

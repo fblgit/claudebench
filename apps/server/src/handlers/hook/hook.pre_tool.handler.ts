@@ -35,6 +35,19 @@ export class PreToolHookHandler {
 			instanceId: ctx.instanceId,
 		});
 
+		// Publish pre-tool event with full details
+		await ctx.publish({
+			type: "hook.pre_tool.executed",
+			payload: {
+				tool: input.tool,
+				params: input.params,
+				sessionId: input.sessionId,
+				instanceId: input.instanceId,
+				timestamp: input.timestamp,
+				validationResult: result
+			},
+		});
+
 		// Return the validation result
 		// The decorators handle caching, metrics, audit logging, rate limiting, timeout, and circuit breaker
 		return result;
