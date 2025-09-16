@@ -5,3 +5,4 @@ node_modules
 plans/logs*
 tmp/
 apps/server/tmp
+.playwright-mcp

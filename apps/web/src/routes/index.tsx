@@ -3,6 +3,7 @@ import { EventStream } from "@/components/EventStream";
 import { TaskQueue } from "@/components/TaskQueue";
 import { InstanceHealth } from "@/components/InstanceHealth";
 import { Metrics } from "@/components/Metrics";
+import HandlerManager from "@/components/HandlerManager";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/")({
@@ -54,9 +55,7 @@ function HomeComponent() {
         </TabsContent>
         
         <TabsContent value="handlers" className="mt-4 flex-1 min-h-0">
-          <div className="rounded-lg border p-8 text-center text-muted-foreground">
-            Handler Manager component coming soon (T062)
-          </div>
+          <HandlerManager className="h-full" />
         </TabsContent>
       </Tabs>
     </div>
