@@ -144,7 +144,7 @@
 - [x] T059 Build task queue display in apps/web/src/components/TaskQueue.tsx
 - [x] T060 Create instance health monitor in apps/web/src/components/InstanceHealth.tsx
 - [x] T061 Build metrics dashboard in apps/web/src/components/Metrics.tsx
-- [ ] T062 Create handler manager UI in apps/web/src/components/HandlerManager.tsx
+- [x] T062 Create handler manager UI in apps/web/src/components/HandlerManager.tsx
 
 ### Routes
 - [ ] T063 Create dashboard home route in apps/web/src/routes/index.tsx

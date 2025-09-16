@@ -6,3 +6,5 @@ plans/logs*
 tmp/
 apps/server/tmp
 .playwright-mcp
+.DS_Store
+**/.DS_Store
