@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { EventStream } from "@/components/EventStream";
+import { TaskQueue } from "@/components/TaskQueue";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/")({
@@ -40,8 +41,8 @@ function HomeComponent() {
         </TabsContent>
         
         <TabsContent value="tasks" className="mt-4">
-          <div className="rounded-lg border p-8 text-center text-muted-foreground">
-            Task Queue component coming soon (T059)
+          <div className="h-[600px]">
+            <TaskQueue />
           </div>
         </TabsContent>
         
