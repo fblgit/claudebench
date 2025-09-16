@@ -101,6 +101,16 @@ export const systemMetricsOutput = z.object({
 	systemHealthCheck: z.object({
 		lastCheck: z.number().optional(),
 	}).optional(),
+	handlers: z.record(z.string(), z.object({
+		totalCalls: z.number(),
+		successCount: z.number(),
+		errorCount: z.number(),
+		avgResponseTime: z.number(),
+		circuitState: z.string(),
+		rateLimitHits: z.number().optional(),
+		cacheHitRate: z.number().optional(),
+		lastCalled: z.string().optional(),
+	})).optional(),
 });
 
 // system.discover - Expose registered handlers and their schemas

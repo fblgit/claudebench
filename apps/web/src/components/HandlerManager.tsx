@@ -513,9 +513,190 @@ function HandlerDetails({
 				)}
 			</div>
 
+			{/* Quick Stats Overview */}
+			{metrics && (
+				<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+					<Card>
+						<CardHeader className="pb-2">
+							<CardTitle className="text-xs font-medium text-muted-foreground">
+								Total Calls
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<div className="text-xl font-bold">{metrics.totalCalls || 0}</div>
+							<p className="text-xs text-muted-foreground mt-1">
+								Success: {metrics.successCount || 0} | Error: {metrics.errorCount || 0}
+							</p>
+						</CardContent>
+					</Card>
+					<Card>
+						<CardHeader className="pb-2">
+							<CardTitle className="text-xs font-medium text-muted-foreground">
+								Performance
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<div className="text-xl font-bold">
+								{metrics.avgResponseTime ? `${metrics.avgResponseTime.toFixed(0)}ms` : "N/A"}
+							</div>
+							<p className="text-xs text-muted-foreground mt-1">
+								Avg response time
+							</p>
+						</CardContent>
+					</Card>
+					<Card>
+						<CardHeader className="pb-2">
+							<CardTitle className="text-xs font-medium text-muted-foreground">
+								Circuit Breaker
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<Badge 
+								variant={
+									metrics.circuitState === "CLOSED" ? "default" :
+									metrics.circuitState === "OPEN" ? "destructive" : "warning"
+								}
+								className="text-xs"
+							>
+								{metrics.circuitState || "CLOSED"}
+							</Badge>
+							{metrics.rateLimitHits && metrics.rateLimitHits > 0 && (
+								<p className="text-xs text-red-500 mt-1">
+									Rate limit hits: {metrics.rateLimitHits}
+								</p>
+							)}
+						</CardContent>
+					</Card>
+					<Card>
+						<CardHeader className="pb-2">
+							<CardTitle className="text-xs font-medium text-muted-foreground">
+								Cache Performance
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<div className="text-xl font-bold">
+								{metrics.cacheHitRate !== undefined 
+									? `${(metrics.cacheHitRate * 100).toFixed(0)}%`
+									: "N/A"}
+							</div>
+							<p className="text-xs text-muted-foreground mt-1">
+								Hit rate
+							</p>
+						</CardContent>
+					</Card>
+				</div>
+			)}
+
 			<Separator />
 
-			<Accordion type="single" collapsible className="w-full">
+			<Accordion type="single" collapsible className="w-full" defaultValue="metrics">
+				{/* Detailed Metrics Section - Expanded by default */}
+				{metrics && (
+					<AccordionItem value="metrics">
+						<AccordionTrigger>
+							<div className="flex items-center gap-2">
+								<BarChart3 className="h-4 w-4" />
+								Detailed Metrics
+							</div>
+						</AccordionTrigger>
+						<AccordionContent>
+							<div className="space-y-4 pt-2">
+								{/* Call Statistics */}
+								<div>
+									<h4 className="text-sm font-medium mb-3">Call Statistics</h4>
+									<div className="grid grid-cols-3 gap-4">
+										<div className="space-y-1">
+											<label className="text-xs text-muted-foreground">Total Calls</label>
+											<p className="text-lg font-semibold">{metrics.totalCalls || 0}</p>
+										</div>
+										<div className="space-y-1">
+											<label className="text-xs text-muted-foreground">Successful</label>
+											<p className="text-lg font-semibold text-green-600">{metrics.successCount || 0}</p>
+										</div>
+										<div className="space-y-1">
+											<label className="text-xs text-muted-foreground">Failed</label>
+											<p className="text-lg font-semibold text-red-600">{metrics.errorCount || 0}</p>
+										</div>
+									</div>
+									{metrics.totalCalls > 0 && (
+										<div className="mt-3">
+											<label className="text-xs text-muted-foreground">Success Rate</label>
+											<div className="flex items-center gap-2 mt-1">
+												<div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+													<div 
+														className="h-full bg-green-500"
+														style={{ width: `${(metrics.successCount / metrics.totalCalls) * 100}%` }}
+													/>
+												</div>
+												<span className="text-sm font-medium">
+													{((metrics.successCount / metrics.totalCalls) * 100).toFixed(1)}%
+												</span>
+											</div>
+										</div>
+									)}
+								</div>
+
+								<Separator />
+
+								{/* Performance Metrics */}
+								<div>
+									<h4 className="text-sm font-medium mb-3">Performance</h4>
+									<div className="grid grid-cols-2 gap-4">
+										<div className="space-y-1">
+											<label className="text-xs text-muted-foreground">Average Response Time</label>
+											<p className="text-sm font-medium">
+												{metrics.avgResponseTime ? `${metrics.avgResponseTime.toFixed(2)}ms` : "N/A"}
+											</p>
+										</div>
+										<div className="space-y-1">
+											<label className="text-xs text-muted-foreground">Last Called</label>
+											<p className="text-sm">
+												{metrics.lastCalled ? new Date(metrics.lastCalled).toLocaleString() : "Never"}
+											</p>
+										</div>
+									</div>
+								</div>
+
+								<Separator />
+
+								{/* Resilience Metrics */}
+								<div>
+									<h4 className="text-sm font-medium mb-3">Resilience & Protection</h4>
+									<div className="space-y-3">
+										<div className="flex items-center justify-between">
+											<span className="text-sm text-muted-foreground">Circuit Breaker State</span>
+											<Badge 
+												variant={
+													metrics.circuitState === "CLOSED" ? "default" :
+													metrics.circuitState === "OPEN" ? "destructive" : "warning"
+												}
+											>
+												{metrics.circuitState || "CLOSED"}
+											</Badge>
+										</div>
+										{metrics.rateLimitHits !== undefined && (
+											<div className="flex items-center justify-between">
+												<span className="text-sm text-muted-foreground">Rate Limit Hits</span>
+												<span className="text-sm font-medium">
+													{metrics.rateLimitHits}
+												</span>
+											</div>
+										)}
+										<div className="flex items-center justify-between">
+											<span className="text-sm text-muted-foreground">Cache Hit Rate</span>
+											<span className="text-sm font-medium">
+												{metrics.cacheHitRate !== undefined 
+													? `${(metrics.cacheHitRate * 100).toFixed(1)}%`
+													: "No cache"}
+											</span>
+										</div>
+									</div>
+								</div>
+							</div>
+						</AccordionContent>
+					</AccordionItem>
+				)}
+
 				{/* Configuration Section */}
 				<AccordionItem value="configuration">
 					<AccordionTrigger>
@@ -525,54 +706,69 @@ function HandlerDetails({
 						</div>
 					</AccordionTrigger>
 					<AccordionContent>
-						<div className="space-y-3 pt-2">
+						<div className="space-y-4 pt-2">
 							<div className="grid grid-cols-2 gap-4">
-								<div>
+								<div className="space-y-1">
 									<label className="text-xs text-muted-foreground">Persistence</label>
 									<div className="flex items-center gap-2">
 										{handler.metadata.persist ? (
 											<>
 												<CheckCircle2 className="h-4 w-4 text-green-500" />
-												<span className="text-sm">Enabled</span>
+												<span className="text-sm">Enabled (PostgreSQL)</span>
 											</>
 										) : (
 											<>
 												<XCircle className="h-4 w-4 text-gray-400" />
-												<span className="text-sm">Disabled</span>
+												<span className="text-sm">Disabled (Redis only)</span>
 											</>
 										)}
 									</div>
 								</div>
-								<div>
+								<div className="space-y-1">
 									<label className="text-xs text-muted-foreground">Rate Limit</label>
-									<p className="text-sm">
-										{handler.metadata.rateLimit || "No limit"} 
-										{handler.metadata.rateLimit && " requests/min"}
+									<p className="text-sm font-medium">
+										{handler.metadata.rateLimit ? `${handler.metadata.rateLimit} req/min` : "Unlimited"}
 									</p>
 								</div>
-								<div>
-									<label className="text-xs text-muted-foreground">Cache TTL</label>
-									<p className="text-sm">
+								<div className="space-y-1">
+									<label className="text-xs text-muted-foreground">Cache Settings</label>
+									<p className="text-sm font-medium">
 										{handler.metadata.cache?.enabled 
-											? `${handler.metadata.cache.ttl} seconds` 
-											: "No caching"}
+											? `Enabled (TTL: ${handler.metadata.cache.ttl}s)` 
+											: "Disabled"}
 									</p>
 								</div>
-								<div>
+								<div className="space-y-1">
 									<label className="text-xs text-muted-foreground">Timeout</label>
-									<p className="text-sm">
+									<p className="text-sm font-medium">
 										{handler.metadata.resilience?.timeout 
 											? `${handler.metadata.resilience.timeout}ms` 
-											: "Default"}
+											: "Default (30s)"}
 									</p>
 								</div>
 							</div>
+							
+							{handler.metadata.resilience?.circuitBreaker && (
+								<div>
+									<label className="text-xs text-muted-foreground">Circuit Breaker Settings</label>
+									<div className="mt-1 p-2 bg-muted/30 rounded-md">
+										<p className="text-xs">
+											Threshold: {handler.metadata.resilience.circuitBreaker.threshold} failures
+										</p>
+										<p className="text-xs">
+											Recovery timeout: {handler.metadata.resilience.circuitBreaker.timeout}ms
+										</p>
+									</div>
+								</div>
+							)}
+
 							{handler.metadata.roles && handler.metadata.roles.length > 0 && (
 								<div>
 									<label className="text-xs text-muted-foreground">Required Roles</label>
-									<div className="flex gap-2 mt-1">
+									<div className="flex flex-wrap gap-2 mt-1">
 										{handler.metadata.roles.map(role => (
 											<Badge key={role} variant="secondary" className="text-xs">
+												<Shield className="h-3 w-3 mr-1" />
 												{role}
 											</Badge>
 										))}
@@ -592,8 +788,8 @@ function HandlerDetails({
 						</div>
 					</AccordionTrigger>
 					<AccordionContent>
-						<ScrollArea className="h-[200px] w-full rounded-md border p-4">
-							<pre className="text-xs">
+						<ScrollArea className="h-[200px] w-full rounded-md border p-4 bg-muted/30">
+							<pre className="text-xs font-mono">
 								{JSON.stringify(handler.inputSchema, null, 2)}
 							</pre>
 						</ScrollArea>
@@ -609,74 +805,13 @@ function HandlerDetails({
 						</div>
 					</AccordionTrigger>
 					<AccordionContent>
-						<ScrollArea className="h-[200px] w-full rounded-md border p-4">
-							<pre className="text-xs">
+						<ScrollArea className="h-[200px] w-full rounded-md border p-4 bg-muted/30">
+							<pre className="text-xs font-mono">
 								{JSON.stringify(handler.outputSchema, null, 2)}
 							</pre>
 						</ScrollArea>
 					</AccordionContent>
 				</AccordionItem>
-
-				{/* Metrics Section */}
-				{metrics && (
-					<AccordionItem value="metrics">
-						<AccordionTrigger>
-							<div className="flex items-center gap-2">
-								<BarChart3 className="h-4 w-4" />
-								Metrics
-							</div>
-						</AccordionTrigger>
-						<AccordionContent>
-							<div className="space-y-3 pt-2">
-								<div className="grid grid-cols-2 gap-4">
-									<div>
-										<label className="text-xs text-muted-foreground">Total Calls</label>
-										<p className="text-2xl font-semibold">{metrics.totalCalls}</p>
-									</div>
-									<div>
-										<label className="text-xs text-muted-foreground">Success Rate</label>
-										<p className="text-2xl font-semibold">
-											{metrics.totalCalls > 0 
-												? `${((metrics.successCount / metrics.totalCalls) * 100).toFixed(1)}%`
-												: "N/A"}
-										</p>
-									</div>
-									<div>
-										<label className="text-xs text-muted-foreground">Avg Response Time</label>
-										<p className="text-sm">{metrics.avgResponseTime.toFixed(2)}ms</p>
-									</div>
-									<div>
-										<label className="text-xs text-muted-foreground">Cache Hit Rate</label>
-										<p className="text-sm">
-											{metrics.cacheHitRate !== undefined 
-												? `${(metrics.cacheHitRate * 100).toFixed(1)}%`
-												: "N/A"}
-										</p>
-									</div>
-								</div>
-								{metrics.lastCalled && (
-									<div>
-										<label className="text-xs text-muted-foreground">Last Called</label>
-										<p className="text-sm">{new Date(metrics.lastCalled).toLocaleString()}</p>
-									</div>
-								)}
-								{metrics.circuitState && (
-									<div>
-										<label className="text-xs text-muted-foreground">Circuit Breaker State</label>
-										<Badge 
-											variant={
-												metrics.circuitState === "CLOSED" ? "default" :
-												metrics.circuitState === "OPEN" ? "destructive" : "warning"
-											}
-										>
-											{metrics.circuitState}
-										</Badge>
-									</div>
-								)}
-							</div>
-						</AccordionContent>
-					</AccordionItem>
-				)}
 			</Accordion>
 		</div>
 	);

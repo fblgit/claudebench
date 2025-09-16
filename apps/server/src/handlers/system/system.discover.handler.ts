@@ -37,16 +37,16 @@ export class SystemDiscoverHandler {
 		const methods = filteredHandlers.map(handler => {
 			// Convert Zod schemas to JSON representation
 			// Use .shape property directly for ZodObject schemas
-			const inputSchemaJson = handler.inputSchema?.shape 
-				? this.zodObjectToJson(handler.inputSchema)
-				: handler.inputSchema?._def 
-				? this.zodSchemaToJson(handler.inputSchema._def)
+			const inputSchemaJson = (handler.inputSchema as any)?.shape 
+				? this.zodObjectToJson(handler.inputSchema as any)
+				: (handler.inputSchema as any)?._def 
+				? this.zodSchemaToJson((handler.inputSchema as any)._def)
 				: undefined;
 				
-			const outputSchemaJson = handler.outputSchema?.shape
-				? this.zodObjectToJson(handler.outputSchema)
-				: handler.outputSchema?._def
-				? this.zodSchemaToJson(handler.outputSchema._def)
+			const outputSchemaJson = (handler.outputSchema as any)?.shape
+				? this.zodObjectToJson(handler.outputSchema as any)
+				: (handler.outputSchema as any)?._def
+				? this.zodSchemaToJson((handler.outputSchema as any)._def)
 				: undefined;
 			
 			return {

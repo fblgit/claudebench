@@ -118,6 +118,55 @@ export class SystemMetricsHandler {
 		
 		// Add detailed metrics if requested
 		if (input.detailed) {
+			// Get per-handler metrics
+			const handlerKeys = await ctx.redis.stream.keys("cb:metrics:events:*");
+			const handlers: Record<string, any> = {};
+			
+			for (const key of handlerKeys) {
+				const handlerName = key.replace("cb:metrics:events:", "");
+				const handlerMetrics = await ctx.redis.stream.hgetall(key);
+				
+				// Get additional metrics for this handler
+				const [
+					circuitState, 
+					successCount, 
+					errorCount,
+					rateLimitHits,
+					cacheHits,
+					cacheMisses,
+					lastCalled
+				] = await Promise.all([
+					ctx.redis.stream.get(`cb:circuit:${handlerName}:state`),
+					ctx.redis.stream.get(`cb:circuit:${handlerName}:successes`),
+					ctx.redis.stream.get(`cb:circuit:${handlerName}:failures`),
+					ctx.redis.stream.get(`cb:ratelimit:${handlerName}:hits`),
+					ctx.redis.stream.hget(`cb:cache:${handlerName}`, "hits"),
+					ctx.redis.stream.hget(`cb:cache:${handlerName}`, "misses"),
+					ctx.redis.stream.get(`cb:metrics:${handlerName}:lastCalled`)
+				]);
+				
+				if (handlerMetrics.count || handlerMetrics.avgLatency) {
+					const totalCalls = parseInt(handlerMetrics.count || "0");
+					const successCalls = parseInt(successCount || handlerMetrics.count || "0");
+					const errorCalls = parseInt(errorCount || "0");
+					const hits = parseInt(cacheHits || "0");
+					const misses = parseInt(cacheMisses || "0");
+					const totalCacheAccess = hits + misses;
+					
+					handlers[handlerName] = {
+						totalCalls,
+						successCount: successCalls,
+						errorCount: errorCalls,
+						avgResponseTime: parseFloat(handlerMetrics.avgLatency || "0"),
+						circuitState: circuitState || "CLOSED",
+						rateLimitHits: parseInt(rateLimitHits || "0"),
+						cacheHitRate: totalCacheAccess > 0 ? hits / totalCacheAccess : undefined,
+						lastCalled: lastCalled || undefined,
+					};
+				}
+			}
+			
+			result.handlers = handlers;
 			// Circuit breaker metrics
 			if (circuitMetrics && Object.keys(circuitMetrics).length > 0) {
 				result.circuitBreaker = {
