@@ -36,12 +36,16 @@ export class SystemDiscoverHandler {
 		// Map handlers to discovery format
 		const methods = filteredHandlers.map(handler => {
 			// Convert Zod schemas to JSON representation
-			// Note: Zod schemas have a _def property that contains the schema definition
-			const inputSchemaJson = handler.inputSchema?._def 
+			// Use .shape property directly for ZodObject schemas
+			const inputSchemaJson = handler.inputSchema?.shape 
+				? this.zodObjectToJson(handler.inputSchema)
+				: handler.inputSchema?._def 
 				? this.zodSchemaToJson(handler.inputSchema._def)
 				: undefined;
 				
-			const outputSchemaJson = handler.outputSchema?._def
+			const outputSchemaJson = handler.outputSchema?.shape
+				? this.zodObjectToJson(handler.outputSchema)
+				: handler.outputSchema?._def
 				? this.zodSchemaToJson(handler.outputSchema._def)
 				: undefined;
 			
@@ -59,6 +63,41 @@ export class SystemDiscoverHandler {
 		});
 		
 		return { methods };
+	}
+	
+	/**
+	 * Convert ZodObject directly to JSON Schema
+	 */
+	private zodObjectToJson(schema: any): any {
+		if (!schema.shape) {
+			return { type: "object", properties: {}, required: [] };
+		}
+		
+		const properties: any = {};
+		const required: string[] = [];
+		
+		// Process each property in the shape
+		for (const [key, value] of Object.entries(schema.shape)) {
+			const propSchema = value as any;
+			
+			// Check if property is optional
+			const isOptional = propSchema._def?.typeName === "ZodOptional";
+			if (!isOptional) {
+				required.push(key);
+			}
+			
+			// Get the actual schema (unwrap optional if needed)
+			const actualSchema = isOptional ? propSchema._def.innerType : propSchema;
+			
+			// Convert the property schema
+			properties[key] = this.zodSchemaToJson(actualSchema._def);
+		}
+		
+		return {
+			type: "object",
+			properties,
+			required,
+		};
 	}
 	
 	/**
