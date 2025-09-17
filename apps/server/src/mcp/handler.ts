@@ -5,7 +5,8 @@
 import type { Context } from "hono";
 import { streamSSE } from "hono/streaming";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { Variables } from "@modelcontextprotocol/sdk/shared/uriTemplate.js";
 import { toFetchResponse, toReqRes } from "fetch-to-node";
 import { registry } from "../core/registry";
 import * as crypto from "crypto";
@@ -242,10 +243,12 @@ async function getOrCreateServer(sessionId: string): Promise<McpServer> {
 	// Resource: swarm://decomposition/{taskId}
 	server.resource(
 		"Swarm Task Decomposition",
-		"swarm://decomposition/{taskId}",
-		async (uri: URL) => {
+		new ResourceTemplate("swarm://decomposition/{taskId}", {
+			list: undefined
+		}),
+		async (uri: URL, variables: Variables) => {
 			try {
-				const taskId = uri.pathname.split('/').pop();
+				const taskId = typeof variables.taskId === 'string' ? variables.taskId : variables.taskId?.[0];
 				if (!taskId) {
 					throw new Error("Task ID required for decomposition resource");
 				}
@@ -314,10 +317,12 @@ async function getOrCreateServer(sessionId: string): Promise<McpServer> {
 	// Resource: swarm://context/{subtaskId}
 	server.resource(
 		"Swarm Subtask Context",
-		"swarm://context/{subtaskId}",
-		async (uri: URL) => {
+		new ResourceTemplate("swarm://context/{subtaskId}", {
+			list: undefined
+		}),
+		async (uri: URL, variables: Variables) => {
 			try {
-				const subtaskId = uri.pathname.split('/').pop();
+				const subtaskId = typeof variables.subtaskId === 'string' ? variables.subtaskId : variables.subtaskId?.[0];
 				if (!subtaskId) {
 					throw new Error("Subtask ID required for context resource");
 				}
@@ -393,10 +398,12 @@ async function getOrCreateServer(sessionId: string): Promise<McpServer> {
 	// Resource: swarm://progress/{taskId}
 	server.resource(
 		"Swarm Progress Overview",
-		"swarm://progress/{taskId}",
-		async (uri: URL) => {
+		new ResourceTemplate("swarm://progress/{taskId}", {
+			list: undefined
+		}),
+		async (uri: URL, variables: Variables) => {
 			try {
-				const taskId = uri.pathname.split('/').pop();
+				const taskId = typeof variables.taskId === 'string' ? variables.taskId : variables.taskId?.[0];
 				if (!taskId) {
 					throw new Error("Task ID required for progress resource");
 				}
