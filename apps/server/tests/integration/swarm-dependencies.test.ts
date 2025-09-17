@@ -119,18 +119,18 @@ describe("Integration: Swarm Dependency Resolution", () => {
 			// Verify dependency graph structure (actual key pattern from Lua script)
 			
 			// st-c depends on st-a
-			const stcDeps = await redis.pub.smembers(`cb:deps:st-c`);
+			const stcDeps = await redis.pub.smembers(`cb:dependencies:${taskId}:st-c`);
 			expect(stcDeps).toContain("st-a");
 			expect(stcDeps).toHaveLength(1);
 			
 			// st-d depends on st-a and st-b
-			const stdDeps = await redis.pub.smembers(`cb:deps:st-d`);
+			const stdDeps = await redis.pub.smembers(`cb:dependencies:${taskId}:st-d`);
 			expect(stdDeps).toContain("st-a");
 			expect(stdDeps).toContain("st-b");
 			expect(stdDeps).toHaveLength(2);
 			
 			// st-e depends on st-c and st-d
-			const steDeps = await redis.pub.smembers(`cb:deps:st-e`);
+			const steDeps = await redis.pub.smembers(`cb:dependencies:${taskId}:st-e`);
 			expect(steDeps).toContain("st-c");
 			expect(steDeps).toContain("st-d");
 			expect(steDeps).toHaveLength(2);
