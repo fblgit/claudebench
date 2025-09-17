@@ -1200,8 +1200,8 @@ for i, subtask in ipairs(subtasks.subtasks) do
   -- Build dependency graph
   if subtask.dependencies and #subtask.dependencies > 0 then
     for _, dep in ipairs(subtask.dependencies) do
-      redis.call('sadd', 'cb:deps:' .. subtask.id, dep)
-      redis.call('expire', 'cb:deps:' .. subtask.id, 3600)
+      redis.call('sadd', 'cb:dependencies:' .. parent_id .. ':' .. subtask.id, dep)
+      redis.call('expire', 'cb:dependencies:' .. parent_id .. ':' .. subtask.id, 3600)
     end
   else
     -- No dependencies, can start immediately
@@ -1247,11 +1247,7 @@ for _, specialist_id in ipairs(specialists) do
   local health = redis.call('hget', spec_key, 'health')
   
   -- Skip unhealthy instances
-  if health ~= 'healthy' then
-    goto continue
-  end
-  
-  if capabilities then
+  if health == 'healthy' and capabilities then
     local caps = cjson.decode(capabilities)
     local score = 0
     
@@ -1285,8 +1281,6 @@ for _, specialist_id in ipairs(specialists) do
       best_specialist = specialist_id
     end
   end
-  
-  ::continue::
 end
 
 if best_specialist then
@@ -1416,13 +1410,16 @@ local timestamp = ARGV[4]
 redis.call('hset', progress_key, subtask_id, progress_json)
 redis.call('expire', progress_key, 3600)
 
--- Update subtask status to completed
+-- Update subtask status to completed and remove from queue
 local subtask_key = 'cb:subtask:' .. subtask_id
 redis.call('hset', subtask_key, 'status', 'completed')
 redis.call('hset', subtask_key, 'completed_at', timestamp)
 
+-- Remove completed subtask from queue
+redis.call('zrem', 'cb:queue:subtasks', subtask_id)
+
 -- Check if dependencies are resolved for other subtasks
-local deps_pattern = 'cb:deps:*'
+local deps_pattern = 'cb:dependencies:' .. parent_id .. ':*'
 local waiting_subtasks = {}
 local cursor = '0'
 repeat
@@ -1438,8 +1435,9 @@ repeat
       -- Check if all dependencies are now resolved
       local remaining = redis.call('scard', dep_key)
       if remaining == 0 then
-        -- Extract subtask ID from key
-        local waiting_id = string.match(dep_key, "cb:deps:(.+)")
+        -- Extract subtask ID from key (escape parent_id for pattern matching)
+        local escaped_parent = string.gsub(parent_id, "%-", "%%-")
+        local waiting_id = string.match(dep_key, "cb:dependencies:" .. escaped_parent .. ":(.+)")
         if waiting_id then
           table.insert(waiting_subtasks, waiting_id)
           -- Queue this subtask as it's now ready

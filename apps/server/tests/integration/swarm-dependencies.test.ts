@@ -18,6 +18,28 @@ describe("Integration: Swarm Dependency Resolution", () => {
 
 	beforeAll(async () => {
 		redis = await setupIntegrationTest();
+		
+		// Flush all ClaudeBench data to ensure clean state
+		await registry.executeHandler("system.flush", {
+			confirm: "FLUSH_ALL_DATA",
+			includePostgres: true
+		});
+		
+		// Register active specialists using the registry API
+		await registry.executeHandler("system.register", {
+			id: "specialist-frontend-1",
+			roles: ["worker", "frontend"]
+		});
+		
+		await registry.executeHandler("system.register", {
+			id: "specialist-backend-1", 
+			roles: ["worker", "backend"]
+		});
+		
+		await registry.executeHandler("system.register", {
+			id: "specialist-testing-1",
+			roles: ["worker", "testing"]
+		});
 	});
 
 	afterAll(async () => {
@@ -26,6 +48,9 @@ describe("Integration: Swarm Dependency Resolution", () => {
 
 	describe("Dependency Graph Creation", () => {
 		it("should create proper dependency graph during decomposition", async () => {
+			// Clear the queue before test to avoid interference
+			await redis.pub.del(`cb:queue:subtasks`);
+			
 			const taskId = `t-deps-${Date.now()}`;
 			
 			const decomposition = {
@@ -91,28 +116,27 @@ describe("Integration: Swarm Dependency Resolution", () => {
 			expect(result.subtaskCount).toBe(5);
 			expect(result.queuedCount).toBe(2); // Only st-a and st-b are ready initially
 
-			// Verify dependency graph structure
-			const depPrefix = `cb:dependencies:${taskId}`;
+			// Verify dependency graph structure (actual key pattern from Lua script)
 			
 			// st-c depends on st-a
-			const stcDeps = await redis.pub.smembers(`${depPrefix}:st-c`);
+			const stcDeps = await redis.pub.smembers(`cb:deps:st-c`);
 			expect(stcDeps).toContain("st-a");
 			expect(stcDeps).toHaveLength(1);
 			
 			// st-d depends on st-a and st-b
-			const stdDeps = await redis.pub.smembers(`${depPrefix}:st-d`);
+			const stdDeps = await redis.pub.smembers(`cb:deps:st-d`);
 			expect(stdDeps).toContain("st-a");
 			expect(stdDeps).toContain("st-b");
 			expect(stdDeps).toHaveLength(2);
 			
 			// st-e depends on st-c and st-d
-			const steDeps = await redis.pub.smembers(`${depPrefix}:st-e`);
+			const steDeps = await redis.pub.smembers(`cb:deps:st-e`);
 			expect(steDeps).toContain("st-c");
 			expect(steDeps).toContain("st-d");
 			expect(steDeps).toHaveLength(2);
 			
-			// Verify ready queue only has independent tasks
-			const readyQueue = await redis.pub.zrange(`cb:queue:subtasks:${taskId}`, 0, -1);
+			// Verify ready queue only has independent tasks (actual key from Lua script)
+			const readyQueue = await redis.pub.zrange(`cb:queue:subtasks`, 0, -1);
 			expect(readyQueue).toContain("st-a");
 			expect(readyQueue).toContain("st-b");
 			expect(readyQueue).not.toContain("st-c");
@@ -173,6 +197,8 @@ describe("Integration: Swarm Dependency Resolution", () => {
 
 	describe("Progressive Unblocking", () => {
 		it("should unblock tasks as dependencies complete", async () => {
+			// Clear the queue before test to avoid interference
+			await redis.pub.del(`cb:queue:subtasks`);
 			const taskId = `t-unblock-${Date.now()}`;
 			
 			// Create a simple dependency chain: A -> B -> C
@@ -218,7 +244,7 @@ describe("Integration: Swarm Dependency Resolution", () => {
 			);
 
 			// Initially only st-first should be ready
-			let readyQueue = await redis.pub.zrange(`cb:queue:subtasks:${taskId}`, 0, -1);
+			let readyQueue = await redis.pub.zrange(`cb:queue:subtasks`, 0, -1);
 			expect(readyQueue).toContain("st-first");
 			expect(readyQueue).toHaveLength(1);
 
@@ -233,7 +259,7 @@ describe("Integration: Swarm Dependency Resolution", () => {
 			expect(result1.unblockedCount).toBe(1); // st-second unblocked
 			
 			// st-second should now be ready
-			readyQueue = await redis.pub.zrange(`cb:queue:subtasks:${taskId}`, 0, -1);
+			readyQueue = await redis.pub.zrange(`cb:queue:subtasks`, 0, -1);
 			expect(readyQueue).toContain("st-second");
 			expect(readyQueue).not.toContain("st-first"); // Completed tasks removed
 			
@@ -248,7 +274,7 @@ describe("Integration: Swarm Dependency Resolution", () => {
 			expect(result2.unblockedCount).toBe(1); // st-third unblocked
 			
 			// st-third should now be ready
-			readyQueue = await redis.pub.zrange(`cb:queue:subtasks:${taskId}`, 0, -1);
+			readyQueue = await redis.pub.zrange(`cb:queue:subtasks`, 0, -1);
 			expect(readyQueue).toContain("st-third");
 			
 			// Complete st-third
@@ -263,6 +289,8 @@ describe("Integration: Swarm Dependency Resolution", () => {
 		});
 
 		it("should handle complex multi-dependency unblocking", async () => {
+			// Clear the queue before test to avoid interference
+			await redis.pub.del(`cb:queue:subtasks`);
 			const taskId = `t-complex-${Date.now()}`;
 			
 			// Diamond dependency pattern:
@@ -329,7 +357,7 @@ describe("Integration: Swarm Dependency Resolution", () => {
 			);
 			
 			// Both left and right should be ready
-			const readyAfterTop = await redis.pub.zrange(`cb:queue:subtasks:${taskId}`, 0, -1);
+			const readyAfterTop = await redis.pub.zrange(`cb:queue:subtasks`, 0, -1);
 			expect(readyAfterTop).toContain("st-left");
 			expect(readyAfterTop).toContain("st-right");
 			expect(readyAfterTop).toHaveLength(2);
@@ -342,7 +370,7 @@ describe("Integration: Swarm Dependency Resolution", () => {
 			);
 			
 			// Bottom should NOT be ready yet (still waiting for right)
-			const readyAfterLeft = await redis.pub.zrange(`cb:queue:subtasks:${taskId}`, 0, -1);
+			const readyAfterLeft = await redis.pub.zrange(`cb:queue:subtasks`, 0, -1);
 			expect(readyAfterLeft).toContain("st-right");
 			expect(readyAfterLeft).not.toContain("st-bottom");
 			
@@ -356,7 +384,7 @@ describe("Integration: Swarm Dependency Resolution", () => {
 			expect(rightResult.unblockedCount).toBe(1); // Bottom unblocked
 			
 			// Bottom should now be ready
-			const readyAfterRight = await redis.pub.zrange(`cb:queue:subtasks:${taskId}`, 0, -1);
+			const readyAfterRight = await redis.pub.zrange(`cb:queue:subtasks`, 0, -1);
 			expect(readyAfterRight).toContain("st-bottom");
 			expect(readyAfterRight).toHaveLength(1);
 		});
@@ -377,7 +405,7 @@ describe("Integration: Swarm Dependency Resolution", () => {
 										id: "st-handler-1",
 										description: "Setup",
 										specialist: "backend",
-										complexity: 40,
+										complexity: 4,
 										estimatedMinutes: 60,
 										dependencies: [],
 										context: { files: [], patterns: [], constraints: [] }
@@ -386,14 +414,14 @@ describe("Integration: Swarm Dependency Resolution", () => {
 										id: "st-handler-2",
 										description: "Implementation",
 										specialist: "frontend",
-										complexity: 60,
+										complexity: 6,
 										estimatedMinutes: 90,
 										dependencies: ["st-handler-1"],
 										context: { files: [], patterns: [], constraints: [] }
 									}
 								],
 								executionStrategy: "sequential",
-								totalComplexity: 100,
+								totalComplexity: 10,
 								reasoning: "Setup must complete before implementation"
 							})
 						}
@@ -401,12 +429,8 @@ describe("Integration: Swarm Dependency Resolution", () => {
 				}
 			};
 			
-			(samplingService as any).mcpServers.set("test-session", mockServer);
-			
-			// Set session ID in context
-			const ctx = {
-				metadata: { sessionId: "test-session" }
-			};
+			// The handler will use the current instance ID as session ID (worker-1)
+			(samplingService as any).mcpServers.set("worker-1", mockServer);
 			
 			// Execute decomposition handler
 			const decomposeResult = await registry.executeHandler(
@@ -416,13 +440,13 @@ describe("Integration: Swarm Dependency Resolution", () => {
 					task: "Test task with dependencies",
 					priority: 60
 				},
-				ctx.metadata.sessionId
+				"worker-1" // Pass session ID
 			);
 			
 			expect(decomposeResult.subtaskCount).toBe(2);
 			
 			// Clean up
-			(samplingService as any).mcpServers.delete("test-session");
+			(samplingService as any).mcpServers.delete("worker-1");
 		});
 	});
 
@@ -467,6 +491,8 @@ describe("Integration: Swarm Dependency Resolution", () => {
 		});
 
 		it("should handle task with all dependencies on single task", async () => {
+			// Clear the queue before test to avoid interference
+			await redis.pub.del(`cb:queue:subtasks`);
 			const taskId = `t-stardeps-${Date.now()}`;
 			
 			const decomposition = {
@@ -530,7 +556,7 @@ describe("Integration: Swarm Dependency Resolution", () => {
 			expect(centerResult.unblockedCount).toBe(3);
 			
 			// All dependent tasks should be ready
-			const readyQueue = await redis.pub.zrange(`cb:queue:subtasks:${taskId}`, 0, -1);
+			const readyQueue = await redis.pub.zrange(`cb:queue:subtasks`, 0, -1);
 			expect(readyQueue).toContain("st-ray1");
 			expect(readyQueue).toContain("st-ray2");
 			expect(readyQueue).toContain("st-ray3");

@@ -15,8 +15,15 @@ describe("Integration: Swarm Templates", () => {
 	beforeAll(async () => {
 		await setupIntegrationTest();
 		
+		// Flush all ClaudeBench data to ensure clean state
+		const { registry } = await import("@/core/registry");
+		await registry.executeHandler("system.flush", {
+			confirm: "FLUSH_ALL_DATA",
+			includePostgres: true
+		});
+		
 		// Configure nunjucks
-		templates = nunjucks.configure(join(process.cwd(), "templates/swarm"), {
+		templates = nunjucks.configure(join(process.cwd(), "apps/server/src/templates/swarm"), {
 			autoescape: true,
 			noCache: true
 		});
@@ -30,20 +37,17 @@ describe("Integration: Swarm Templates", () => {
 		it("should render decomposition template with basic data", () => {
 			const data = {
 				task: "Implement dark mode toggle",
-				context: {
-					specialists: [
-						{ id: "s1", type: "frontend", load: 2, capabilities: ["react"] }
-					],
-					priority: 75,
-					constraints: ["Use existing theme"]
-				}
+				specialists: [
+					{ id: "s1", type: "frontend", currentLoad: 2, maxCapacity: 5, capabilities: ["react"] }
+				],
+				priority: 75,
+				constraints: ["Use existing theme"]
 			};
 
 			const result = templates.render("decomposition.njk", data);
 			
 			expect(result).toContain("Implement dark mode toggle");
-			expect(result).toContain("priority");
-			expect(result).toContain("75");
+			expect(result).toContain("Priority: 75");
 			expect(result).toContain("Use existing theme");
 		});
 

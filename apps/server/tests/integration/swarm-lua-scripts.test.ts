@@ -140,23 +140,32 @@ describe("Integration: Swarm Lua Scripts", () => {
 		it("should assign subtask to best available specialist", async () => {
 			const subtaskId = `st-${Date.now()}`;
 			
-			// Register test specialists
-			await redis.pub.hset("cb:specialists:frontend", {
-				"specialist-fe-1": JSON.stringify({
-					id: "specialist-fe-1",
-					capabilities: ["react", "typescript"],
-					currentLoad: 2,
-					maxLoad: 5,
-					lastHeartbeat: Date.now()
-				}),
-				"specialist-fe-2": JSON.stringify({
-					id: "specialist-fe-2",
-					capabilities: ["react"],
-					currentLoad: 4,
-					maxLoad: 5,
-					lastHeartbeat: Date.now()
-				})
+			// Clean up any existing keys first
+			await redis.pub.del("cb:specialists:frontend");
+			await redis.pub.del("cb:queue:instance:specialist-fe-1");
+			await redis.pub.del("cb:queue:instance:specialist-fe-2");
+			
+			// Register test specialists - add IDs to set
+			await redis.pub.sadd("cb:specialists:frontend", "specialist-fe-1", "specialist-fe-2");
+			
+			// Set up specialist instances
+			await redis.pub.hset("cb:instance:specialist-fe-1", {
+				id: "specialist-fe-1",
+				capabilities: JSON.stringify(["react", "typescript"]),
+				health: "healthy",
+				maxCapacity: "5"
 			});
+			
+			await redis.pub.hset("cb:instance:specialist-fe-2", {
+				id: "specialist-fe-2",
+				capabilities: JSON.stringify(["react"]),
+				health: "healthy",
+				maxCapacity: "5"
+			});
+			
+			// Set up queues for load calculation
+			await redis.pub.rpush("cb:queue:instance:specialist-fe-1", "task1");
+			await redis.pub.rpush("cb:queue:instance:specialist-fe-2", "task1", "task2", "task3", "task4");
 
 			const result = await redisScripts.assignToSpecialist(
 				subtaskId,
@@ -170,20 +179,23 @@ describe("Integration: Swarm Lua Scripts", () => {
 
 			// Verify assignment was stored
 			const assignmentKey = `cb:assignment:${subtaskId}`;
-			const assignment = await redis.pub.hget(assignmentKey, "specialistId");
+			const assignment = await redis.pub.hget(assignmentKey, "specialist");
 			expect(assignment).toBe("specialist-fe-1");
 		});
 
 		it("should handle concurrent assignments without double-booking", async () => {
+			// Clean up any existing keys first
+			await redis.pub.del("cb:specialists:backend");
+			await redis.pub.del("cb:queue:instance:specialist-be-limited");
+			
 			// Register a specialist with limited capacity
-			await redis.pub.hset("cb:specialists:backend", {
-				"specialist-be-limited": JSON.stringify({
-					id: "specialist-be-limited",
-					capabilities: ["node", "express"],
-					currentLoad: 0,
-					maxLoad: 3,
-					lastHeartbeat: Date.now()
-				})
+			await redis.pub.sadd("cb:specialists:backend", "specialist-be-limited");
+			
+			await redis.pub.hset("cb:instance:specialist-be-limited", {
+				id: "specialist-be-limited",
+				capabilities: JSON.stringify(["node", "express"]),
+				health: "healthy",
+				maxCapacity: "3"
 			});
 
 			const promises = [];
@@ -211,15 +223,9 @@ describe("Integration: Swarm Lua Scripts", () => {
 			// Should not exceed max capacity
 			expect(successfulAssignments).toBeLessThanOrEqual(3);
 			
-			// Verify specialist load
-			const specialistData = await redis.pub.hget(
-				"cb:specialists:backend",
-				"specialist-be-limited"
-			);
-			if (specialistData) {
-				const specialist = JSON.parse(specialistData);
-				expect(specialist.currentLoad).toBeLessThanOrEqual(3);
-			}
+			// Verify specialist load via queue length
+			const queueLength = await redis.pub.llen("cb:queue:instance:specialist-be-limited");
+			expect(queueLength).toBeLessThanOrEqual(3);
 		});
 	});
 
@@ -267,9 +273,12 @@ describe("Integration: Swarm Lua Scripts", () => {
 			
 			// Setup decomposition with dependencies
 			await redis.pub.hset(`cb:decomposition:${parentId}`, {
-				data: JSON.stringify({
-					subtaskCount: 3,
-					subtasks: ["st-a", "st-b", "st-c"]
+				subtasks: JSON.stringify({
+					subtasks: [
+						{ id: "st-a", description: "Task A" },
+						{ id: "st-b", description: "Task B" },
+						{ id: "st-c", description: "Task C" }
+					]
 				})
 			});
 			

@@ -627,21 +627,31 @@ export class RedisScriptExecutor {
 		
 		for (const key of instances) {
 			const data = await redis.pub.hgetall(key);
-			if (data.health === "healthy" && data.capabilities) {
+			if (data.health === "healthy" && data.roles) {
 				const id = key.replace("cb:instance:", "");
-				const capabilities = JSON.parse(data.capabilities || "[]");
+				const roles = JSON.parse(data.roles || "[]");
 				const load = await redis.pub.llen(`cb:queue:instance:${id}`);
 				
-				// Determine specialist type from capabilities
+				// Convert roles to capabilities and determine specialist type
+				const capabilities = [...roles]; // Start with roles as capabilities
 				let type = "general";
-				if (capabilities.includes("react") || capabilities.includes("vue")) {
+				
+				// Determine type from roles
+				if (roles.includes("frontend")) {
 					type = "frontend";
-				} else if (capabilities.includes("node") || capabilities.includes("python")) {
+					capabilities.push("react", "typescript", "css"); // Add typical frontend capabilities
+				} else if (roles.includes("backend")) {
 					type = "backend";
-				} else if (capabilities.includes("jest") || capabilities.includes("cypress")) {
+					capabilities.push("node", "express", "postgresql"); // Add typical backend capabilities
+				} else if (roles.includes("testing")) {
 					type = "testing";
-				} else if (capabilities.includes("markdown") || capabilities.includes("docs")) {
+					capabilities.push("jest", "cypress", "e2e"); // Add typical testing capabilities
+				} else if (roles.includes("docs")) {
 					type = "docs";
+					capabilities.push("markdown", "docs"); // Add typical docs capabilities
+				} else if (roles.includes("general")) {
+					type = "general";
+					capabilities.push("general-purpose", "flexible"); // Add general capabilities
 				}
 				
 				specialists.push({
