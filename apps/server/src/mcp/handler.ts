@@ -84,7 +84,7 @@ async function getOrCreateServer(sessionId: string): Promise<McpServer> {
 					enhancedDescription += `\n\nPREREQUISITES:\n${prerequisites.map(p => `• ${p}`).join('\n')}`;
 				}
 				
-				if (examples?.length > 0) {
+				if (examples && examples.length > 0) {
 					const firstExample = examples[0];
 					enhancedDescription += `\n\nEXAMPLE: ${firstExample.description}`;
 					enhancedDescription += `\nInput: ${JSON.stringify(firstExample.input, null, 2)}`;
