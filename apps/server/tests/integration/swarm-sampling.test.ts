@@ -23,6 +23,9 @@ describe("Integration: Swarm Sampling Service", () => {
 		mockMcpServer = {
 			server: {
 				createMessage: mock(async (params: any) => {
+					// Add small delay to ensure latency > 0
+					await new Promise(resolve => setTimeout(resolve, 1));
+					
 					// Simulate LLM responses based on the prompt content
 					const prompt = params.messages[0].content.text;
 					
