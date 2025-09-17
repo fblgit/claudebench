@@ -26,7 +26,7 @@ describe("Integration: Swarm Sampling Service", () => {
 					// Simulate LLM responses based on the prompt content
 					const prompt = params.messages[0].content.text;
 					
-					if (prompt.includes("decompose")) {
+					if (prompt.toLowerCase().includes("decompose")) {
 						return {
 							content: {
 								type: "text",
