@@ -10,6 +10,9 @@ import type { SystemPostgresTablesInput, SystemPostgresTablesOutput } from "@/sc
 	persist: false,
 	rateLimit: 30, // Lower rate limit for potentially expensive database operations
 	description: "List PostgreSQL tables with metadata for troubleshooting",
+	mcp: {
+		visible: false, // Admin debugging tool, not for Claude to use
+	}
 })
 export class SystemPostgresTablesHandler {
 	@Instrumented(120) // Cache for 2 minutes (table structure doesn't change often)

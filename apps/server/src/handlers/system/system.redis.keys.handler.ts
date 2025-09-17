@@ -11,6 +11,7 @@ import type { SystemRedisKeysInput, SystemRedisKeysOutput } from "@/schemas/syst
 	rateLimit: 50, // Lower rate limit for potentially expensive operations
 	description: "Scan Redis keys with pattern matching and pagination",
 	mcp: {
+		visible: false, // Admin debugging tool, not for Claude to use
 		title: "Redis Key Scanner",
 		metadata: {
 			examples: [

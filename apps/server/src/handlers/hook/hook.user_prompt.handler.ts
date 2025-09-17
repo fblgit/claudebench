@@ -11,6 +11,9 @@ import { redisKey } from "@/core/redis";
 	persist: false,
 	rateLimit: 100,
 	description: "Intercept and potentially modify user prompts",
+	mcp: {
+		visible: false, // Hook handlers are internal infrastructure, not user-facing tools
+	}
 })
 export class UserPromptHookHandler {
 	@Instrumented(120) // Cache for 2 minutes - prompts may be repeated

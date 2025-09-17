@@ -10,6 +10,9 @@ import type { SystemRedisGetInput, SystemRedisGetOutput } from "@/schemas/system
 	persist: false,
 	rateLimit: 100, // Higher rate limit for read operations
 	description: "Inspect Redis key data with type-aware formatting",
+	mcp: {
+		visible: false, // Admin debugging tool, not for Claude to use
+	}
 })
 export class SystemRedisGetHandler {
 	@Instrumented(30) // Cache for 30 seconds

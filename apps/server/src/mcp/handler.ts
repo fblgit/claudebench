@@ -664,6 +664,198 @@ async function getOrCreateServer(sessionId: string): Promise<McpServer> {
 		}
 	);
 	
+	// Resource: claudebench://welcome (Bootstrap guide)
+	server.resource(
+		"Welcome to ClaudeBench",
+		"claudebench://welcome",
+		async (uri: URL) => {
+			try {
+				const redis = getRedis();
+				
+				// Gather system metrics
+				const [instanceCount, taskStats, eventCount] = await Promise.all([
+					redis.pub.scard("cb:instances:active"),
+					prisma.task.groupBy({
+						by: ['status'],
+						_count: true
+					}),
+					redis.pub.get("cb:metrics:events:total")
+				]);
+				
+				// Calculate task statistics
+				const tasksByStatus = taskStats.reduce((acc, stat) => {
+					acc[stat.status] = stat._count;
+					return acc;
+				}, {} as Record<string, number>);
+				
+				const totalTasks = Object.values(tasksByStatus).reduce((a, b) => a + b, 0);
+				const completedToday = await prisma.task.count({
+					where: {
+						status: 'completed',
+						updatedAt: {
+							gte: new Date(new Date().setHours(0, 0, 0, 0))
+						}
+					}
+				});
+				
+				// Get average response time
+				const avgResponseTime = await redis.pub.get("cb:metrics:avg_response_time") || "0";
+				
+				// Load and render template
+				const templatePath = path.join(process.cwd(), "src/templates/welcome-claudebench.md");
+				const template = await Bun.file(templatePath).text();
+				
+				// Configure nunjucks for this template
+				const env = nunjucks.configure({ autoescape: false });
+				const rendered = env.renderString(template, {
+					instanceId: sessionId,
+					sessionId: sessionId,
+					timestamp: new Date().toISOString(),
+					instanceCount: instanceCount || 0,
+					eventCount: eventCount || 0,
+					totalTasks,
+					pendingTasks: tasksByStatus['pending'] || 0,
+					inProgressTasks: tasksByStatus['in_progress'] || 0,
+					completedToday,
+					successRate: totalTasks > 0 
+						? Math.round(((tasksByStatus['completed'] || 0) / totalTasks) * 100)
+						: 0,
+					avgResponseTime: Math.round(Number(avgResponseTime)),
+					todoCompletionRate: 0, // Would need to track this separately
+					activeTodos: 0, // Would need to track this separately
+					eventStreams: [
+						{ name: 'task.*', count: await redis.pub.xlen('cb:stream:task') || 0 },
+						{ name: 'system.*', count: await redis.pub.xlen('cb:stream:system') || 0 },
+						{ name: 'hook.*', count: await redis.pub.xlen('cb:stream:hook') || 0 },
+						{ name: 'swarm.*', count: await redis.pub.xlen('cb:stream:swarm') || 0 }
+					]
+				});
+				
+				return {
+					contents: [{
+						uri: uri.toString(),
+						mimeType: "text/markdown",
+						text: rendered
+					}]
+				};
+			} catch (error) {
+				console.error(`[MCP Resource] Error rendering welcome template:`, error);
+				return {
+					contents: [{
+						uri: uri.toString(),
+						mimeType: "text/plain",
+						text: `Error loading welcome guide: ${error instanceof Error ? error.message : 'Unknown error'}`
+					}]
+				};
+			}
+		}
+	);
+	
+	// Note: Task operations (create, claim, update, complete, pick) should use Tools, not Resources
+	// Resources are read-only data access. Use the existing tools:
+	// - task__create - Create a new task
+	// - task__claim - Claim next available task  
+	// - task__update - Update task
+	// - task__complete - Complete a task
+	// - task__assign + task__update - Pick a task with plan
+	
+	// Resource Template: task://view/{taskId} - View specific task details (read-only)
+	server.resource(
+		"View Task",
+		new ResourceTemplate("task://view/{taskId}", {
+			list: undefined
+		}),
+		async (uri: URL, variables: Variables) => {
+			try {
+				const taskId = typeof variables.taskId === 'string' ? variables.taskId : variables.taskId?.[0];
+				
+				if (!taskId || taskId === '{taskId}') {
+					// If no specific task ID, show recent tasks
+					const recentTasks = await prisma.task.findMany({
+						orderBy: { createdAt: 'desc' },
+						take: 10,
+						select: {
+							id: true,
+							text: true,
+							status: true,
+							priority: true,
+							createdAt: true
+						}
+					});
+					
+					return {
+						contents: [{
+							uri: uri.toString(),
+							mimeType: "text/plain",
+							text: `Available Tasks:\n\n${
+								recentTasks.length > 0
+									? recentTasks.map(t => `• ${t.id}: "${t.text}" [${t.status}] (priority: ${t.priority})`).join('\n')
+									: 'No tasks found.'
+							}\n\nTo view a specific task, access: task://view/<taskId>`
+						}]
+					};
+				}
+				
+				// Get the specific task
+				const task = await prisma.task.findUnique({
+					where: { id: taskId }
+				});
+				
+				if (!task) {
+					return {
+						contents: [{
+							uri: uri.toString(),
+							mimeType: "application/json",
+							text: JSON.stringify({
+								error: `Task not found: ${taskId}`,
+								availableTasks: await prisma.task.findMany({
+									select: { id: true },
+									orderBy: { createdAt: 'desc' },
+									take: 5
+								}).then(tasks => tasks.map(t => t.id))
+							}, null, 2)
+						}]
+					};
+				}
+				
+				// Return full task details
+				const content = {
+					id: task.id,
+					text: task.text,
+					status: task.status,
+					priority: task.priority,
+					assignedTo: task.assignedTo,
+					metadata: task.metadata,
+					createdAt: task.createdAt,
+					updatedAt: task.updatedAt,
+					// Add computed fields
+					age: `${Math.floor((Date.now() - task.createdAt.getTime()) / 1000 / 60)} minutes`,
+					isAssigned: task.assignedTo !== null,
+					isCompleted: task.status === 'completed',
+					isPending: task.status === 'pending',
+					isInProgress: task.status === 'in_progress'
+				};
+				
+				return {
+					contents: [{
+						uri: uri.toString(),
+						mimeType: "application/json",
+						text: JSON.stringify(content, null, 2)
+					}]
+				};
+			} catch (error) {
+				console.error(`[MCP Resource] Error viewing task ${uri}:`, error);
+				return {
+					contents: [{
+						uri: uri.toString(),
+						mimeType: "text/plain",
+						text: `Error reading task: ${error instanceof Error ? error.message : 'Unknown error'}`
+					}]
+				};
+			}
+		}
+	);
+	
 	// Register server with sampling service for swarm intelligence
 	const samplingService = getSamplingService();
 	samplingService.registerServer(sessionId, server);

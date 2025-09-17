@@ -235,5 +235,6 @@ The MCP_SDK.md file contains the TypeScript SDK documentation for implementing M
 - Open and read README.md at the start of a new or resumed conversation, make sure this file is always present in your context.
 - The ClaudeBench development process (ContracTest Driven Development). You have contracts at `specs/001-claudebench/contracts/` with tests on `apps/server/tests/contract/`, the integration tests at `apps/server/tests/integration/` are designed to evaluate the internal behaviour of the handlers and features they are testing. By example, if they trigger 'create_something' and verify the existence of a specific key in redis (metric, states, logs, counters, etc) its understood that the system when it 'create_something' should produce the side-effect being evaluated; they evaluate that your system is capable of performing an action.
 
-**MUST**: run `bun relay` in background. when resuming a conversation, take a look at the last logs of the relay to understand better your previous last steps.
-- Use claudebench tools instead of TodoWrite from now onwards.
+**MUST**: run `bun relay` in background. when resuming a conversation, take a look at the last logs of the relay to understand better your previous last steps
+**MUST**: readMcpResource(Read resource "claudebench://welcome" from server "claudebench")
+- Use claudebench task tools instead of TodoWrite from now onwards, document properly the result metadata when you complete tasks. Following these will help you noticeably to track the complexities and needed details to develop in the codebase accurately.

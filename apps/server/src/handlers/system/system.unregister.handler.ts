@@ -11,6 +11,9 @@ import { redisScripts } from "@/core/redis-scripts";
 	persist: false,
 	rateLimit: 10,
 	description: "Clean up instance registration when Claude Code session ends",
+	mcp: {
+		visible: false, // Internal lifecycle management, not for Claude to use
+	}
 })
 export class SystemUnregisterHandler {
 	@Instrumented(60)

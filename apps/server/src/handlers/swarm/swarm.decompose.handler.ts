@@ -75,7 +75,8 @@ export class SwarmDecomposeHandler {
 		const samplingService = getSamplingService();
 		
 		// Check if we have a session ID from context
-		const sessionId = ctx.metadata?.sessionId || ctx.instanceId;
+		// MCP passes sessionId as clientId, direct calls may use sessionId or instanceId
+		const sessionId = ctx.metadata?.sessionId || ctx.metadata?.clientId || ctx.instanceId;
 		if (!sessionId) {
 			throw new Error("No session ID available for sampling");
 		}

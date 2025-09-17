@@ -10,6 +10,9 @@ import type { HookAgentStopInput, HookAgentStopOutput } from "@/schemas/hook.sch
 	persist: false,
 	rateLimit: 50,
 	description: "Handle agent termination events from Claude Code hooks",
+	mcp: {
+		visible: false, // Hook handlers are internal infrastructure, not user-facing tools
+	}
 })
 export class HookAgentStopHandler {
 	@Instrumented(60)

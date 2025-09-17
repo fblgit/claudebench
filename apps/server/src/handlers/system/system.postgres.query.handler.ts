@@ -11,6 +11,7 @@ import type { SystemPostgresQueryInput, SystemPostgresQueryOutput } from "@/sche
 	rateLimit: 50, // Moderate rate limit for database queries
 	description: "Query PostgreSQL table data with filtering and pagination",
 	mcp: {
+		visible: false, // Admin debugging tool, not for Claude to use
 		title: "PostgreSQL Query Tool",
 		metadata: {
 			examples: [

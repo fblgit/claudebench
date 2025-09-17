@@ -10,6 +10,9 @@ import type { HookNotificationInput, HookNotificationOutput } from "@/schemas/ho
 	persist: false,
 	rateLimit: 100,
 	description: "Handle notifications from Claude Code hooks",
+	mcp: {
+		visible: false, // Hook handlers are internal infrastructure, not user-facing tools
+	}
 })
 export class HookNotificationHandler {
 	@Instrumented(60)

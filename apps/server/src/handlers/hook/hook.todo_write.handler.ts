@@ -12,6 +12,9 @@ import { registry } from "@/core/registry";
 	persist: true,
 	rateLimit: 50,
 	description: "Process TodoWrite events",
+	mcp: {
+		visible: false, // Hook handlers are internal infrastructure, not user-facing tools
+	}
 })
 export class TodoWriteHookHandler {
 	@Instrumented(60) // Cache for 1 minute - todos change frequently

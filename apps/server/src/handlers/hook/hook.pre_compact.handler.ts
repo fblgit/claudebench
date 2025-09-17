@@ -11,6 +11,9 @@ import { redisScripts } from "@/core/redis-scripts";
 	persist: false,
 	rateLimit: 10,
 	description: "Handle pre-compaction events from Claude Code hooks",
+	mcp: {
+		visible: false, // Hook handlers are internal infrastructure, not user-facing tools
+	}
 })
 export class HookPreCompactHandler {
 	@Instrumented(60)
