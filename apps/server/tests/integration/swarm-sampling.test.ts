@@ -84,7 +84,7 @@ describe("Integration: Swarm Sampling Service", () => {
 								})
 							}
 						};
-					} else if (prompt.includes("conflict")) {
+					} else if (prompt.includes("Resolve this conflict")) {
 						return {
 							content: {
 								type: "text",

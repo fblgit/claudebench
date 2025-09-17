@@ -392,8 +392,19 @@ describe("Integration: Swarm Dependency Resolution", () => {
 
 	describe("Integration with Handlers", () => {
 		it("should handle dependencies through full handler flow", async () => {
+			// Ensure specialists are registered for this test
+			await registry.executeHandler("system.register", {
+				id: "specialist-frontend-1",
+				roles: ["worker", "frontend"]
+			});
+			await registry.executeHandler("system.register", {
+				id: "specialist-backend-1", 
+				roles: ["worker", "backend"]
+			});
+			
 			// Mock MCP server for sampling
 			const samplingService = (await import("@/core/sampling")).getSamplingService();
+			const timestamp = Date.now();
 			const mockServer = {
 				server: {
 					createMessage: async () => ({
@@ -402,7 +413,7 @@ describe("Integration: Swarm Dependency Resolution", () => {
 							text: JSON.stringify({
 								subtasks: [
 									{
-										id: "st-handler-1",
+										id: `st-handler-${timestamp}-1`,
 										description: "Setup",
 										specialist: "backend",
 										complexity: 4,
@@ -411,12 +422,12 @@ describe("Integration: Swarm Dependency Resolution", () => {
 										context: { files: [], patterns: [], constraints: [] }
 									},
 									{
-										id: "st-handler-2",
+										id: `st-handler-${timestamp}-2`,
 										description: "Implementation",
 										specialist: "frontend",
 										complexity: 6,
 										estimatedMinutes: 90,
-										dependencies: ["st-handler-1"],
+										dependencies: [`st-handler-${timestamp}-1`],
 										context: { files: [], patterns: [], constraints: [] }
 									}
 								],
