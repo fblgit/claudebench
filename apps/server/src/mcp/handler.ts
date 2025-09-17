@@ -69,10 +69,32 @@ async function getOrCreateServer(sessionId: string): Promise<McpServer> {
 				inputSchemaShape = schema.shape;
 			}
 			
+			// Build enhanced description with metadata since _meta isn't passed through SDK
+			let enhancedDescription = handler.description || `Execute ${handler.event} event handler`;
+			
+			// Add critical metadata to description for LLM visibility
+			if (handler.mcp?.metadata) {
+				const { warnings, prerequisites, examples } = handler.mcp.metadata;
+				
+				if (warnings?.length) {
+					enhancedDescription += `\n\n⚠️ WARNINGS:\n${warnings.map(w => `• ${w}`).join('\n')}`;
+				}
+				
+				if (prerequisites?.length) {
+					enhancedDescription += `\n\nPREREQUISITES:\n${prerequisites.map(p => `• ${p}`).join('\n')}`;
+				}
+				
+				if (examples?.length > 0) {
+					const firstExample = examples[0];
+					enhancedDescription += `\n\nEXAMPLE: ${firstExample.description}`;
+					enhancedDescription += `\nInput: ${JSON.stringify(firstExample.input, null, 2)}`;
+				}
+			}
+			
 			// Use the high-level tool() method which properly handles Zod schemas
 			(server as any).tool(
 				toolName,
-				handler.description || `Execute ${handler.event} event handler`,
+				enhancedDescription,
 				inputSchemaShape,
 				async (params: any, metadata: any): Promise<any> => {
 					console.log(`[MCP Tool] Executing ${toolName}`);
