@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import nunjucks from "nunjucks";
-import { join } from "path";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
 import { 
 	setupIntegrationTest, 
 	cleanupIntegrationTest 
@@ -22,8 +23,12 @@ describe("Integration: Swarm Templates", () => {
 			includePostgres: true
 		});
 		
-		// Configure nunjucks
-		templates = nunjucks.configure(join(process.cwd(), "apps/server/src/templates/swarm"), {
+		// Configure nunjucks with path relative to this test file
+		const __filename = fileURLToPath(import.meta.url);
+		const __dirname = dirname(__filename);
+		const templatePath = join(__dirname, "..", "..", "src", "templates", "swarm");
+		
+		templates = nunjucks.configure(templatePath, {
 			autoescape: true,
 			noCache: true
 		});
