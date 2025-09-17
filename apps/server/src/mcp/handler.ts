@@ -12,6 +12,9 @@ import * as crypto from "crypto";
 import { z } from "zod";
 import { getRedis } from "../core/redis";
 import { getSamplingService } from "../core/sampling";
+import { getPrisma } from "../core/context";
+import * as nunjucks from "nunjucks";
+import * as path from "path";
 
 // Store servers and transports by session ID to maintain state
 const servers = new Map<string, McpServer>();
@@ -33,7 +36,9 @@ async function getOrCreateServer(sessionId: string): Promise<McpServer> {
 		capabilities: {
 			logging: {},
 			tools: {},
-			sampling: {} // Enable sampling for swarm intelligence
+			sampling: {}, // Enable sampling for swarm intelligence
+			prompts: {}, // Enable prompt templates for swarm operations
+			resources: {} // Enable swarm state resources
 		}
 	});
 	
@@ -130,6 +135,381 @@ async function getOrCreateServer(sessionId: string): Promise<McpServer> {
 			console.error(`   ❌ Failed to register tool ${toolName}:`, error);
 		}
 	}
+	
+	// Configure Nunjucks templates for prompts
+	const templatesPath = path.join(process.cwd(), 'src', 'templates', 'swarm');
+	nunjucks.configure(templatesPath, { autoescape: false });
+	
+	// Register prompt templates for swarm operations
+	server.prompt(
+		"decompose-task",
+		"Guide for breaking down complex tasks into specialized subtasks for parallel execution by swarm specialists",
+		{
+			task: z.string().describe("The task to decompose"),
+			priority: z.string().optional().describe("Task priority (1-100) as string"),
+			constraints: z.string().optional().describe("JSON array of constraints to consider")
+		},
+		async (args) => {
+			const context = {
+				task: args.task,
+				priority: args.priority ? parseInt(args.priority) : 75,
+				specialists: [
+					{ id: "worker-1", type: "frontend", capabilities: ["react", "typescript", "css"], currentLoad: 2, maxCapacity: 5 },
+					{ id: "worker-2", type: "backend", capabilities: ["node", "apis", "database"], currentLoad: 1, maxCapacity: 5 },
+					{ id: "worker-3", type: "testing", capabilities: ["jest", "e2e", "integration"], currentLoad: 0, maxCapacity: 5 }
+				],
+				constraints: args.constraints ? JSON.parse(args.constraints) : ["Maintain existing design system", "Ensure accessibility compliance"]
+			};
+			
+			const prompt = nunjucks.render("decomposition.njk", context);
+			
+			return {
+				description: "Task decomposition prompt",
+				messages: [{
+					role: "user",
+					content: {
+						type: "text",
+						text: prompt
+					}
+				}]
+			};
+		}
+	);
+
+	server.prompt(
+		"resolve-conflict",
+		"Template for resolving conflicts between different specialist solutions with detailed justification",
+		{
+			projectType: z.string().describe("Type of project (e.g. 'React application')"),
+			requirements: z.string().describe("JSON array of project requirements"),
+			solutions: z.string().describe("JSON array of proposed solutions with instanceId, approach, and reasoning"),
+			constraints: z.string().optional().describe("JSON array of constraints to consider")
+		},
+		async (args) => {
+			const context = {
+				projectType: args.projectType,
+				requirements: JSON.parse(args.requirements),
+				solutions: JSON.parse(args.solutions),
+				constraints: args.constraints ? JSON.parse(args.constraints) : ["Bundle size limit", "IE11 compatibility not required"]
+			};
+			
+			const prompt = nunjucks.render("conflict-resolution.njk", context);
+			
+			return {
+				description: "Conflict resolution prompt",
+				messages: [{
+					role: "user",
+					content: {
+						type: "text",
+						text: prompt
+					}
+				}]
+			};
+		}
+	);
+
+	server.prompt(
+		"synthesize-progress",
+		"Instructions for synthesizing completed subtasks into an integrated solution with step-by-step guidance",
+		{
+			parentTask: z.string().describe("The original parent task"),
+			completedSubtasks: z.string().describe("JSON array of completed subtasks with id, specialist, output, and artifacts")
+		},
+		async (args) => {
+			const context = {
+				parentTask: args.parentTask,
+				completedSubtasks: JSON.parse(args.completedSubtasks)
+			};
+			
+			const prompt = nunjucks.render("progress-synthesis.njk", context);
+			
+			return {
+				description: "Progress synthesis prompt",
+				messages: [{
+					role: "user",
+					content: {
+						type: "text",
+						text: prompt
+					}
+				}]
+			};
+		}
+	);
+	
+	// Register swarm resources for state access
+	const prisma = getPrisma();
+	
+	// Resource: swarm://decomposition/{taskId}
+	server.resource(
+		"Swarm Task Decomposition",
+		"swarm://decomposition/{taskId}",
+		async (uri: URL) => {
+			try {
+				const taskId = uri.pathname.split('/').pop();
+				if (!taskId) {
+					throw new Error("Task ID required for decomposition resource");
+				}
+				
+				const decomposition = await prisma.swarmDecomposition.findUnique({
+					where: { taskId },
+					include: {
+						subtasks: {
+							include: {
+								assignment: true,
+								progress: true
+							}
+						}
+					}
+				});
+				
+				if (!decomposition) {
+					throw new Error(`Decomposition not found for task: ${taskId}`);
+				}
+				
+				const content = {
+					taskId: decomposition.taskId,
+					taskText: decomposition.taskText,
+					strategy: decomposition.strategy,
+					totalComplexity: decomposition.totalComplexity,
+					reasoning: decomposition.reasoning,
+					progress: decomposition.progress,
+					subtaskCount: decomposition.subtaskCount,
+					subtasks: decomposition.subtasks.map(st => ({
+						id: st.id,
+						description: st.description,
+						specialist: st.specialist,
+						complexity: st.complexity,
+						estimatedMinutes: st.estimatedMinutes,
+						status: st.status,
+						dependencies: st.dependencies,
+						context: st.context,
+						assignedTo: st.assignedTo,
+						assignment: st.assignment,
+						progress: st.progress
+					})),
+					createdAt: decomposition.createdAt,
+					updatedAt: decomposition.updatedAt
+				};
+				
+				return {
+					contents: [{
+						uri: uri.toString(),
+						mimeType: "application/json",
+						text: JSON.stringify(content, null, 2)
+					}]
+				};
+			} catch (error) {
+				console.error(`[MCP Resource] Error reading decomposition ${uri}:`, error);
+				return {
+					contents: [{
+						uri: uri.toString(),
+						mimeType: "text/plain",
+						text: `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
+					}]
+				};
+			}
+		}
+	);
+
+	// Resource: swarm://context/{subtaskId}
+	server.resource(
+		"Swarm Subtask Context",
+		"swarm://context/{subtaskId}",
+		async (uri: URL) => {
+			try {
+				const subtaskId = uri.pathname.split('/').pop();
+				if (!subtaskId) {
+					throw new Error("Subtask ID required for context resource");
+				}
+				
+				const subtask = await prisma.swarmSubtask.findUnique({
+					where: { id: subtaskId },
+					include: {
+						assignment: true,
+						progress: true,
+						parent: true
+					}
+				});
+				
+				if (!subtask) {
+					throw new Error(`Subtask not found: ${subtaskId}`);
+				}
+				
+				// Get dependent subtasks
+				const dependentSubtasks = await prisma.swarmSubtask.findMany({
+					where: {
+						id: { in: subtask.dependencies }
+					}
+				});
+				
+				const content = {
+					subtask: {
+						id: subtask.id,
+						description: subtask.description,
+						specialist: subtask.specialist,
+						complexity: subtask.complexity,
+						estimatedMinutes: subtask.estimatedMinutes,
+						status: subtask.status,
+						context: subtask.context,
+						assignedTo: subtask.assignedTo,
+						createdAt: subtask.createdAt,
+						updatedAt: subtask.updatedAt
+					},
+					parentTask: {
+						id: subtask.parent.taskId,
+						text: subtask.parent.taskText,
+						strategy: subtask.parent.strategy
+					},
+					dependencies: dependentSubtasks.map(dep => ({
+						id: dep.id,
+						description: dep.description,
+						status: dep.status,
+						specialist: dep.specialist
+					})),
+					assignment: subtask.assignment,
+					progress: subtask.progress
+				};
+				
+				return {
+					contents: [{
+						uri: uri.toString(),
+						mimeType: "application/json",
+						text: JSON.stringify(content, null, 2)
+					}]
+				};
+			} catch (error) {
+				console.error(`[MCP Resource] Error reading context ${uri}:`, error);
+				return {
+					contents: [{
+						uri: uri.toString(),
+						mimeType: "text/plain",
+						text: `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
+					}]
+				};
+			}
+		}
+	);
+
+	// Resource: swarm://progress/{taskId}
+	server.resource(
+		"Swarm Progress Overview",
+		"swarm://progress/{taskId}",
+		async (uri: URL) => {
+			try {
+				const taskId = uri.pathname.split('/').pop();
+				if (!taskId) {
+					throw new Error("Task ID required for progress resource");
+				}
+				
+				const decomposition = await prisma.swarmDecomposition.findUnique({
+					where: { taskId }
+				});
+				
+				if (!decomposition) {
+					throw new Error(`Task not found: ${taskId}`);
+				}
+				
+				const progressRecords = await prisma.swarmProgress.findMany({
+					where: {
+						subtask: {
+							parentId: taskId
+						}
+					},
+					include: {
+						subtask: true
+					}
+				});
+				
+				const integration = await prisma.swarmIntegration.findFirst({
+					where: { taskId },
+					orderBy: { createdAt: 'desc' }
+				});
+				
+				const content = {
+					taskId,
+					taskText: decomposition.taskText,
+					overallProgress: decomposition.progress,
+					subtaskProgress: progressRecords.map(pr => ({
+						subtaskId: pr.subtaskId,
+						subtaskDescription: pr.subtask.description,
+						specialist: pr.subtask.specialist,
+						instanceId: pr.instanceId,
+						output: pr.output,
+						artifacts: pr.artifacts,
+						status: pr.status,
+						createdAt: pr.createdAt
+					})),
+					integration: integration ? {
+						status: integration.status,
+						steps: integration.steps,
+						issues: integration.issues,
+						mergedCode: integration.mergedCode,
+						createdAt: integration.createdAt,
+						completedAt: integration.completedAt
+					} : null
+				};
+				
+				return {
+					contents: [{
+						uri: uri.toString(),
+						mimeType: "application/json",
+						text: JSON.stringify(content, null, 2)
+					}]
+				};
+			} catch (error) {
+				console.error(`[MCP Resource] Error reading progress ${uri}:`, error);
+				return {
+					contents: [{
+						uri: uri.toString(),
+						mimeType: "text/plain",
+						text: `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
+					}]
+				};
+			}
+		}
+	);
+
+	// Resource: swarm://conflicts
+	server.resource(
+		"Swarm Conflicts",
+		"swarm://conflicts",
+		async (uri: URL) => {
+			try {
+				const conflicts = await prisma.swarmConflict.findMany({
+					where: { status: 'pending' },
+					orderBy: { createdAt: 'desc' }
+				});
+				
+				const content = {
+					pendingConflicts: conflicts.map(conflict => ({
+						id: conflict.id,
+						taskId: conflict.taskId,
+						instanceCount: conflict.instanceCount,
+						solutions: conflict.solutions,
+						status: conflict.status,
+						createdAt: conflict.createdAt
+					}))
+				};
+				
+				return {
+					contents: [{
+						uri: uri.toString(),
+						mimeType: "application/json",
+						text: JSON.stringify(content, null, 2)
+					}]
+				};
+			} catch (error) {
+				console.error(`[MCP Resource] Error reading conflicts ${uri}:`, error);
+				return {
+					contents: [{
+						uri: uri.toString(),
+						mimeType: "text/plain",
+						text: `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
+					}]
+				};
+			}
+		}
+	);
 	
 	// Register server with sampling service for swarm intelligence
 	const samplingService = getSamplingService();
