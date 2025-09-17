@@ -22,9 +22,9 @@ export const swarmDecomposeOutput = z.object({
 		subtasks: z.array(z.object({
 			id: z.string(),
 			description: z.string(),
-			specialist: z.enum(["frontend", "backend", "testing", "docs"]),
+			specialist: z.enum(["frontend", "backend", "testing", "docs", "general"]),
 			dependencies: z.array(z.string()),
-			complexity: z.number().min(1).max(10),
+			complexity: z.number().min(1).max(100),
 			context: z.object({
 				files: z.array(z.string()),
 				patterns: z.array(z.string()),
@@ -46,7 +46,7 @@ export type SwarmDecomposeOutput = z.infer<typeof swarmDecomposeOutput>;
  */
 export const swarmContextInput = z.object({
 	subtaskId: z.string().min(1),
-	specialist: z.enum(["frontend", "backend", "testing", "docs"]),
+	specialist: z.enum(["frontend", "backend", "testing", "docs", "general"]),
 	parentTaskId: z.string().min(1),
 });
 
@@ -117,7 +117,7 @@ export const swarmSynthesizeInput = z.object({
 		output: z.string(),
 		artifacts: z.array(z.string()).optional(),
 	})).min(1),
-	parentTask: z.string(),
+	parentTask: z.string().min(1),
 });
 
 export const swarmSynthesizeOutput = z.object({
