@@ -143,25 +143,25 @@ describe("Contract Validation: swarm.decompose", () => {
 		it("should have registered the swarm.decompose handler", () => {
 			const handler = registry.getHandler("swarm.decompose");
 			expect(handler).toBeDefined();
-			expect(handler?.config.event).toBe("swarm.decompose");
+			expect(handler?.event).toBe("swarm.decompose");
 		});
 
 		it("should have MCP metadata configured", () => {
 			const handler = registry.getHandler("swarm.decompose");
-			expect(handler?.config.mcp).toBeDefined();
-			expect(handler?.config.mcp?.title).toBe("Decompose Task");
-			expect(handler?.config.mcp?.metadata?.tags).toContain("swarm");
-			expect(handler?.config.mcp?.metadata?.tags).toContain("decomposition");
+			expect(handler?.mcp).toBeDefined();
+			expect(handler?.mcp?.title).toBe("Decompose Task");
+			expect(handler?.mcp?.metadata?.tags).toContain("swarm");
+			expect(handler?.mcp?.metadata?.tags).toContain("decomposition");
 		});
 
 		it("should validate persistence flag", () => {
 			const handler = registry.getHandler("swarm.decompose");
-			expect(handler?.config.persist).toBe(true);
+			expect(handler?.persist).toBe(true);
 		});
 
 		it("should have rate limiting configured", () => {
 			const handler = registry.getHandler("swarm.decompose");
-			expect(handler?.config.rateLimit).toBe(10);
+			expect(handler?.rateLimit).toBe(10);
 		});
 	});
 

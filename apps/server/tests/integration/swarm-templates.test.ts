@@ -4,7 +4,7 @@ import { join } from "path";
 import { 
 	setupIntegrationTest, 
 	cleanupIntegrationTest 
-} from "../../helpers/integration-setup";
+} from "../helpers/integration-setup";
 
 // Swarm Templates Integration Test
 // Tests Nunjucks template rendering with various edge cases and data scenarios

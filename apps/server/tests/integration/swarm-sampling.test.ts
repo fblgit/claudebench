@@ -4,7 +4,7 @@ import { registry } from "@/core/registry";
 import { 
 	setupIntegrationTest, 
 	cleanupIntegrationTest 
-} from "../../helpers/integration-setup";
+} from "../helpers/integration-setup";
 
 // Swarm Sampling Integration Test
 // Tests the integration between SamplingService and MCP for LLM-based decisions
@@ -136,8 +136,8 @@ describe("Integration: Swarm Sampling Service", () => {
 				"Implement dark mode toggle",
 				{
 					specialists: [
-						{ id: "specialist-1", type: "frontend", load: 2, capabilities: ["react"] },
-						{ id: "specialist-2", type: "backend", load: 1, capabilities: ["node"] }
+						{ id: "specialist-1", type: "frontend", currentLoad: 2, maxCapacity: 5, capabilities: ["react"] },
+						{ id: "specialist-2", type: "backend", currentLoad: 1, maxCapacity: 5, capabilities: ["node"] }
 					],
 					priority: 75,
 					constraints: ["Use existing theme system"]

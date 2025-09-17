@@ -166,7 +166,7 @@ export class SwarmSynthesizeHandler {
 		};
 		const result = await redisScripts.synthesizeProgress(
 			input.taskId,
-			`synthesis-${Date.now()}`,
+			`synthesis-${Date.now().toString()}`,
 			progressData
 		);
 		

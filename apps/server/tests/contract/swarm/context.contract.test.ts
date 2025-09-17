@@ -126,26 +126,26 @@ describe("Contract Validation: swarm.context", () => {
 		it("should have registered the swarm.context handler", () => {
 			const handler = registry.getHandler("swarm.context");
 			expect(handler).toBeDefined();
-			expect(handler?.config.event).toBe("swarm.context");
+			expect(handler?.event).toBe("swarm.context");
 		});
 
 		it("should have MCP metadata configured", () => {
 			const handler = registry.getHandler("swarm.context");
-			expect(handler?.config.mcp).toBeDefined();
-			expect(handler?.config.mcp?.title).toBe("Generate Specialist Context");
-			expect(handler?.config.mcp?.metadata?.tags).toContain("swarm");
-			expect(handler?.config.mcp?.metadata?.tags).toContain("context");
-			expect(handler?.config.mcp?.metadata?.tags).toContain("specialist");
+			expect(handler?.mcp).toBeDefined();
+			expect(handler?.mcp?.title).toBe("Generate Specialist Context");
+			expect(handler?.mcp?.metadata?.tags).toContain("swarm");
+			expect(handler?.mcp?.metadata?.tags).toContain("context");
+			expect(handler?.mcp?.metadata?.tags).toContain("specialist");
 		});
 
 		it("should have persistence disabled", () => {
 			const handler = registry.getHandler("swarm.context");
-			expect(handler?.config.persist).toBe(false);
+			expect(handler?.persist).toBe(false);
 		});
 
 		it("should have rate limiting configured", () => {
 			const handler = registry.getHandler("swarm.context");
-			expect(handler?.config.rateLimit).toBe(50);
+			expect(handler?.rateLimit).toBe(50);
 		});
 	});
 

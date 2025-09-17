@@ -5,7 +5,7 @@ import { registry } from "@/core/registry";
 import { 
 	setupIntegrationTest, 
 	cleanupIntegrationTest 
-} from "../../helpers/integration-setup";
+} from "../helpers/integration-setup";
 
 // Import handlers to register them
 import "@/handlers";
@@ -416,7 +416,7 @@ describe("Integration: Swarm Dependency Resolution", () => {
 					task: "Test task with dependencies",
 					priority: 60
 				},
-				ctx
+				ctx.metadata.sessionId
 			);
 			
 			expect(decomposeResult.subtaskCount).toBe(2);

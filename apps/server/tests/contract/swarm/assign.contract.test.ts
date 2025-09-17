@@ -144,26 +144,26 @@ describe("Contract Validation: swarm.assign", () => {
 		it("should have registered the swarm.assign handler", () => {
 			const handler = registry.getHandler("swarm.assign");
 			expect(handler).toBeDefined();
-			expect(handler?.config.event).toBe("swarm.assign");
+			expect(handler?.event).toBe("swarm.assign");
 		});
 
 		it("should have MCP metadata configured", () => {
 			const handler = registry.getHandler("swarm.assign");
-			expect(handler?.config.mcp).toBeDefined();
-			expect(handler?.config.mcp?.title).toBe("Assign Specialist");
-			expect(handler?.config.mcp?.metadata?.tags).toContain("swarm");
-			expect(handler?.config.mcp?.metadata?.tags).toContain("assignment");
-			expect(handler?.config.mcp?.metadata?.tags).toContain("specialist");
+			expect(handler?.mcp).toBeDefined();
+			expect(handler?.mcp?.title).toBe("Assign Specialist");
+			expect(handler?.mcp?.metadata?.tags).toContain("swarm");
+			expect(handler?.mcp?.metadata?.tags).toContain("assignment");
+			expect(handler?.mcp?.metadata?.tags).toContain("specialist");
 		});
 
 		it("should have persistence enabled", () => {
 			const handler = registry.getHandler("swarm.assign");
-			expect(handler?.config.persist).toBe(true);
+			expect(handler?.persist).toBe(true);
 		});
 
 		it("should have rate limiting configured", () => {
 			const handler = registry.getHandler("swarm.assign");
-			expect(handler?.config.rateLimit).toBe(50);
+			expect(handler?.rateLimit).toBe(50);
 		});
 	});
 

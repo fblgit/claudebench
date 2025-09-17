@@ -151,26 +151,26 @@ describe("Contract Validation: swarm.resolve", () => {
 		it("should have registered the swarm.resolve handler", () => {
 			const handler = registry.getHandler("swarm.resolve");
 			expect(handler).toBeDefined();
-			expect(handler?.config.event).toBe("swarm.resolve");
+			expect(handler?.event).toBe("swarm.resolve");
 		});
 
 		it("should have MCP metadata configured", () => {
 			const handler = registry.getHandler("swarm.resolve");
-			expect(handler?.config.mcp).toBeDefined();
-			expect(handler?.config.mcp?.title).toBe("Resolve Swarm Conflict");
-			expect(handler?.config.mcp?.metadata?.tags).toContain("swarm");
-			expect(handler?.config.mcp?.metadata?.tags).toContain("conflict");
-			expect(handler?.config.mcp?.metadata?.tags).toContain("resolution");
+			expect(handler?.mcp).toBeDefined();
+			expect(handler?.mcp?.title).toBe("Resolve Swarm Conflict");
+			expect(handler?.mcp?.metadata?.tags).toContain("swarm");
+			expect(handler?.mcp?.metadata?.tags).toContain("conflict");
+			expect(handler?.mcp?.metadata?.tags).toContain("resolution");
 		});
 
 		it("should have persistence enabled", () => {
 			const handler = registry.getHandler("swarm.resolve");
-			expect(handler?.config.persist).toBe(true);
+			expect(handler?.persist).toBe(true);
 		});
 
 		it("should have rate limiting configured", () => {
 			const handler = registry.getHandler("swarm.resolve");
-			expect(handler?.config.rateLimit).toBe(20);
+			expect(handler?.rateLimit).toBe(20);
 		});
 	});
 

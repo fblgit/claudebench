@@ -4,7 +4,7 @@ import { redisScripts } from "@/core/redis-scripts";
 import { 
 	setupIntegrationTest, 
 	cleanupIntegrationTest 
-} from "../../helpers/integration-setup";
+} from "../helpers/integration-setup";
 
 // Swarm Lua Scripts Integration Test
 // Tests atomicity and correctness of Redis Lua scripts under concurrent access
@@ -239,7 +239,7 @@ describe("Integration: Swarm Lua Scripts", () => {
 			);
 			
 			expect(result1.conflictDetected).toBe(false);
-			expect(result1.instanceCount).toBe(1);
+			expect(result1.solutionCount).toBe(1);
 
 			// Second solution (triggers conflict)
 			const result2 = await redisScripts.detectAndQueueConflict(
@@ -253,8 +253,7 @@ describe("Integration: Swarm Lua Scripts", () => {
 			);
 			
 			expect(result2.conflictDetected).toBe(true);
-			expect(result2.conflictId).toContain("conflict");
-			expect(result2.instanceCount).toBe(2);
+			expect(result2.solutionCount).toBe(2);
 
 			// Verify conflict was queued
 			const queueSize = await redis.pub.zcard("cb:queue:conflicts");

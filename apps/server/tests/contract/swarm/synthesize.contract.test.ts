@@ -182,26 +182,26 @@ describe("Contract Validation: swarm.synthesize", () => {
 		it("should have registered the swarm.synthesize handler", () => {
 			const handler = registry.getHandler("swarm.synthesize");
 			expect(handler).toBeDefined();
-			expect(handler?.config.event).toBe("swarm.synthesize");
+			expect(handler?.event).toBe("swarm.synthesize");
 		});
 
 		it("should have MCP metadata configured", () => {
 			const handler = registry.getHandler("swarm.synthesize");
-			expect(handler?.config.mcp).toBeDefined();
-			expect(handler?.config.mcp?.title).toBe("Synthesize Swarm Progress");
-			expect(handler?.config.mcp?.metadata?.tags).toContain("swarm");
-			expect(handler?.config.mcp?.metadata?.tags).toContain("synthesis");
-			expect(handler?.config.mcp?.metadata?.tags).toContain("integration");
+			expect(handler?.mcp).toBeDefined();
+			expect(handler?.mcp?.title).toBe("Synthesize Swarm Progress");
+			expect(handler?.mcp?.metadata?.tags).toContain("swarm");
+			expect(handler?.mcp?.metadata?.tags).toContain("synthesis");
+			expect(handler?.mcp?.metadata?.tags).toContain("integration");
 		});
 
 		it("should have persistence enabled", () => {
 			const handler = registry.getHandler("swarm.synthesize");
-			expect(handler?.config.persist).toBe(true);
+			expect(handler?.persist).toBe(true);
 		});
 
 		it("should have rate limiting configured", () => {
 			const handler = registry.getHandler("swarm.synthesize");
-			expect(handler?.config.rateLimit).toBe(10);
+			expect(handler?.rateLimit).toBe(10);
 		});
 	});
 
