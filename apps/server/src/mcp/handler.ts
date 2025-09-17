@@ -45,6 +45,12 @@ async function getOrCreateServer(sessionId: string): Promise<McpServer> {
 	console.log(`[MCP] Registering ${handlers.length} tools for session ${sessionId}`);
 	
 	for (const handler of handlers) {
+		// Skip handlers that are explicitly hidden from MCP
+		if (handler.mcp?.visible === false) {
+			console.log(`   ⏭️  Skipping hidden handler: ${handler.event}`);
+			continue;
+		}
+		
 		const toolName = handler.event.replace(/\./g, "__");
 		
 		try {
