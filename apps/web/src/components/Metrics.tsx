@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+// Removed accordion import for cleaner table-only approach
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
@@ -479,219 +479,188 @@ export function Metrics({ className }: MetricsProps) {
 											</TableCell>
 										</TableRow>
 									) : (
-										<Accordion type="single" collapsible className="w-full">
-											{filteredEvents.map((event) => {
-												const eventHealth = getHealthStatus(event.health);
-												return (
-													<AccordionItem key={event.name} value={event.name} className="border-0">
-														<TableRow className="border-b hover:bg-muted/50">
-															<TableCell className="font-medium py-3">
-																<AccordionTrigger className="py-0 hover:no-underline">
-																	<div className="flex items-center gap-2">
-																		<Badge variant="outline" className="text-xs">
-																			{event.domain}
-																		</Badge>
-																		<span className="text-sm">{event.name}</span>
+										filteredEvents.map((event) => {
+											const eventHealth = getHealthStatus(event.health);
+											return (
+												<TableRow key={event.name} className="border-b hover:bg-muted/50">
+													<TableCell className="font-medium py-3">
+														<div className="flex items-center gap-2">
+															<Badge variant="outline" className="text-xs">
+																{event.domain}
+															</Badge>
+															<span className="text-sm">{event.name}</span>
+														</div>
+													</TableCell>
+															<TableCell className="text-center py-3 px-4">
+																<div className="space-y-2">
+																	<div className="flex items-center justify-center gap-1 flex-wrap">
+																		{(event.circuit.success === 0 && event.circuit.failure === 0 && event.circuit.opened === 0) ? (
+																			<span className="text-muted-foreground text-xs">—</span>
+																		) : (
+																			<>
+																				{event.circuit.success > 0 && (
+																					<Tooltip>
+																						<TooltipTrigger>
+																							<Badge variant="default" className="gap-0.5 text-xs px-2 py-0.5">
+																								<CheckCircle className="h-3 w-3" />
+																								{event.circuit.success}
+																							</Badge>
+																						</TooltipTrigger>
+																						<TooltipContent>Successful requests</TooltipContent>
+																					</Tooltip>
+																				)}
+																				{event.circuit.failure > 0 && (
+																					<Tooltip>
+																						<TooltipTrigger>
+																							<Badge variant="destructive" className="gap-0.5 text-xs px-2 py-0.5">
+																								<XCircle className="h-3 w-3" />
+																								{event.circuit.failure}
+																							</Badge>
+																						</TooltipTrigger>
+																						<TooltipContent>Failed requests</TooltipContent>
+																					</Tooltip>
+																				)}
+																				{event.circuit.opened > 0 && (
+																					<Tooltip>
+																						<TooltipTrigger>
+																							<Badge variant="outline" className="gap-0.5 text-xs px-2 py-0.5 text-yellow-600 border-yellow-600">
+																								<AlertTriangle className="h-3 w-3" />
+																								{event.circuit.opened}
+																							</Badge>
+																						</TooltipTrigger>
+																						<TooltipContent>Circuit opened (tripped)</TooltipContent>
+																					</Tooltip>
+																				)}
+																				{event.circuit.rejected > 0 && (
+																					<Tooltip>
+																						<TooltipTrigger>
+																							<Badge variant="outline" className="gap-0.5 text-xs px-2 py-0.5 text-orange-600 border-orange-600">
+																								<ShieldOff className="h-3 w-3" />
+																								{event.circuit.rejected}
+																							</Badge>
+																						</TooltipTrigger>
+																						<TooltipContent>Rejected when circuit open</TooltipContent>
+																					</Tooltip>
+																				)}
+																				{event.circuit.fallback > 0 && (
+																					<Tooltip>
+																						<TooltipTrigger>
+																							<Badge variant="outline" className="gap-0.5 text-xs px-2 py-0.5 text-blue-600 border-blue-600">
+																								<Shield className="h-3 w-3" />
+																								{event.circuit.fallback}
+																							</Badge>
+																						</TooltipTrigger>
+																						<TooltipContent>Fallback responses used</TooltipContent>
+																					</Tooltip>
+																				)}
+																			</>
+																		)}
 																	</div>
-																</AccordionTrigger>
-															</TableCell>
-															<TableCell className="text-center py-3 px-4">
-																<div className="flex items-center justify-center gap-1 flex-wrap min-h-[28px]">
-																	{(event.circuit.success === 0 && event.circuit.failure === 0 && event.circuit.opened === 0) ? (
-																		<span className="text-muted-foreground text-xs">—</span>
-																	) : null}
-																	{event.circuit.success > 0 && (
-																		<Tooltip>
-																			<TooltipTrigger>
-																				<Badge variant="default" className="gap-0.5 text-xs px-2 py-0.5">
-																					<CheckCircle className="h-3 w-3" />
-																					{event.circuit.success}
-																				</Badge>
-																			</TooltipTrigger>
-																			<TooltipContent>Successful requests</TooltipContent>
-																		</Tooltip>
-																	)}
-																	{event.circuit.failure > 0 && (
-																		<Tooltip>
-																			<TooltipTrigger>
-																				<Badge variant="destructive" className="gap-0.5 text-xs px-2 py-0.5">
-																					<XCircle className="h-3 w-3" />
-																					{event.circuit.failure}
-																				</Badge>
-																			</TooltipTrigger>
-																			<TooltipContent>Failed requests</TooltipContent>
-																		</Tooltip>
-																	)}
-																	{event.circuit.opened > 0 && (
-																		<Tooltip>
-																			<TooltipTrigger>
-																				<Badge variant="outline" className="gap-0.5 text-xs px-2 py-0.5 text-yellow-600 border-yellow-600">
-																					<AlertTriangle className="h-3 w-3" />
-																					{event.circuit.opened}
-																				</Badge>
-																			</TooltipTrigger>
-																			<TooltipContent>Circuit opened (tripped)</TooltipContent>
-																		</Tooltip>
-																	)}
-																</div>
-															</TableCell>
-															<TableCell className="text-center py-3 px-4">
-																<div className="flex items-center justify-center gap-1 flex-wrap min-h-[28px]">
-																	{(event.rateLimit.allowed === 0 && event.rateLimit.rejected === 0) ? (
-																		<span className="text-muted-foreground text-xs">—</span>
-																	) : null}
-																	{event.rateLimit.allowed > 0 && (
-																		<Tooltip>
-																			<TooltipTrigger>
-																				<Badge variant="default" className="gap-0.5 text-xs px-2 py-0.5">
-																					<CheckCircle className="h-3 w-3" />
-																					{event.rateLimit.allowed}
-																				</Badge>
-																			</TooltipTrigger>
-																			<TooltipContent>Requests allowed</TooltipContent>
-																		</Tooltip>
-																	)}
-																	{event.rateLimit.rejected > 0 && (
-																		<Tooltip>
-																			<TooltipTrigger>
-																				<Badge variant="destructive" className="gap-0.5 text-xs px-2 py-0.5">
-																					<Ban className="h-3 w-3" />
-																					{event.rateLimit.rejected}
-																				</Badge>
-																			</TooltipTrigger>
-																			<TooltipContent>Requests rate limited</TooltipContent>
-																		</Tooltip>
-																	)}
-																</div>
-															</TableCell>
-															<TableCell className="text-center py-3 px-4">
-																<div className="flex items-center justify-center gap-1 flex-wrap min-h-[28px]">
-																	{(event.timeout.completed === 0 && event.timeout.timedOut === 0) ? (
-																		<span className="text-muted-foreground text-xs">—</span>
-																	) : null}
-																	{event.timeout.completed > 0 && (
-																		<Tooltip>
-																			<TooltipTrigger>
-																				<Badge variant="default" className="gap-0.5 text-xs px-2 py-0.5">
-																					<Clock className="h-3 w-3" />
-																					{event.timeout.completed}
-																				</Badge>
-																			</TooltipTrigger>
-																			<TooltipContent>Completed within timeout</TooltipContent>
-																		</Tooltip>
-																	)}
-																	{event.timeout.timedOut > 0 && (
-																		<Tooltip>
-																			<TooltipTrigger>
-																				<Badge variant="destructive" className="gap-0.5 text-xs px-2 py-0.5">
-																					<AlertCircle className="h-3 w-3" />
-																					{event.timeout.timedOut}
-																				</Badge>
-																			</TooltipTrigger>
-																			<TooltipContent>Timed out</TooltipContent>
-																		</Tooltip>
-																	)}
-																</div>
-															</TableCell>
-															<TableCell className="text-center py-3 px-4">
-																<div className="flex items-center justify-center gap-1">
-																	<span className={cn("flex items-center gap-1 text-sm", eventHealth.color)}>
-																		{eventHealth.icon}
-																		<span className="font-bold">{Math.round(event.health)}%</span>
-																	</span>
-																</div>
-															</TableCell>
-														</TableRow>
-														<AccordionContent>
-															<TableRow>
-																<TableCell colSpan={5}>
-																	<div className="p-4 space-y-3">
-																		<div className="grid grid-cols-3 gap-4">
-																			{/* Circuit Breaker Details */}
-																			<div className="space-y-2">
-																				<h4 className="text-sm font-medium flex items-center gap-1">
-																					<Zap className="h-3 w-3" />
-																					Circuit Breaker Details
-																				</h4>
-																				<div className="space-y-1 text-xs">
-																					<div className="flex justify-between">
-																						<span className="text-muted-foreground">Success Rate:</span>
-																						<span className="font-mono">{event.circuit.rate.toFixed(1)}%</span>
-																					</div>
-																					<div className="flex justify-between">
-																						<span className="text-muted-foreground">Total Requests:</span>
-																						<span className="font-mono">{event.circuit.total}</span>
-																					</div>
-																					{event.circuit.rejected > 0 && (
-																						<div className="flex justify-between">
-																							<span className="text-muted-foreground">Rejected:</span>
-																							<span className="font-mono text-yellow-600">{event.circuit.rejected}</span>
-																						</div>
-																					)}
-																					{event.circuit.fallback > 0 && (
-																						<div className="flex justify-between">
-																							<span className="text-muted-foreground">Fallback Used:</span>
-																							<span className="font-mono text-blue-600">{event.circuit.fallback}</span>
-																						</div>
-																					)}
-																				</div>
-																			</div>
-
-																			{/* Rate Limit Details */}
-																			<div className="space-y-2">
-																				<h4 className="text-sm font-medium flex items-center gap-1">
-																					<Shield className="h-3 w-3" />
-																					Rate Limit Details
-																				</h4>
-																				<div className="space-y-1 text-xs">
-																					<div className="flex justify-between">
-																						<span className="text-muted-foreground">Allow Rate:</span>
-																						<span className="font-mono">{event.rateLimit.rate.toFixed(1)}%</span>
-																					</div>
-																					<div className="flex justify-between">
-																						<span className="text-muted-foreground">Total Requests:</span>
-																						<span className="font-mono">{event.rateLimit.total}</span>
-																					</div>
-																				</div>
-																			</div>
-
-																			{/* Timeout Details */}
-																			<div className="space-y-2">
-																				<h4 className="text-sm font-medium flex items-center gap-1">
-																					<Clock className="h-3 w-3" />
-																					Timeout Details
-																				</h4>
-																				<div className="space-y-1 text-xs">
-																					<div className="flex justify-between">
-																						<span className="text-muted-foreground">Completion Rate:</span>
-																						<span className="font-mono">{event.timeout.rate.toFixed(1)}%</span>
-																					</div>
-																					<div className="flex justify-between">
-																						<span className="text-muted-foreground">Total Requests:</span>
-																						<span className="font-mono">{event.timeout.total}</span>
-																					</div>
-																				</div>
-																			</div>
+																	{event.circuit.total > 0 && (
+																		<div className="text-xs text-muted-foreground space-y-0.5">
+																			<div>Success: {event.circuit.rate.toFixed(1)}%</div>
+																			<div>Total: {event.circuit.total}</div>
 																		</div>
-																		
-																		{/* Health Score Breakdown */}
-																		<div className="border-t pt-3">
-																			<h4 className="text-sm font-medium mb-2">Health Score Breakdown</h4>
-																			<div className="flex items-center gap-2">
-																				<Progress value={event.health} className="flex-1" />
-																				<span className={cn("text-sm font-bold", eventHealth.color)}>
-																					{eventHealth.label}
-																				</span>
-																			</div>
-																		</div>
+																	)}
+																</div>
+															</TableCell>
+															<TableCell className="text-center py-3 px-4">
+																<div className="space-y-2">
+																	<div className="flex items-center justify-center gap-1 flex-wrap">
+																		{(event.rateLimit.allowed === 0 && event.rateLimit.rejected === 0) ? (
+																			<span className="text-muted-foreground text-xs">—</span>
+																		) : (
+																			<>
+																				{event.rateLimit.allowed > 0 && (
+																					<Tooltip>
+																						<TooltipTrigger>
+																							<Badge variant="default" className="gap-0.5 text-xs px-2 py-0.5">
+																								<CheckCircle className="h-3 w-3" />
+																								{event.rateLimit.allowed}
+																							</Badge>
+																						</TooltipTrigger>
+																						<TooltipContent>Requests allowed</TooltipContent>
+																					</Tooltip>
+																				)}
+																				{event.rateLimit.rejected > 0 && (
+																					<Tooltip>
+																						<TooltipTrigger>
+																							<Badge variant="destructive" className="gap-0.5 text-xs px-2 py-0.5">
+																								<Ban className="h-3 w-3" />
+																								{event.rateLimit.rejected}
+																							</Badge>
+																						</TooltipTrigger>
+																						<TooltipContent>Requests rate limited</TooltipContent>
+																					</Tooltip>
+																				)}
+																			</>
+																		)}
 																	</div>
-																</TableCell>
-															</TableRow>
-														</AccordionContent>
-													</AccordionItem>
-												);
-											})}
-										</Accordion>
+																	{event.rateLimit.total > 0 && (
+																		<div className="text-xs text-muted-foreground space-y-0.5">
+																			<div>Allow: {event.rateLimit.rate.toFixed(1)}%</div>
+																			<div>Total: {event.rateLimit.total}</div>
+																		</div>
+																	)}
+																</div>
+															</TableCell>
+															<TableCell className="text-center py-3 px-4">
+																<div className="space-y-2">
+																	<div className="flex items-center justify-center gap-1 flex-wrap">
+																		{(event.timeout.completed === 0 && event.timeout.timedOut === 0) ? (
+																			<span className="text-muted-foreground text-xs">—</span>
+																		) : (
+																			<>
+																				{event.timeout.completed > 0 && (
+																					<Tooltip>
+																						<TooltipTrigger>
+																							<Badge variant="default" className="gap-0.5 text-xs px-2 py-0.5">
+																								<Clock className="h-3 w-3" />
+																								{event.timeout.completed}
+																							</Badge>
+																						</TooltipTrigger>
+																						<TooltipContent>Completed within timeout</TooltipContent>
+																					</Tooltip>
+																				)}
+																				{event.timeout.timedOut > 0 && (
+																					<Tooltip>
+																						<TooltipTrigger>
+																							<Badge variant="destructive" className="gap-0.5 text-xs px-2 py-0.5">
+																								<AlertCircle className="h-3 w-3" />
+																								{event.timeout.timedOut}
+																							</Badge>
+																						</TooltipTrigger>
+																						<TooltipContent>Timed out</TooltipContent>
+																					</Tooltip>
+																				)}
+																			</>
+																		)}
+																	</div>
+																	{event.timeout.total > 0 && (
+																		<div className="text-xs text-muted-foreground space-y-0.5">
+																			<div>Complete: {event.timeout.rate.toFixed(1)}%</div>
+																			<div>Total: {event.timeout.total}</div>
+																		</div>
+																	)}
+																</div>
+															</TableCell>
+															<TableCell className="text-center py-3 px-4">
+																<div className="space-y-2">
+																	<div className="flex items-center justify-center gap-1">
+																		<span className={cn("flex items-center gap-1 text-sm", eventHealth.color)}>
+																			{eventHealth.icon}
+																			<span className="font-bold">{Math.round(event.health)}%</span>
+																		</span>
+																	</div>
+																	<div className="text-xs text-muted-foreground">
+																		{eventHealth.label}
+																	</div>
+																	<Progress value={event.health} className="h-1 w-full" />
+																</div>
+															</TableCell>
+												</TableRow>
+											);
+										})
 									)}
 								</TableBody>
 							</Table>
