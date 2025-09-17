@@ -94,7 +94,7 @@ describe("Integration: Swarm Sampling Service", () => {
 								})
 							}
 						};
-					} else if (prompt.includes("synthesis")) {
+					} else if (prompt.includes("Synthesize")) {
 						return {
 							content: {
 								type: "text",
@@ -222,7 +222,12 @@ describe("Integration: Swarm Sampling Service", () => {
 					id: "st-123",
 					description: "Create UI component",
 					specialist: "frontend",
-					dependencies: []
+					dependencies: [],
+					context: {
+						files: [],
+						patterns: [],
+						constraints: []
+					}
 				}
 			);
 
@@ -244,6 +249,11 @@ describe("Integration: Swarm Sampling Service", () => {
 					description: "Create API endpoint",
 					specialist: "backend",
 					dependencies: [],
+					context: {
+						files: [],
+						patterns: [],
+						constraints: []
+					},
 					relatedWork: [
 						{
 							instanceId: "specialist-1",
