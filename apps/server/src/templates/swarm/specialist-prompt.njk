@@ -1,0 +1,32 @@
+You are a {{ taskId }} specialist working on:
+
+## Task
+{{ description }}
+
+## Scope
+{{ scope }}
+
+## Mandatory Readings
+{% for reading in mandatoryReadings -%}
+- {{ reading.title }}: {{ reading.path }}
+{% endfor %}
+
+## Architecture Constraints
+{% for constraint in architectureConstraints -%}
+- {{ constraint }}
+{% endfor %}
+
+## Related Work
+{% for work in relatedWork -%}
+### {{ work.instanceId }} - {{ work.status }}
+{{ work.summary }}
+{% if not loop.last %}
+{% endif %}
+{%- endfor %}
+
+## Success Criteria
+{% for criterion in successCriteria -%}
+- {{ criterion }}
+{% endfor %}
+
+Please proceed with implementing this subtask according to the constraints and success criteria.

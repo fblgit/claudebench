@@ -66,7 +66,7 @@ export class TaskClaimHandler {
 			},
 		});
 		
-		// Return task details
+		// Return complete task details including metadata
 		return {
 			claimed: true,
 			taskId: result.taskId!,
@@ -75,7 +75,13 @@ export class TaskClaimHandler {
 				text: task.text,
 				priority: parseInt(task.priority) || 50,
 				status: "in_progress" as const,
+				assignedTo: input.workerId,
+				metadata: task.metadata ? JSON.parse(task.metadata) : null,
+				result: task.result ? JSON.parse(task.result) : null,
+				error: task.error || null,
 				createdAt: task.createdAt,
+				updatedAt: task.updatedAt || task.createdAt,
+				completedAt: task.completedAt || null,
 			},
 		};
 	}

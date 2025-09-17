@@ -98,7 +98,13 @@ export const taskClaimOutput = z.object({
 		text: z.string(),
 		priority: z.number(),
 		status: TaskStatus,
+		assignedTo: z.string().nullable(),
+		metadata: z.record(z.string(), z.unknown()).nullable(),
+		result: z.unknown().nullable(),
+		error: z.string().nullable(),
 		createdAt: z.string().datetime(),
+		updatedAt: z.string().datetime(),
+		completedAt: z.string().datetime().nullable(),
 	}).optional(),
 });
 

@@ -501,6 +501,161 @@ export class RedisScriptExecutor {
 			workers: result[1],
 		};
 	}
+	
+	/**
+	 * SWARM INTELLIGENCE OPERATIONS
+	 */
+	
+	/**
+	 * Decompose and store subtasks atomically
+	 */
+	async decomposeAndStoreSubtasks(
+		parentId: string,
+		decomposition: any,
+		timestamp: number
+	): Promise<{ subtaskCount: number; success: boolean; queuedCount: number }> {
+		const result = await this.redis.stream.eval(
+			scripts.DECOMPOSE_AND_STORE_SUBTASKS,
+			3,
+			redisKey("decomposition", parentId),
+			redisKey("queue", "subtasks"),
+			redisKey("graph", "dependencies"),
+			parentId,
+			JSON.stringify(decomposition),
+			timestamp.toString()
+		) as [number, number, number];
+		
+		return {
+			subtaskCount: result[0],
+			success: result[1] === 1,
+			queuedCount: result[2],
+		};
+	}
+	
+	/**
+	 * Assign subtask to best specialist
+	 */
+	async assignToSpecialist(
+		subtaskId: string,
+		specialistType: string,
+		requiredCapabilities: string[]
+	): Promise<{ specialistId: string | null; score: number; success: boolean }> {
+		const result = await this.redis.stream.eval(
+			scripts.ASSIGN_TO_SPECIALIST,
+			3,
+			redisKey("specialists", specialistType),
+			redisKey("subtask", subtaskId),
+			redisKey("assignment", subtaskId),
+			subtaskId,
+			specialistType,
+			JSON.stringify(requiredCapabilities),
+			Date.now().toString()
+		) as [string | null, number, number];
+		
+		return {
+			specialistId: result[0],
+			score: result[1],
+			success: result[2] === 1,
+		};
+	}
+	
+	/**
+	 * Detect conflicts and queue for resolution
+	 */
+	async detectAndQueueConflict(
+		taskId: string,
+		instanceId: string,
+		solution: any
+	): Promise<{ conflictDetected: boolean; solutionCount: number }> {
+		const result = await this.redis.stream.eval(
+			scripts.DETECT_AND_QUEUE_CONFLICT,
+			2,
+			redisKey("solutions", taskId),
+			redisKey("queue", "conflicts"),
+			taskId,
+			instanceId,
+			JSON.stringify(solution),
+			Date.now().toString()
+		) as [number, number];
+		
+		return {
+			conflictDetected: result[0] === 1,
+			solutionCount: result[1],
+		};
+	}
+	
+	/**
+	 * Track and synthesize progress
+	 */
+	async synthesizeProgress(
+		parentId: string,
+		subtaskId: string,
+		progress: any
+	): Promise<{ readyForSynthesis: boolean; success: boolean; unblockedCount: number }> {
+		const result = await this.redis.stream.eval(
+			scripts.SYNTHESIZE_PROGRESS,
+			3,
+			redisKey("progress", parentId),
+			redisKey("queue", "integration"),
+			redisKey("decomposition", parentId),
+			parentId,
+			subtaskId,
+			JSON.stringify(progress),
+			Date.now().toString()
+		) as [number, number, number];
+		
+		return {
+			readyForSynthesis: result[0] === 1,
+			success: result[1] === 1,
+			unblockedCount: result[2],
+		};
+	}
+	
+	/**
+	 * Get active specialists by type
+	 */
+	async getActiveSpecialists(): Promise<Array<{
+		id: string;
+		type: string;
+		capabilities: string[];
+		currentLoad: number;
+		maxCapacity: number;
+	}>> {
+		const redis = getRedis();
+		const instances = await redis.pub.keys("cb:instance:*");
+		const specialists = [];
+		
+		for (const key of instances) {
+			const data = await redis.pub.hgetall(key);
+			if (data.health === "healthy" && data.capabilities) {
+				const id = key.replace("cb:instance:", "");
+				const capabilities = JSON.parse(data.capabilities || "[]");
+				const load = await redis.pub.llen(`cb:queue:instance:${id}`);
+				
+				// Determine specialist type from capabilities
+				let type = "general";
+				if (capabilities.includes("react") || capabilities.includes("vue")) {
+					type = "frontend";
+				} else if (capabilities.includes("node") || capabilities.includes("python")) {
+					type = "backend";
+				} else if (capabilities.includes("jest") || capabilities.includes("cypress")) {
+					type = "testing";
+				} else if (capabilities.includes("markdown") || capabilities.includes("docs")) {
+					type = "docs";
+				}
+				
+				specialists.push({
+					id,
+					type,
+					capabilities,
+					currentLoad: load,
+					maxCapacity: parseInt(data.maxCapacity || "5"),
+				});
+			}
+		}
+		
+		return specialists;
+	}
 }
 
 export const redisScripts = new RedisScriptExecutor();

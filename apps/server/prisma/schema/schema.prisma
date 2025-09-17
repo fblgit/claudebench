@@ -56,3 +56,152 @@ enum InstanceStatus {
   BUSY
   OFFLINE
 }
+
+// SWARM INTELLIGENCE MODELS
+
+model SwarmDecomposition {
+  id              String   @id // Same as parent task ID
+  taskId          String   @unique
+  taskText        String
+  subtaskCount    Int
+  strategy        ExecutionStrategy
+  totalComplexity Int
+  reasoning       String
+  progress        Int      @default(0) // Percentage complete
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  subtasks        SwarmSubtask[]
+  
+  @@index([taskId])
+  @@index([createdAt])
+}
+
+model SwarmSubtask {
+  id              String   @id // Format: st-{unique}
+  parentId        String
+  description     String
+  specialist      SpecialistType
+  complexity      Int
+  estimatedMinutes Int
+  status          SubtaskStatus @default(pending)
+  assignedTo      String?  // Instance ID
+  dependencies    String[] // Array of subtask IDs
+  context         Json     // Files, patterns, constraints
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  completedAt     DateTime?
+  
+  parent          SwarmDecomposition @relation(fields: [parentId], references: [id])
+  assignment      SwarmAssignment?
+  progress        SwarmProgress[]
+  
+  @@index([parentId])
+  @@index([specialist])
+  @@index([status])
+  @@index([assignedTo])
+}
+
+model SwarmAssignment {
+  id              String   @id @default(cuid())
+  subtaskId       String   @unique
+  specialistId    String   // Instance ID
+  score           Int      // Assignment score
+  assignedAt      DateTime @default(now())
+  
+  subtask         SwarmSubtask @relation(fields: [subtaskId], references: [id])
+  
+  @@index([specialistId])
+  @@index([assignedAt])
+}
+
+model SwarmConflict {
+  id              String   @id // Format: conflict-{taskId}-{timestamp}
+  taskId          String
+  solutions       Json     // Array of proposed solutions
+  instanceCount   Int
+  status          ConflictStatus @default(pending)
+  resolution      Json?    // Resolution decision
+  resolvedBy      String?  // Instance ID that resolved
+  createdAt       DateTime @default(now())
+  resolvedAt      DateTime?
+  
+  @@index([taskId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model SwarmProgress {
+  id              String   @id @default(cuid())
+  subtaskId       String
+  instanceId      String
+  output          String
+  artifacts       String[] // File paths or identifiers
+  status          ProgressStatus
+  createdAt       DateTime @default(now())
+  
+  subtask         SwarmSubtask @relation(fields: [subtaskId], references: [id])
+  
+  @@index([subtaskId])
+  @@index([instanceId])
+  @@index([createdAt])
+}
+
+model SwarmIntegration {
+  id              String   @id @default(cuid())
+  taskId          String
+  status          IntegrationStatus
+  steps           String[] // Integration steps
+  issues          String[] // Potential issues
+  mergedCode      String?  @db.Text
+  createdAt       DateTime @default(now())
+  completedAt     DateTime?
+  
+  @@index([taskId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum ExecutionStrategy {
+  parallel
+  sequential
+  mixed
+}
+
+enum SpecialistType {
+  frontend
+  backend
+  testing
+  docs
+  general
+}
+
+enum SubtaskStatus {
+  pending
+  assigned
+  in_progress
+  completed
+  failed
+  blocked
+}
+
+enum ConflictStatus {
+  pending
+  resolved
+  escalated
+  dismissed
+}
+
+enum ProgressStatus {
+  started
+  in_progress
+  completed
+  failed
+}
+
+enum IntegrationStatus {
+  ready_for_integration
+  requires_fixes
+  integrated
+  failed
+}

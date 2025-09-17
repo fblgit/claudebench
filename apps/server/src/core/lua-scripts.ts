@@ -1159,3 +1159,333 @@ redis.call('del', failed_queue_key)
 
 return {reassigned_count, #healthy_workers}
 `;
+
+/**
+ * SWARM INTELLIGENCE LUA SCRIPTS
+ * Atomic operations for coordinating multiple Claude instances
+ */
+
+/**
+ * Decompose and store subtasks atomically
+ * Creates subtask graph with dependencies
+ */
+export const DECOMPOSE_AND_STORE_SUBTASKS = `
+local decomposition_key = KEYS[1]  -- cb:decomposition:{parent_task_id}
+local subtasks_queue = KEYS[2]      -- cb:queue:subtasks
+local dependency_graph = KEYS[3]    -- cb:graph:dependencies
+
+local parent_id = ARGV[1]
+local subtasks_json = ARGV[2]  -- From sampling response
+local timestamp = ARGV[3]
+
+-- Parse subtasks from sampling response
+local subtasks = cjson.decode(subtasks_json)
+
+-- Store decomposition atomically
+redis.call('hset', decomposition_key, 'parent', parent_id)
+redis.call('hset', decomposition_key, 'subtasks', subtasks_json)
+redis.call('hset', decomposition_key, 'created_at', timestamp)
+redis.call('expire', decomposition_key, 3600) -- 1 hour TTL
+
+-- Build dependency graph and queue ready subtasks
+local queued_count = 0
+for i, subtask in ipairs(subtasks.subtasks) do
+  -- Store subtask with its dependencies
+  local subtask_key = 'cb:subtask:' .. subtask.id
+  redis.call('hset', subtask_key, 'data', cjson.encode(subtask))
+  redis.call('hset', subtask_key, 'parent', parent_id)
+  redis.call('hset', subtask_key, 'status', 'pending')
+  redis.call('expire', subtask_key, 3600)
+  
+  -- Build dependency graph
+  if subtask.dependencies and #subtask.dependencies > 0 then
+    for _, dep in ipairs(subtask.dependencies) do
+      redis.call('sadd', 'cb:deps:' .. subtask.id, dep)
+      redis.call('expire', 'cb:deps:' .. subtask.id, 3600)
+    end
+  else
+    -- No dependencies, can start immediately
+    redis.call('zadd', subtasks_queue, subtask.complexity, subtask.id)
+    queued_count = queued_count + 1
+  end
+end
+
+-- Update metrics
+redis.call('incr', 'cb:metrics:swarm:decompositions')
+redis.call('hincrby', 'cb:metrics:swarm:subtasks', 'total', #subtasks.subtasks)
+redis.call('hincrby', 'cb:metrics:swarm:subtasks', 'queued', queued_count)
+
+return {#subtasks.subtasks, 1, queued_count}  -- {subtask_count, success, queued_count}
+`;
+
+/**
+ * Assign subtask to best specialist based on capabilities
+ * Considers load, capabilities match, and current performance
+ */
+export const ASSIGN_TO_SPECIALIST = `
+local specialists_key = KEYS[1]     -- cb:specialists:{type}
+local subtask_key = KEYS[2]         -- cb:subtask:{id}
+local assignment_key = KEYS[3]      -- cb:assignment:{subtask_id}
+
+local subtask_id = ARGV[1]
+local specialist_type = ARGV[2]
+local required_capabilities = cjson.decode(ARGV[3])
+local timestamp = ARGV[4]
+
+-- Get all specialists of this type
+local specialists = redis.call('smembers', specialists_key)
+if #specialists == 0 then
+  return {nil, 0, 0} -- No specialists available
+end
+
+local best_specialist = nil
+local best_score = -1
+
+for _, specialist_id in ipairs(specialists) do
+  local spec_key = 'cb:instance:' .. specialist_id
+  local capabilities = redis.call('hget', spec_key, 'capabilities')
+  local health = redis.call('hget', spec_key, 'health')
+  
+  -- Skip unhealthy instances
+  if health ~= 'healthy' then
+    goto continue
+  end
+  
+  if capabilities then
+    local caps = cjson.decode(capabilities)
+    local score = 0
+    
+    -- Score based on capability match
+    for _, req_cap in ipairs(required_capabilities) do
+      for _, spec_cap in ipairs(caps) do
+        if req_cap == spec_cap then
+          score = score + 10  -- 10 points per matching capability
+        end
+      end
+    end
+    
+    -- Check current load (penalty for high load)
+    local load = redis.call('llen', 'cb:queue:instance:' .. specialist_id)
+    local max_capacity = redis.call('hget', spec_key, 'maxCapacity') or '5'
+    max_capacity = tonumber(max_capacity)
+    
+    -- Calculate load penalty (0-50 points penalty based on load)
+    local load_ratio = load / max_capacity
+    local load_penalty = math.floor(load_ratio * 50)
+    score = score - load_penalty
+    
+    -- Bonus for recent successful completions
+    local recent_success = redis.call('hget', 'cb:metrics:instance:' .. specialist_id, 'recentSuccess')
+    if recent_success then
+      score = score + tonumber(recent_success)
+    end
+    
+    if score > best_score then
+      best_score = score
+      best_specialist = specialist_id
+    end
+  end
+  
+  ::continue::
+end
+
+if best_specialist then
+  -- Assign atomically
+  redis.call('hset', assignment_key, 'specialist', best_specialist)
+  redis.call('hset', assignment_key, 'subtask', subtask_id)
+  redis.call('hset', assignment_key, 'assigned_at', timestamp)
+  redis.call('hset', assignment_key, 'score', tostring(best_score))
+  redis.call('expire', assignment_key, 3600)
+  
+  -- Add to specialist's queue
+  redis.call('rpush', 'cb:queue:instance:' .. best_specialist, subtask_id)
+  
+  -- Update subtask status
+  redis.call('hset', subtask_key, 'status', 'assigned')
+  redis.call('hset', subtask_key, 'assigned_to', best_specialist)
+  
+  -- Update metrics
+  redis.call('incr', 'cb:metrics:swarm:assignments')
+  redis.call('hincrby', 'cb:metrics:specialist:' .. best_specialist, 'assigned', 1)
+  
+  return {best_specialist, best_score, 1}  -- {specialist_id, score, success}
+else
+  -- No suitable specialist found
+  redis.call('incr', 'cb:metrics:swarm:assignment_failures')
+  return {nil, 0, 0}
+end
+`;
+
+/**
+ * Detect conflicts and queue for resolution
+ * Compares multiple solutions and identifies conflicts
+ */
+export const DETECT_AND_QUEUE_CONFLICT = `
+local solutions_key = KEYS[1]       -- cb:solutions:{task_id}
+local conflicts_queue = KEYS[2]     -- cb:queue:conflicts
+
+local task_id = ARGV[1]
+local instance_id = ARGV[2]
+local solution_json = ARGV[3]
+local timestamp = ARGV[4]
+
+-- Store solution
+local solution_key = solutions_key .. ':' .. instance_id
+redis.call('set', solution_key, solution_json, 'EX', 3600)
+
+-- Get all solutions for this task
+local pattern = solutions_key .. ':*'
+local all_solutions = {}
+local cursor = '0'
+repeat
+  local result = redis.call('SCAN', cursor, 'MATCH', pattern, 'COUNT', 100)
+  cursor = result[1]
+  for _, key in ipairs(result[2]) do
+    table.insert(all_solutions, key)
+  end
+until cursor == '0'
+
+if #all_solutions > 1 then
+  -- Multiple solutions exist, analyze for conflicts
+  local solutions = {}
+  local approaches = {}
+  
+  for _, sol_key in ipairs(all_solutions) do
+    local sol = redis.call('get', sol_key)
+    if sol then
+      table.insert(solutions, sol)
+      -- Extract approach for comparison (simple heuristic)
+      local sol_data = cjson.decode(sol)
+      if sol_data.approach then
+        table.insert(approaches, sol_data.approach)
+      end
+    end
+  end
+  
+  -- Check if approaches differ (simple conflict detection)
+  local has_conflict = false
+  if #approaches > 1 then
+    local first_approach = approaches[1]
+    for i = 2, #approaches do
+      if approaches[i] ~= first_approach then
+        has_conflict = true
+        break
+      end
+    end
+  end
+  
+  if has_conflict then
+    -- Create conflict record
+    local conflict = {
+      id = 'conflict-' .. task_id .. '-' .. timestamp,
+      task_id = task_id,
+      solutions = solutions,
+      instance_count = #all_solutions,
+      created_at = timestamp
+    }
+    
+    -- Queue for resolution via sampling
+    redis.call('zadd', conflicts_queue, tonumber(timestamp), cjson.encode(conflict))
+    
+    -- Update metrics
+    redis.call('incr', 'cb:metrics:swarm:conflicts')
+    redis.call('hincrby', 'cb:metrics:swarm:conflicts_by_task', task_id, 1)
+    
+    return {1, #all_solutions}  -- {conflict_detected, solution_count}
+  end
+end
+
+return {0, #all_solutions}  -- {no_conflict, solution_count}
+`;
+
+/**
+ * Track and synthesize progress from multiple specialists
+ * Determines when all subtasks are complete and ready for integration
+ */
+export const SYNTHESIZE_PROGRESS = `
+local progress_key = KEYS[1]        -- cb:progress:{parent_task}
+local integration_queue = KEYS[2]   -- cb:queue:integration
+local decomposition_key = KEYS[3]   -- cb:decomposition:{parent_task}
+
+local parent_id = ARGV[1]
+local subtask_id = ARGV[2]
+local progress_json = ARGV[3]
+local timestamp = ARGV[4]
+
+-- Store subtask progress
+redis.call('hset', progress_key, subtask_id, progress_json)
+redis.call('expire', progress_key, 3600)
+
+-- Update subtask status to completed
+local subtask_key = 'cb:subtask:' .. subtask_id
+redis.call('hset', subtask_key, 'status', 'completed')
+redis.call('hset', subtask_key, 'completed_at', timestamp)
+
+-- Check if dependencies are resolved for other subtasks
+local deps_pattern = 'cb:deps:*'
+local waiting_subtasks = {}
+local cursor = '0'
+repeat
+  local result = redis.call('SCAN', cursor, 'MATCH', deps_pattern, 'COUNT', 100)
+  cursor = result[1]
+  for _, dep_key in ipairs(result[2]) do
+    -- Check if this completed subtask was a dependency
+    local is_member = redis.call('sismember', dep_key, subtask_id)
+    if is_member == 1 then
+      -- Remove from dependencies
+      redis.call('srem', dep_key, subtask_id)
+      
+      -- Check if all dependencies are now resolved
+      local remaining = redis.call('scard', dep_key)
+      if remaining == 0 then
+        -- Extract subtask ID from key
+        local waiting_id = string.match(dep_key, "cb:deps:(.+)")
+        if waiting_id then
+          table.insert(waiting_subtasks, waiting_id)
+          -- Queue this subtask as it's now ready
+          local subtask_data = redis.call('hget', 'cb:subtask:' .. waiting_id, 'data')
+          if subtask_data then
+            local data = cjson.decode(subtask_data)
+            redis.call('zadd', 'cb:queue:subtasks', data.complexity or 5, waiting_id)
+          end
+        end
+      end
+    end
+  end
+until cursor == '0'
+
+-- Check if all subtasks complete
+local decomposition = redis.call('hget', decomposition_key, 'subtasks')
+if decomposition then
+  local subtasks = cjson.decode(decomposition)
+  local all_complete = true
+  local completed_count = 0
+  
+  for _, subtask in ipairs(subtasks.subtasks) do
+    local progress = redis.call('hget', progress_key, subtask.id)
+    if progress then
+      completed_count = completed_count + 1
+    else
+      all_complete = false
+    end
+  end
+  
+  if all_complete then
+    -- Queue for synthesis via sampling
+    redis.call('zadd', integration_queue, tonumber(timestamp), parent_id)
+    
+    -- Update metrics
+    redis.call('incr', 'cb:metrics:swarm:syntheses')
+    
+    return {1, 1, #waiting_subtasks}  -- {ready_for_synthesis, success, unblocked_count}
+  else
+    -- Update progress percentage
+    local percentage = math.floor((completed_count / #subtasks.subtasks) * 100)
+    redis.call('hset', decomposition_key, 'progress', tostring(percentage))
+    
+    return {0, 1, #waiting_subtasks}  -- {not_ready, success, unblocked_count}
+  end
+end
+
+return {0, 0, 0}  -- {not_ready, no_decomposition, 0}
+`;

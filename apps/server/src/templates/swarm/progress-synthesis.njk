@@ -1,0 +1,24 @@
+Synthesize the completed subtasks into an integrated solution:
+
+Parent Task: {{ parentTask }}
+
+Completed Subtasks:
+{% for subtask in completedSubtasks -%}
+- {{ subtask.id }} ({{ subtask.specialist }}): {{ subtask.output }}
+  {% if subtask.artifacts %}Artifacts: {{ subtask.artifacts | join(", ") }}{% endif %}
+{% endfor %}
+
+Analyze the work and provide:
+1. Integration status
+2. Step-by-step integration plan
+3. Potential issues to watch for
+4. Next actions needed
+
+Output as JSON:
+{
+  "status": "ready_for_integration|requires_fixes|integrated",
+  "integrationSteps": ["Step 1", "Step 2", ...],
+  "potentialIssues": ["Issue 1", "Issue 2", ...],
+  "nextActions": ["Action 1", "Action 2", ...],
+  "mergedCode": "Optional merged code if applicable"
+}

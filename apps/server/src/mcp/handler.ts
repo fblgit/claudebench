@@ -11,6 +11,7 @@ import { registry } from "../core/registry";
 import * as crypto from "crypto";
 import { z } from "zod";
 import { getRedis } from "../core/redis";
+import { getSamplingService } from "../core/sampling";
 
 // Store servers and transports by session ID to maintain state
 const servers = new Map<string, McpServer>();
@@ -31,7 +32,8 @@ async function getOrCreateServer(sessionId: string): Promise<McpServer> {
 	}, {
 		capabilities: {
 			logging: {},
-			tools: {}
+			tools: {},
+			sampling: {} // Enable sampling for swarm intelligence
 		}
 	});
 	
@@ -128,6 +130,10 @@ async function getOrCreateServer(sessionId: string): Promise<McpServer> {
 			console.error(`   ❌ Failed to register tool ${toolName}:`, error);
 		}
 	}
+	
+	// Register server with sampling service for swarm intelligence
+	const samplingService = getSamplingService();
+	samplingService.registerServer(sessionId, server);
 	
 	servers.set(sessionId, server);
 	return server;

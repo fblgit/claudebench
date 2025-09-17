@@ -1,0 +1,46 @@
+Decompose this task into specialized subtasks for parallel execution:
+
+Task: {{ task }}
+Priority: {{ priority }}
+
+Available Specialists:
+{% for specialist in specialists -%}
+- {{ specialist.id }} ({{ specialist.type }}): {{ specialist.capabilities | join(", ") }}
+  Current Load: {{ specialist.currentLoad }}/{{ specialist.maxCapacity }}
+{% endfor %}
+
+{% if constraints -%}
+Constraints:
+{% for constraint in constraints -%}
+- {{ constraint }}
+{% endfor %}
+{%- endif %}
+
+Requirements:
+1. Identify which parts can be done in parallel vs sequentially
+2. Assign the most appropriate specialist type for each subtask
+3. Define clear dependencies between subtasks
+4. Estimate complexity (1-10) for each subtask
+5. Provide specific context/constraints for each subtask
+
+Output as JSON with this exact structure:
+{
+  "subtasks": [
+    {
+      "id": "st-[unique-id]",
+      "description": "Clear description of what needs to be done",
+      "specialist": "frontend|backend|testing|docs",
+      "dependencies": ["list", "of", "subtask", "ids"],
+      "complexity": 5,
+      "context": {
+        "files": ["relevant/file/paths"],
+        "patterns": ["patterns to follow"],
+        "constraints": ["specific limitations or requirements"]
+      },
+      "estimatedMinutes": 30
+    }
+  ],
+  "executionStrategy": "parallel|sequential|mixed",
+  "totalComplexity": 15,
+  "reasoning": "Brief explanation of the decomposition strategy"
+}

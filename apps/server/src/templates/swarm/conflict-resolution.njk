@@ -1,0 +1,28 @@
+Resolve this conflict between proposed solutions:
+
+Project Type: {{ projectType }}
+Requirements: {{ requirements | join(", ") }}
+{% if constraints -%}
+Constraints: {{ constraints | join(", ") }}
+{%- endif %}
+
+Proposed Solutions:
+{% for solution in solutions -%}
+Solution {{ loop.index }} ({{ solution.instanceId }}):
+  Approach: {{ solution.approach }}
+  Reasoning: {{ solution.reasoning }}
+  {% if solution.code %}Code snippet provided{% endif %}
+{% if not loop.last %}
+{% endif %}
+{%- endfor %}
+
+Choose the best solution and provide justification.
+
+Output as JSON:
+{
+  "chosenSolution": "Approach name",
+  "instanceId": "ID of chosen instance",
+  "justification": "Detailed reasoning",
+  "recommendations": ["List of improvements"],
+  "modifications": ["Optional modifications to chosen solution"]
+}

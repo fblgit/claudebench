@@ -1,0 +1,29 @@
+Generate specialized context for this subtask:
+
+Subtask ID: {{ subtaskId }}
+Specialist Type: {{ specialist }}
+Description: {{ description }}
+Dependencies: {% if dependencies and dependencies.length > 0 %}{{ dependencies | join(", ") }}{% else %}None{% endif %}
+Constraints: {{ constraints | join(", ") }}
+
+Generate a focused context that includes:
+1. Clear scope definition
+2. Mandatory files/documentation to read
+3. Architecture constraints to follow
+4. Related work from other instances
+5. Success criteria
+
+Output as JSON with this structure:
+{
+  "taskId": "{{ subtaskId }}",
+  "description": "...",
+  "scope": "Detailed scope",
+  "mandatoryReadings": [
+    {"title": "...", "path": "..."}
+  ],
+  "architectureConstraints": ["..."],
+  "relatedWork": [
+    {"instanceId": "...", "status": "...", "summary": "..."}
+  ],
+  "successCriteria": ["..."]
+}
