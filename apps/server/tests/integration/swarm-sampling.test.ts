@@ -68,7 +68,7 @@ describe("Integration: Swarm Sampling Service", () => {
 								})
 							}
 						};
-					} else if (prompt.includes("specialist context")) {
+					} else if (prompt.includes("Generate specialized context for this subtask")) {
 						return {
 							content: {
 								type: "text",
