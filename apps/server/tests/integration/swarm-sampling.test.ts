@@ -36,7 +36,7 @@ describe("Integration: Swarm Sampling Service", () => {
 											id: "st-test-1",
 											description: "Frontend implementation",
 											specialist: "frontend",
-											complexity: 60,
+											complexity: 6,
 											estimatedMinutes: 120,
 											dependencies: [],
 											context: {
@@ -49,7 +49,7 @@ describe("Integration: Swarm Sampling Service", () => {
 											id: "st-test-2",
 											description: "Backend API",
 											specialist: "backend",
-											complexity: 40,
+											complexity: 4,
 											estimatedMinutes: 90,
 											dependencies: [],
 											context: {
@@ -60,7 +60,7 @@ describe("Integration: Swarm Sampling Service", () => {
 										}
 									],
 									executionStrategy: "parallel",
-									totalComplexity: 100,
+									totalComplexity: 10,
 									reasoning: "Frontend and backend can be developed in parallel"
 								})
 							}
@@ -165,7 +165,7 @@ describe("Integration: Swarm Sampling Service", () => {
 								id: "st-1",
 								description: "Setup infrastructure",
 								specialist: "backend",
-								complexity: 50,
+								complexity: 5,
 								estimatedMinutes: 60,
 								dependencies: [],
 								context: { files: [], patterns: [], constraints: [] }
@@ -174,7 +174,7 @@ describe("Integration: Swarm Sampling Service", () => {
 								id: "st-2",
 								description: "Build UI",
 								specialist: "frontend",
-								complexity: 60,
+								complexity: 6,
 								estimatedMinutes: 120,
 								dependencies: ["st-1"],
 								context: { files: [], patterns: [], constraints: [] }
@@ -183,14 +183,14 @@ describe("Integration: Swarm Sampling Service", () => {
 								id: "st-3",
 								description: "Write tests",
 								specialist: "testing",
-								complexity: 40,
+								complexity: 4,
 								estimatedMinutes: 90,
 								dependencies: ["st-1", "st-2"],
 								context: { files: [], patterns: [], constraints: [] }
 							}
 						],
 						executionStrategy: "sequential",
-						totalComplexity: 150,
+						totalComplexity: 15,
 						reasoning: "Infrastructure must be ready before UI and tests"
 					})
 				}
