@@ -518,6 +518,152 @@ async function getOrCreateServer(sessionId: string): Promise<McpServer> {
 		}
 	);
 	
+	// Resource: swarm://tasks (static list of all tasks)
+	server.resource(
+		"Task List",
+		"swarm://tasks",
+		async (uri: URL) => {
+			try {
+				const tasks = await prisma.task.findMany({
+					orderBy: { createdAt: 'desc' },
+					take: 50
+				});
+				
+				const content = {
+					tasks: tasks.map(task => ({
+						id: task.id,
+						text: task.text,
+						status: task.status,
+						priority: task.priority,
+						assignedTo: task.assignedTo,
+						createdAt: task.createdAt,
+						updatedAt: task.updatedAt
+					})),
+					total: tasks.length
+				};
+				
+				return {
+					contents: [{
+						uri: uri.toString(),
+						mimeType: "application/json",
+						text: JSON.stringify(content, null, 2)
+					}]
+				};
+			} catch (error) {
+				console.error(`[MCP Resource] Error reading tasks ${uri}:`, error);
+				return {
+					contents: [{
+						uri: uri.toString(),
+						mimeType: "text/plain",
+						text: `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
+					}]
+				};
+			}
+		}
+	);
+	
+	// Resource: swarm://tasks/pending (tasks ready to be claimed)
+	server.resource(
+		"Pending Tasks",
+		"swarm://tasks/pending",
+		async (uri: URL) => {
+			try {
+				const pendingTasks = await prisma.task.findMany({
+					where: { 
+						status: 'pending',
+						assignedTo: null
+					},
+					orderBy: [
+						{ priority: 'desc' },
+						{ createdAt: 'asc' }
+					],
+					take: 20
+				});
+				
+				const content = {
+					pendingTasks: pendingTasks.map(task => ({
+						id: task.id,
+						text: task.text,
+						priority: task.priority,
+						createdAt: task.createdAt,
+						metadata: task.metadata
+					})),
+					total: pendingTasks.length,
+					nextTask: pendingTasks[0] || null
+				};
+				
+				return {
+					contents: [{
+						uri: uri.toString(),
+						mimeType: "application/json",
+						text: JSON.stringify(content, null, 2)
+					}]
+				};
+			} catch (error) {
+				console.error(`[MCP Resource] Error reading pending tasks ${uri}:`, error);
+				return {
+					contents: [{
+						uri: uri.toString(),
+						mimeType: "text/plain",
+						text: `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
+					}]
+				};
+			}
+		}
+	);
+	
+	// Resource: swarm://decompositions (list all decompositions)
+	server.resource(
+		"Decompositions List",
+		"swarm://decompositions",
+		async (uri: URL) => {
+			try {
+				const decompositions = await prisma.swarmDecomposition.findMany({
+					select: {
+						taskId: true,
+						taskText: true,
+						strategy: true,
+						subtaskCount: true,
+						progress: true,
+						createdAt: true
+					},
+					orderBy: { createdAt: 'desc' },
+					take: 20
+				});
+				
+				const content = {
+					decompositions: decompositions.map(d => ({
+						taskId: d.taskId,
+						taskText: d.taskText,
+						strategy: d.strategy,
+						subtaskCount: d.subtaskCount,
+						progress: d.progress,
+						createdAt: d.createdAt,
+						resourceUri: `swarm://decomposition/${d.taskId}`
+					})),
+					total: decompositions.length
+				};
+				
+				return {
+					contents: [{
+						uri: uri.toString(),
+						mimeType: "application/json",
+						text: JSON.stringify(content, null, 2)
+					}]
+				};
+			} catch (error) {
+				console.error(`[MCP Resource] Error reading decompositions ${uri}:`, error);
+				return {
+					contents: [{
+						uri: uri.toString(),
+						mimeType: "text/plain",
+						text: `Error reading resource: ${error instanceof Error ? error.message : 'Unknown error'}`
+					}]
+				};
+			}
+		}
+	);
+	
 	// Register server with sampling service for swarm intelligence
 	const samplingService = getSamplingService();
 	samplingService.registerServer(sessionId, server);
