@@ -856,9 +856,10 @@ async function getOrCreateServer(sessionId: string): Promise<McpServer> {
 		}
 	);
 	
-	// Register server with sampling service for swarm intelligence
-	const samplingService = getSamplingService();
-	samplingService.registerServer(sessionId, server);
+	// Note: The HTTP-based ClaudeSamplingService doesn't need server registration
+	// It uses sessionId passed in the context when handlers call it
+	// const samplingService = getSamplingService();
+	// samplingService.registerServer(sessionId, server);
 	
 	servers.set(sessionId, server);
 	return server;

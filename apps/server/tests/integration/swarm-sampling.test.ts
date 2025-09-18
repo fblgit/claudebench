@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll, mock } from "bun:test";
-import { SamplingService, getSamplingService } from "@/core/sampling";
+import { describe, it, expect, beforeAll, afterAll, mock, beforeEach } from "bun:test";
+import { ClaudeSamplingService, getSamplingService } from "@/core/sampling";
 import { registry } from "@/core/registry";
 import { 
 	setupIntegrationTest, 
@@ -7,11 +7,127 @@ import {
 } from "../helpers/integration-setup";
 
 // Swarm Sampling Integration Test
-// Tests the integration between SamplingService and MCP for LLM-based decisions
+// Tests the ClaudeSamplingService with mocked HTTP responses
 
 describe("Integration: Swarm Sampling Service", () => {
-	let samplingService: SamplingService;
-	let mockMcpServer: any;
+	let samplingService: ClaudeSamplingService;
+	let originalFetch: typeof global.fetch;
+	let fetchMock: any;
+
+	// Pre-recorded responses from the inference server
+	// These would be captured from a real run and stored here
+	const MOCK_RESPONSES = {
+		decomposition: {
+			subtasks: [
+				{
+					id: "st-1",
+					description: "Design and implement user authentication system with JWT tokens",
+					specialist: "backend",
+					dependencies: [],
+					complexity: 7,
+					context: {
+						files: ["src/auth/auth.controller.ts", "src/auth/auth.service.ts"],
+						patterns: ["JWT authentication", "middleware pattern"],
+						constraints: ["Secure token storage"]
+					},
+					estimatedMinutes: 180
+				},
+				{
+					id: "st-2",
+					description: "Create login and registration UI components",
+					specialist: "frontend",
+					dependencies: ["st-1"],
+					complexity: 5,
+					context: {
+						files: ["src/components/Login.tsx", "src/components/Register.tsx"],
+						patterns: ["React hooks", "form validation"],
+						constraints: ["Mobile responsive"]
+					},
+					estimatedMinutes: 120
+				},
+				{
+					id: "st-3",
+					description: "Write comprehensive tests for authentication flow",
+					specialist: "testing",
+					dependencies: ["st-1", "st-2"],
+					complexity: 4,
+					context: {
+						files: ["tests/auth.test.ts", "tests/e2e/login.spec.ts"],
+						patterns: ["unit testing", "E2E testing"],
+						constraints: ["90% coverage minimum"]
+					},
+					estimatedMinutes: 90
+				}
+			],
+			executionStrategy: "sequential",
+			totalComplexity: 16,
+			reasoning: "Authentication backend must be ready before frontend can integrate, and tests require both to be complete"
+		},
+		
+		context: {
+			taskId: "st-1",
+			description: "Design and implement a secure JWT-based authentication system with proper token management and refresh mechanisms",
+			scope: "In scope: JWT generation, validation, refresh tokens, password hashing. Out of scope: OAuth providers, 2FA",
+			mandatoryReadings: [
+				{ title: "JWT Best Practices", path: "/docs/security/jwt.md" },
+				{ title: "Authentication Architecture", path: "/docs/architecture/auth.md" }
+			],
+			architectureConstraints: [
+				"Use existing database schema",
+				"Follow REST API conventions",
+				"Implement rate limiting"
+			],
+			relatedWork: [
+				{
+					instanceId: "worker-db",
+					status: "completed",
+					summary: "Database schema for users table created"
+				}
+			],
+			successCriteria: [
+				"Secure token generation and validation",
+				"Proper password hashing with bcrypt",
+				"Token refresh mechanism working",
+				"Rate limiting on auth endpoints"
+			]
+		},
+		
+		resolution: {
+			chosenSolution: "Use React Context with useReducer for state management",
+			instanceId: "spec-frontend-1",
+			justification: "React Context with useReducer provides sufficient state management for our scale while keeping bundle size small. It's built into React, requires no additional dependencies, and the team is already familiar with it.",
+			recommendations: [
+				"Implement proper TypeScript types for all actions",
+				"Add middleware pattern for logging",
+				"Consider adding Redux DevTools connector for debugging"
+			],
+			modifications: [
+				"Add error boundary around context provider",
+				"Implement persistence layer for offline support"
+			]
+		},
+		
+		integration: {
+			status: "ready_for_integration",
+			integrationSteps: [
+				"1. Merge backend authentication API into main branch",
+				"2. Update frontend components to use auth endpoints",
+				"3. Configure environment variables for JWT secrets",
+				"4. Run database migrations for user tables",
+				"5. Deploy backend services first, then frontend"
+			],
+			potentialIssues: [
+				"CORS configuration needs updating for auth headers",
+				"Frontend token refresh logic needs testing with slow networks"
+			],
+			nextActions: [
+				"Performance test auth endpoints under load",
+				"Security audit of JWT implementation",
+				"Add monitoring for failed login attempts"
+			],
+			mergedCode: undefined
+		}
+	};
 
 	beforeAll(async () => {
 		await setupIntegrationTest();
@@ -19,444 +135,320 @@ describe("Integration: Swarm Sampling Service", () => {
 		// Get sampling service instance
 		samplingService = getSamplingService();
 		
-		// Create a mock MCP server for testing
-		mockMcpServer = {
-			server: {
-				createMessage: mock(async (params: any) => {
-					// Add small delay to ensure latency > 0
-					await new Promise(resolve => setTimeout(resolve, 1));
-					
-					// Simulate LLM responses based on the prompt content
-					const prompt = params.messages[0].content.text;
-					
-					if (prompt.includes("Decompose")) {
-						return {
-							content: {
-								type: "text",
-								text: JSON.stringify({
-									subtasks: [
-										{
-											id: "st-test-1",
-											description: "Frontend implementation",
-											specialist: "frontend",
-											complexity: 6,
-											estimatedMinutes: 120,
-											dependencies: [],
-											context: {
-												files: ["src/components/Test.tsx"],
-												patterns: ["React"],
-												constraints: []
-											}
-										},
-										{
-											id: "st-test-2",
-											description: "Backend API",
-											specialist: "backend",
-											complexity: 4,
-											estimatedMinutes: 90,
-											dependencies: [],
-											context: {
-												files: ["api/test.ts"],
-												patterns: ["REST"],
-												constraints: []
-											}
-										}
-									],
-									executionStrategy: "parallel",
-									totalComplexity: 10,
-									reasoning: "Frontend and backend can be developed in parallel"
-								})
-							}
-						};
-					} else if (prompt.includes("Generate specialized context for this subtask")) {
-						return {
-							content: {
-								type: "text",
-								text: JSON.stringify({
-									taskId: "t-test",
-									description: "Implement test feature",
-									scope: "Create a test component",
-									mandatoryReadings: [
-										{ title: "Component Guide", path: "docs/components.md" }
-									],
-									architectureConstraints: ["Use existing patterns"],
-									successCriteria: ["Component renders correctly"]
-								})
-							}
-						};
-					} else if (prompt.includes("Resolve this conflict")) {
-						return {
-							content: {
-								type: "text",
-								text: JSON.stringify({
-									chosenSolution: "Solution 1",
-									instanceId: "specialist-1",
-									justification: "Better fits the architecture",
-									recommendations: ["Consider performance"],
-									modifications: []
-								})
-							}
-						};
-					} else if (prompt.includes("Synthesize")) {
-						return {
-							content: {
-								type: "text",
-								text: JSON.stringify({
-									status: "integrated",
-									integrationSteps: ["Merge components", "Connect APIs"],
-									potentialIssues: [],
-									nextActions: [],
-									mergedCode: "// Integrated solution"
-								})
-							}
-						};
-					}
-					
-					// Default response
-					return {
-						content: {
-							type: "text",
-							text: JSON.stringify({ status: "success" })
-						}
-					};
-				})
+		// Save original fetch
+		originalFetch = global.fetch;
+	});
+
+	beforeEach(() => {
+		// Create fetch mock for each test
+		fetchMock = mock((url: string, options?: any) => {
+			const urlStr = url.toString();
+			
+			// Mock health check
+			if (urlStr.includes('/health')) {
+				return Promise.resolve({
+					ok: true,
+					json: async () => ({
+						status: "healthy",
+						service: "claudebench-inference",
+						version: "0.1.0"
+					})
+				});
 			}
-		};
+			
+			// Mock decomposition endpoint
+			if (urlStr.includes('/api/v1/decompose')) {
+				return Promise.resolve({
+					ok: true,
+					json: async () => MOCK_RESPONSES.decomposition,
+					text: async () => JSON.stringify(MOCK_RESPONSES.decomposition)
+				});
+			}
+			
+			// Mock context endpoint
+			if (urlStr.includes('/api/v1/context')) {
+				return Promise.resolve({
+					ok: true,
+					json: async () => MOCK_RESPONSES.context,
+					text: async () => JSON.stringify(MOCK_RESPONSES.context)
+				});
+			}
+			
+			// Mock resolve endpoint
+			if (urlStr.includes('/api/v1/resolve')) {
+				return Promise.resolve({
+					ok: true,
+					json: async () => MOCK_RESPONSES.resolution,
+					text: async () => JSON.stringify(MOCK_RESPONSES.resolution)
+				});
+			}
+			
+			// Mock synthesize endpoint
+			if (urlStr.includes('/api/v1/synthesize')) {
+				return Promise.resolve({
+					ok: true,
+					json: async () => MOCK_RESPONSES.integration,
+					text: async () => JSON.stringify(MOCK_RESPONSES.integration)
+				});
+			}
+			
+			// Default 404 for unknown endpoints
+			return Promise.resolve({
+				ok: false,
+				status: 404,
+				text: async () => "Not found"
+			});
+		});
 		
-		// Register the mock server
-		(samplingService as any).mcpServers.set("test-session", mockMcpServer);
+		// Replace global fetch with mock
+		global.fetch = fetchMock as any;
 	});
 
 	afterAll(async () => {
+		// Restore original fetch
+		global.fetch = originalFetch;
 		await cleanupIntegrationTest();
-		(samplingService as any).mcpServers.clear();
+	});
+
+	describe("Health Check", () => {
+		it("should check inference server health", async () => {
+			const isHealthy = await samplingService.checkHealth();
+			
+			expect(isHealthy).toBe(true);
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/health"),
+				expect.any(Object)
+			);
+		});
+		
+		it("should handle health check failures gracefully", async () => {
+			// Override mock for this test
+			global.fetch = mock(() => Promise.reject(new Error("Connection refused"))) as any;
+			
+			const isHealthy = await samplingService.checkHealth();
+			expect(isHealthy).toBe(false);
+		});
 	});
 
 	describe("Task Decomposition", () => {
-		it("should request decomposition via MCP sampling", async () => {
+		it("should request decomposition via HTTP", async () => {
 			const result = await samplingService.requestDecomposition(
 				"test-session",
-				"Implement dark mode toggle",
+				"Implement user authentication with JWT",
 				{
 					specialists: [
-						{ id: "specialist-1", type: "frontend", currentLoad: 2, maxCapacity: 5, capabilities: ["react"] },
-						{ id: "specialist-2", type: "backend", currentLoad: 1, maxCapacity: 5, capabilities: ["node"] }
+						{ id: "spec-1", type: "backend", currentLoad: 2, maxCapacity: 5, capabilities: ["node", "jwt"] },
+						{ id: "spec-2", type: "frontend", currentLoad: 1, maxCapacity: 5, capabilities: ["react"] }
 					],
 					priority: 75,
-					constraints: ["Use existing theme system"]
+					constraints: ["Use existing database", "Mobile responsive"]
 				}
 			);
 
 			expect(result).toBeDefined();
-			expect(result.subtasks).toHaveLength(2);
-			expect(result.subtasks[0].specialist).toBe("frontend");
-			expect(result.subtasks[1].specialist).toBe("backend");
-			expect(result.executionStrategy).toBe("parallel");
+			expect(result.subtasks).toHaveLength(3);
+			expect(result.subtasks[0].specialist).toBe("backend");
+			expect(result.subtasks[1].specialist).toBe("frontend");
+			expect(result.subtasks[2].specialist).toBe("testing");
+			expect(result.executionStrategy).toBe("sequential");
+			expect(result.totalComplexity).toBe(16);
 			
-			// Verify MCP server was called
-			expect(mockMcpServer.server.createMessage).toHaveBeenCalled();
+			// Verify HTTP call was made correctly
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/api/v1/decompose"),
+				expect.objectContaining({
+					method: "POST",
+					headers: expect.objectContaining({
+						"Content-Type": "application/json"
+					})
+				})
+			);
 		});
 
-		it("should handle decomposition with dependencies", async () => {
-			// Override mock for this test
-			mockMcpServer.server.createMessage.mockImplementationOnce(async () => ({
-				content: {
-					type: "text",
-					text: JSON.stringify({
-						subtasks: [
-							{
-								id: "st-1",
-								description: "Setup infrastructure",
-								specialist: "backend",
-								complexity: 5,
-								estimatedMinutes: 60,
-								dependencies: [],
-								context: { files: [], patterns: [], constraints: [] }
-							},
-							{
-								id: "st-2",
-								description: "Build UI",
-								specialist: "frontend",
-								complexity: 6,
-								estimatedMinutes: 120,
-								dependencies: ["st-1"],
-								context: { files: [], patterns: [], constraints: [] }
-							},
-							{
-								id: "st-3",
-								description: "Write tests",
-								specialist: "testing",
-								complexity: 4,
-								estimatedMinutes: 90,
-								dependencies: ["st-1", "st-2"],
-								context: { files: [], patterns: [], constraints: [] }
-							}
-						],
-						executionStrategy: "sequential",
-						totalComplexity: 15,
-						reasoning: "Infrastructure must be ready before UI and tests"
-					})
-				}
-			}));
+		it("should validate decomposition response structure", async () => {
+			// Test with invalid response
+			global.fetch = mock(() => Promise.resolve({
+				ok: true,
+				json: async () => ({ invalid: "structure" })
+			})) as any;
+			
+			await expect(
+				samplingService.requestDecomposition("test", "task", { specialists: [], priority: 50 })
+			).rejects.toThrow();
+		});
 
+		it("should handle network errors with retry", async () => {
+			let attemptCount = 0;
+			global.fetch = mock(() => {
+				attemptCount++;
+				if (attemptCount < 3) {
+					return Promise.reject(new Error("Network error"));
+				}
+				return Promise.resolve({
+					ok: true,
+					json: async () => MOCK_RESPONSES.decomposition
+				});
+			}) as any;
+			
 			const result = await samplingService.requestDecomposition(
 				"test-session",
-				"Build complete feature",
-				{
-					specialists: [],
-					priority: 80
-				}
+				"Test task",
+				{ specialists: [], priority: 50 }
 			);
-
-			expect(result.subtasks).toHaveLength(3);
-			expect(result.subtasks[2].dependencies).toContain("st-1");
-			expect(result.subtasks[2].dependencies).toContain("st-2");
-			expect(result.executionStrategy).toBe("sequential");
+			
+			expect(result).toBeDefined();
+			expect(attemptCount).toBe(3); // Should retry twice before succeeding
 		});
 	});
 
 	describe("Context Generation", () => {
-		it("should generate specialist context via MCP", async () => {
+		it("should generate specialist context via HTTP", async () => {
 			const result = await samplingService.generateContext(
 				"test-session",
-				"st-123",
-				"frontend",
-				{
-					id: "st-123",
-					description: "Create UI component",
-					specialist: "frontend",
-					dependencies: [],
-					context: {
-						files: [],
-						patterns: [],
-						constraints: []
-					}
-				}
-			);
-
-			expect(result).toBeDefined();
-			expect(result.taskId).toBe("t-test");
-			expect(result.description).toContain("test feature");
-			expect(result.mandatoryReadings).toHaveLength(1);
-			expect(result.architectureConstraints).toHaveLength(1);
-			expect(result.successCriteria).toHaveLength(1);
-		});
-
-		it("should include related work in context", async () => {
-			const result = await samplingService.generateContext(
-				"test-session",
-				"st-456",
+				"st-1",
 				"backend",
 				{
-					id: "st-456",
-					description: "Create API endpoint",
-					specialist: "backend",
+					description: "Create authentication API",
 					dependencies: [],
-					context: {
-						files: [],
-						patterns: [],
-						constraints: []
-					},
-					relatedWork: [
-						{
-							instanceId: "specialist-1",
-							status: "completed",
-							output: "Database schema created"
-						}
-					]
+					context: { files: [], patterns: [], constraints: [] }
 				}
 			);
 
 			expect(result).toBeDefined();
-			expect(result.scope).toContain("test component");
+			expect(result.taskId).toBe("st-1");
+			expect(result.mandatoryReadings).toHaveLength(2);
+			expect(result.architectureConstraints).toHaveLength(3);
+			expect(result.successCriteria).toHaveLength(4);
+			expect(result.relatedWork).toHaveLength(1);
+			
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/api/v1/context"),
+				expect.any(Object)
+			);
 		});
 	});
 
 	describe("Conflict Resolution", () => {
-		it("should resolve conflicts via MCP sampling", async () => {
+		it("should resolve conflicts via HTTP", async () => {
 			const result = await samplingService.resolveConflict(
 				"test-session",
 				{
 					solutions: [
 						{
-							instanceId: "specialist-1",
-							approach: "Use hooks",
-							reasoning: "Modern React pattern",
-							code: "useState()"
+							instanceId: "spec-frontend-1",
+							approach: "Use React Context",
+							reasoning: "Simpler, built-in solution",
+							code: "const Context = React.createContext();"
 						},
 						{
-							instanceId: "specialist-2",
+							instanceId: "spec-frontend-2",
 							approach: "Use Redux",
-							reasoning: "Better state management",
-							code: "dispatch()"
+							reasoning: "More scalable",
+							code: "const store = createStore();"
 						}
 					],
 					context: {
-						projectType: "React application",
-						requirements: ["State persistence", "Performance"],
-						constraints: ["Bundle size limit"]
+						projectType: "React SPA",
+						requirements: ["State management", "Type safety"],
+						constraints: ["Small bundle size"]
 					}
 				}
 			);
 
 			expect(result).toBeDefined();
-			expect(result.chosenSolution).toBe("Solution 1");
-			expect(result.instanceId).toBe("specialist-1");
-			expect(result.justification).toContain("architecture");
-			expect(result.recommendations).toHaveLength(1);
+			expect(result.instanceId).toBe("spec-frontend-1");
+			expect(result.chosenSolution).toContain("React Context");
+			expect(result.justification).toContain("bundle size");
+			expect(result.recommendations).toHaveLength(3);
+			expect(result.modifications).toHaveLength(2);
 		});
 	});
 
 	describe("Progress Synthesis", () => {
-		it("should synthesize completed work via MCP", async () => {
+		it("should synthesize completed work via HTTP", async () => {
 			const result = await samplingService.synthesizeProgress(
 				"test-session",
 				{
 					completedSubtasks: [
 						{
 							id: "st-1",
-							specialist: "frontend",
-							output: "UI component completed",
-							artifacts: ["Component.tsx"]
+							specialist: "backend",
+							output: "Authentication API implemented",
+							artifacts: ["src/auth/"]
 						},
 						{
 							id: "st-2",
-							specialist: "backend",
-							output: "API endpoint ready",
-							artifacts: ["api/endpoint.ts"]
+							specialist: "frontend",
+							output: "Login UI completed",
+							artifacts: ["src/components/Login.tsx"]
 						}
 					],
-					parentTask: "Implement feature X"
+					parentTask: "Implement authentication system"
 				}
 			);
 
 			expect(result).toBeDefined();
-			expect(result.status).toBe("integrated");
-			expect(result.integrationSteps).toContain("Merge components");
-			expect(result.integrationSteps).toContain("Connect APIs");
-			expect(result.potentialIssues).toHaveLength(0);
-			expect(result.mergedCode).toContain("Integrated solution");
-		});
-
-		it("should identify integration issues", async () => {
-			// Override mock for this test
-			mockMcpServer.server.createMessage.mockImplementationOnce(async () => ({
-				content: {
-					type: "text",
-					text: JSON.stringify({
-						status: "requires_fixes",
-						integrationSteps: ["Attempted merge"],
-						potentialIssues: [
-							"Type mismatch between frontend and backend",
-							"Missing error handling"
-						],
-						nextActions: [
-							"Fix TypeScript errors",
-							"Add error boundaries"
-						]
-					})
-				}
-			}));
-
-			const result = await samplingService.synthesizeProgress(
-				"test-session",
-				{
-					completedSubtasks: [
-						{
-							id: "st-3",
-							specialist: "frontend",
-							output: "Component with wrong types"
-						}
-					],
-					parentTask: "Feature with issues"
-				}
-			);
-
-			expect(result.status).toBe("requires_fixes");
+			expect(result.status).toBe("ready_for_integration");
+			expect(result.integrationSteps).toHaveLength(5);
 			expect(result.potentialIssues).toHaveLength(2);
-			expect(result.nextActions).toHaveLength(2);
+			expect(result.nextActions).toHaveLength(3);
+			
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/api/v1/synthesize"),
+				expect.any(Object)
+			);
 		});
 	});
 
 	describe("Error Handling", () => {
-		it("should handle MCP server errors gracefully", async () => {
-			// Create a failing mock
-			const failingMock = {
-				server: {
-					createMessage: mock(async () => {
-						throw new Error("MCP server error");
-					})
-				}
-			};
+		it("should handle 500 errors from inference server", async () => {
+			global.fetch = mock(() => Promise.resolve({
+				ok: false,
+				status: 500,
+				text: async () => "Internal server error"
+			})) as any;
 			
-			(samplingService as any).mcpServers.set("failing-session", failingMock);
-
 			await expect(
-				samplingService.requestDecomposition(
-					"failing-session",
-					"Test task",
-					{ specialists: [], priority: 50 }
-				)
-			).rejects.toThrow("MCP server error");
+				samplingService.requestDecomposition("test", "task", { specialists: [], priority: 50 })
+			).rejects.toThrow("Inference server error (500)");
 		});
 
-		it("should handle invalid JSON responses", async () => {
-			// Create a mock that returns invalid JSON
-			const invalidMock = {
-				server: {
-					createMessage: mock(async () => ({
-						content: {
-							type: "text",
-							text: "Not valid JSON {]}"
-						}
-					}))
-				}
-			};
+		it("should handle timeout errors", async () => {
+			// This will timeout immediately
+			global.fetch = mock(() => new Promise((_, reject) => {
+				setTimeout(() => reject(new Error("AbortError")), 10);
+			})) as any;
 			
-			(samplingService as any).mcpServers.set("invalid-session", invalidMock);
-
 			await expect(
-				samplingService.requestDecomposition(
-					"invalid-session",
-					"Test task",
-					{ specialists: [], priority: 50 }
-				)
+				samplingService.requestDecomposition("test", "task", { specialists: [], priority: 50 })
 			).rejects.toThrow();
-		});
-
-		it("should handle missing session gracefully", async () => {
-			await expect(
-				samplingService.requestDecomposition(
-					"non-existent-session",
-					"Test task",
-					{ specialists: [], priority: 50 }
-				)
-			).rejects.toThrow("No MCP server found for session");
 		});
 	});
 
-	describe("Metrics Tracking", () => {
-		it("should track sampling metrics", async () => {
-			const redis = (samplingService as any).redis;
+	describe("Statistics", () => {
+		it("should fetch inference server statistics", async () => {
+			global.fetch = mock((url: string) => {
+				if (url.includes('/api/v1/stats')) {
+					return Promise.resolve({
+						ok: true,
+						json: async () => ({
+							uptime: 1000,
+							sampling_stats: {
+								total_requests: 100,
+								successful_requests: 95,
+								failed_requests: 5
+							}
+						})
+					});
+				}
+				return Promise.resolve({ ok: false });
+			}) as any;
 			
-			// Get initial count
-			const initialCount = await redis.pub.get("cb:metrics:sampling:requests") || "0";
+			const stats = await samplingService.getStats();
 			
-			// Make a request
-			await samplingService.requestDecomposition(
-				"test-session",
-				"Test task",
-				{ specialists: [], priority: 50 }
-			);
-			
-			// Check metrics were incremented
-			const newCount = await redis.pub.get("cb:metrics:sampling:requests");
-			expect(Number(newCount)).toBe(Number(initialCount) + 1);
-			
-			// Check latency was recorded
-			const latency = await redis.pub.lrange("cb:metrics:sampling:latency", 0, 0);
-			expect(latency).toHaveLength(1);
-			expect(Number(latency[0])).toBeGreaterThan(0);
+			expect(stats).toBeDefined();
+			expect(stats.uptime).toBe(1000);
+			expect(stats.sampling_stats.total_requests).toBe(100);
 		});
 	});
 });

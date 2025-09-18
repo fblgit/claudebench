@@ -1,41 +1,11 @@
 /**
- * MCP Sampling Service
- * Provides intelligent decision-making via LLM sampling for swarm coordination
+ * Claude-based Sampling Service
+ * Communicates with the ClaudeBench Inference Server for LLM sampling
  */
 
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { getRedis } from "./redis";
-import { z } from "zod";
-import * as nunjucks from "nunjucks";
-import * as path from "path";
-import { fileURLToPath } from "url";
+import { z } from 'zod';
 
-// Get directory name for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Configure Nunjucks environment
-const templatesDir = path.join(__dirname, "..", "templates", "swarm");
-const nunjucksEnv = nunjucks.configure(templatesDir, {
-	autoescape: false, // Don't escape for LLM prompts
-	trimBlocks: true,
-	lstripBlocks: true
-});
-
-/**
- * Configuration for sampling requests
- */
-export const samplingConfig = {
-	defaultMaxTokens: 2000,
-	defaultTemperature: 0.7,
-	retryAttempts: 3,
-	retryDelay: 1000,
-	timeoutMs: 30000,
-};
-
-/**
- * Decomposition context for task breakdown
- */
+// Re-export the types that were in the original sampling.ts
 export interface DecompositionContext {
 	specialists: Array<{
 		id: string;
@@ -48,9 +18,6 @@ export interface DecompositionContext {
 	constraints?: string[];
 }
 
-/**
- * Decomposition result structure
- */
 export interface Decomposition {
 	subtasks: Array<{
 		id: string;
@@ -70,9 +37,6 @@ export interface Decomposition {
 	reasoning: string;
 }
 
-/**
- * Specialist context for focused work
- */
 export interface SpecialistContext {
 	taskId: string;
 	description: string;
@@ -90,9 +54,6 @@ export interface SpecialistContext {
 	successCriteria: string[];
 }
 
-/**
- * Conflict resolution input
- */
 export interface ConflictInput {
 	solutions: Array<{
 		instanceId: string;
@@ -107,9 +68,6 @@ export interface ConflictInput {
 	};
 }
 
-/**
- * Resolution decision
- */
 export interface Resolution {
 	chosenSolution: string;
 	instanceId: string;
@@ -118,9 +76,6 @@ export interface Resolution {
 	modifications?: string[];
 }
 
-/**
- * Progress synthesis input
- */
 export interface SynthesisInput {
 	completedSubtasks: Array<{
 		id: string;
@@ -131,9 +86,6 @@ export interface SynthesisInput {
 	parentTask: string;
 }
 
-/**
- * Integration result
- */
 export interface Integration {
 	status: "ready_for_integration" | "requires_fixes" | "integrated";
 	integrationSteps: string[];
@@ -143,280 +95,122 @@ export interface Integration {
 }
 
 /**
- * Sampling Service for swarm intelligence
+ * Configuration for the inference server
  */
-export class SamplingService {
-	private static instance: SamplingService;
-	private mcpServers: Map<string, McpServer>;
-	private redis = getRedis();
+const INFERENCE_CONFIG = {
+	baseUrl: process.env.INFERENCE_SERVER_URL || 'http://localhost:8000',
+	apiVersion: 'v1',
+	timeout: 120000, // 120 seconds - give Claude more time to think
+	retryAttempts: 3,
+	retryDelay: 1000
+};
+
+/**
+ * Claude-based Sampling Service using HTTP inference server
+ */
+export class ClaudeSamplingService {
+	private static instance: ClaudeSamplingService;
+	private readonly baseUrl: string;
 	
 	private constructor() {
-		this.mcpServers = new Map();
+		this.baseUrl = `${INFERENCE_CONFIG.baseUrl}/api/${INFERENCE_CONFIG.apiVersion}`;
 	}
 	
-	/**
-	 * Get singleton instance
-	 */
-	public static getInstance(): SamplingService {
-		if (!SamplingService.instance) {
-			SamplingService.instance = new SamplingService();
+	public static getInstance(): ClaudeSamplingService {
+		if (!ClaudeSamplingService.instance) {
+			ClaudeSamplingService.instance = new ClaudeSamplingService();
 		}
-		return SamplingService.instance;
+		return ClaudeSamplingService.instance;
 	}
 	
 	/**
-	 * Register MCP server for a session
+	 * Make HTTP request to inference server with retry logic
 	 */
-	public registerServer(sessionId: string, server: McpServer): void {
-		this.mcpServers.set(sessionId, server);
-	}
-	
-	/**
-	 * Get MCP server for session
-	 */
-	private getServer(sessionId: string): McpServer {
-		const server = this.mcpServers.get(sessionId);
-		if (!server) {
-			throw new Error(`No MCP server found for session ${sessionId}`);
+	private async makeRequest<T>(
+		endpoint: string,
+		method: string,
+		body?: any,
+		attempt: number = 1
+	): Promise<T> {
+		const url = `${this.baseUrl}${endpoint}`;
+		
+		try {
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), INFERENCE_CONFIG.timeout);
+			
+			const response = await fetch(url, {
+				method,
+				headers: {
+					'Content-Type': 'application/json',
+					'Accept': 'application/json'
+				},
+				body: body ? JSON.stringify(body) : undefined,
+				signal: controller.signal
+			});
+			
+			clearTimeout(timeoutId);
+			
+			if (!response.ok) {
+				const error = await response.text();
+				throw new Error(`Inference server error (${response.status}): ${error}`);
+			}
+			
+			const data = await response.json();
+			return data as T;
+			
+		} catch (error) {
+			// Retry logic for network failures
+			if (attempt < INFERENCE_CONFIG.retryAttempts) {
+				console.warn(`[ClaudeSampling] Request failed, retrying (attempt ${attempt + 1})...`);
+				await new Promise(resolve => setTimeout(resolve, INFERENCE_CONFIG.retryDelay * attempt));
+				return this.makeRequest<T>(endpoint, method, body, attempt + 1);
+			}
+			
+			console.error(`[ClaudeSampling] Request failed after ${attempt} attempts:`, error);
+			throw error;
 		}
-		return server;
 	}
 	
 	/**
-	 * Request task decomposition via sampling
+	 * Check if inference server is healthy
+	 */
+	public async checkHealth(): Promise<boolean> {
+		try {
+			const response = await fetch(`${INFERENCE_CONFIG.baseUrl}/health`, {
+				method: 'GET',
+				signal: AbortSignal.timeout(5000)
+			});
+			return response.ok;
+		} catch (error) {
+			console.error('[ClaudeSampling] Health check failed:', error);
+			return false;
+		}
+	}
+	
+	/**
+	 * Request task decomposition via inference server
 	 */
 	public async requestDecomposition(
 		sessionId: string,
 		task: string,
 		context: DecompositionContext
 	): Promise<Decomposition> {
-		const server = this.getServer(sessionId);
+		console.log(`[ClaudeSampling] Requesting decomposition for task: ${task.substring(0, 50)}...`);
 		
-		const prompt = this.buildDecompositionPrompt(task, context);
-		
-		try {
-			// Track sampling metrics
-			await this.redis.pub.incr("cb:metrics:sampling:requests");
-			const startTime = Date.now();
-			
-			// Request sampling from Claude
-			const response = await (server as any).server.createMessage({
-				messages: [{
-					role: "user",
-					content: {
-						type: "text",
-						text: prompt,
-					},
-				}],
-				maxTokens: samplingConfig.defaultMaxTokens,
-				temperature: samplingConfig.defaultTemperature,
-			});
-			
-			// Track latency
-			const latency = Date.now() - startTime;
-			await this.redis.pub.lpush("cb:metrics:sampling:latency", latency.toString());
-			await this.redis.pub.ltrim("cb:metrics:sampling:latency", 0, 999);
-			
-			// Parse response
-			if (response.content.type !== "text") {
-				throw new Error("Invalid response format from sampling");
-			}
-			
-			const content = response.content.text;
-			
-			// Extract JSON from response (handle markdown code blocks)
-			const jsonMatch = content.match(/```json\n?([\s\S]*?)\n?```/);
-			const jsonStr = jsonMatch ? jsonMatch[1] : content;
-			
-			const decomposition = JSON.parse(jsonStr) as Decomposition;
-			
-			// Validate structure
-			this.validateDecomposition(decomposition);
-			
-			// Cache successful decomposition
-			await this.redis.pub.setex(
-				`cb:cache:decomposition:${task.substring(0, 50)}`,
-				300, // 5 minute cache
-				JSON.stringify(decomposition)
-			);
-			
-			return decomposition;
-		} catch (error) {
-			await this.redis.pub.incr("cb:metrics:sampling:errors");
-			console.error("[Sampling] Decomposition failed:", error);
-			throw error;
-		}
-	}
-	
-	/**
-	 * Generate specialist context via sampling
-	 */
-	public async generateContext(
-		sessionId: string,
-		subtaskId: string,
-		specialist: string,
-		subtask: any
-	): Promise<SpecialistContext> {
-		const server = this.getServer(sessionId);
-		
-		const prompt = this.buildContextPrompt(subtaskId, specialist, subtask);
-		
-		try {
-			const response = await (server as any).server.createMessage({
-				messages: [{
-					role: "user",
-					content: {
-						type: "text",
-						text: prompt,
-					},
-				}],
-				maxTokens: 1500,
-				temperature: 0.5, // Lower temperature for context generation
-			});
-			
-			if (response.content.type !== "text") {
-				throw new Error("Invalid response format");
-			}
-			
-			// Parse the structured context
-			const jsonMatch = response.content.text.match(/```json\n?([\s\S]*?)\n?```/);
-			const jsonStr = jsonMatch ? jsonMatch[1] : response.content.text;
-			
-			return JSON.parse(jsonStr) as SpecialistContext;
-		} catch (error) {
-			console.error("[Sampling] Context generation failed:", error);
-			throw error;
-		}
-	}
-	
-	/**
-	 * Resolve conflicts via sampling
-	 */
-	public async resolveConflict(
-		sessionId: string,
-		conflict: ConflictInput
-	): Promise<Resolution> {
-		const server = this.getServer(sessionId);
-		
-		const prompt = this.buildConflictPrompt(conflict);
-		
-		try {
-			const response = await (server as any).server.createMessage({
-				messages: [{
-					role: "user",
-					content: {
-						type: "text",
-						text: prompt,
-					},
-				}],
-				maxTokens: 1000,
-				temperature: 0.3, // Low temperature for decision-making
-			});
-			
-			if (response.content.type !== "text") {
-				throw new Error("Invalid response format");
-			}
-			
-			const jsonMatch = response.content.text.match(/```json\n?([\s\S]*?)\n?```/);
-			const jsonStr = jsonMatch ? jsonMatch[1] : response.content.text;
-			
-			return JSON.parse(jsonStr) as Resolution;
-		} catch (error) {
-			console.error("[Sampling] Conflict resolution failed:", error);
-			throw error;
-		}
-	}
-	
-	/**
-	 * Synthesize progress via sampling
-	 */
-	public async synthesizeProgress(
-		sessionId: string,
-		input: SynthesisInput
-	): Promise<Integration> {
-		const server = this.getServer(sessionId);
-		
-		const prompt = this.buildSynthesisPrompt(input);
-		
-		try {
-			const response = await (server as any).server.createMessage({
-				messages: [{
-					role: "user",
-					content: {
-						type: "text",
-						text: prompt,
-					},
-				}],
-				maxTokens: 2000,
-				temperature: 0.6,
-			});
-			
-			if (response.content.type !== "text") {
-				throw new Error("Invalid response format");
-			}
-			
-			const jsonMatch = response.content.text.match(/```json\n?([\s\S]*?)\n?```/);
-			const jsonStr = jsonMatch ? jsonMatch[1] : response.content.text;
-			
-			return JSON.parse(jsonStr) as Integration;
-		} catch (error) {
-			console.error("[Sampling] Progress synthesis failed:", error);
-			throw error;
-		}
-	}
-	
-	/**
-	 * Build decomposition prompt
-	 */
-	private buildDecompositionPrompt(task: string, context: DecompositionContext): string {
-		return nunjucksEnv.render("decomposition.njk", {
+		const requestBody = {
+			sessionId,
 			task,
-			priority: context.priority,
-			specialists: context.specialists,
-			constraints: context.constraints
-		});
-	}
-	
-	/**
-	 * Build context generation prompt
-	 */
-	private buildContextPrompt(subtaskId: string, specialist: string, subtask: any): string {
-		return nunjucksEnv.render("specialist-context.njk", {
-			subtaskId,
-			specialist,
-			description: subtask.description,
-			dependencies: subtask.dependencies,
-			constraints: subtask.context.constraints
-		});
-	}
-	
-	/**
-	 * Build conflict resolution prompt
-	 */
-	private buildConflictPrompt(conflict: ConflictInput): string {
-		return nunjucksEnv.render("conflict-resolution.njk", {
-			projectType: conflict.context.projectType,
-			requirements: conflict.context.requirements,
-			constraints: conflict.context.constraints,
-			solutions: conflict.solutions
-		});
-	}
-	
-	/**
-	 * Build synthesis prompt
-	 */
-	private buildSynthesisPrompt(input: SynthesisInput): string {
-		return nunjucksEnv.render("progress-synthesis.njk", {
-			parentTask: input.parentTask,
-			completedSubtasks: input.completedSubtasks
-		});
-	}
-	
-	/**
-	 * Validate decomposition structure
-	 */
-	private validateDecomposition(decomposition: any): void {
-		const schema = z.object({
+			context
+		};
+		
+		const response = await this.makeRequest<Decomposition>(
+			'/decompose',
+			'POST',
+			requestBody
+		);
+		
+		// Validate the response structure
+		const decompositionSchema = z.object({
 			subtasks: z.array(z.object({
 				id: z.string(),
 				description: z.string(),
@@ -426,18 +220,141 @@ export class SamplingService {
 				context: z.object({
 					files: z.array(z.string()),
 					patterns: z.array(z.string()),
-					constraints: z.array(z.string()),
+					constraints: z.array(z.string())
 				}),
-				estimatedMinutes: z.number(),
+				estimatedMinutes: z.number()
 			})),
 			executionStrategy: z.enum(["parallel", "sequential", "mixed"]),
 			totalComplexity: z.number(),
-			reasoning: z.string(),
+			reasoning: z.string()
 		});
 		
-		schema.parse(decomposition);
+		return decompositionSchema.parse(response);
+	}
+	
+	/**
+	 * Generate specialist context via inference server
+	 */
+	public async generateContext(
+		sessionId: string,
+		subtaskId: string,
+		specialist: string,
+		subtask: any
+	): Promise<SpecialistContext> {
+		console.log(`[ClaudeSampling] Generating context for subtask ${subtaskId}`);
+		
+		const requestBody = {
+			sessionId,
+			subtaskId,
+			specialist,
+			subtask
+		};
+		
+		const response = await this.makeRequest<SpecialistContext>(
+			'/context',
+			'POST',
+			requestBody
+		);
+		
+		// Validate the response structure
+		const contextSchema = z.object({
+			taskId: z.string(),
+			description: z.string(),
+			scope: z.string(),
+			mandatoryReadings: z.array(z.object({
+				title: z.string(),
+				path: z.string()
+			})),
+			architectureConstraints: z.array(z.string()),
+			relatedWork: z.array(z.object({
+				instanceId: z.string(),
+				status: z.string(),
+				summary: z.string()
+			})),
+			successCriteria: z.array(z.string())
+		});
+		
+		return contextSchema.parse(response);
+	}
+	
+	/**
+	 * Resolve conflicts via inference server
+	 */
+	public async resolveConflict(
+		sessionId: string,
+		conflict: ConflictInput
+	): Promise<Resolution> {
+		console.log(`[ClaudeSampling] Resolving conflict between ${conflict.solutions.length} solutions`);
+		
+		const requestBody = {
+			sessionId,
+			solutions: conflict.solutions,
+			context: conflict.context
+		};
+		
+		const response = await this.makeRequest<Resolution>(
+			'/resolve',
+			'POST',
+			requestBody
+		);
+		
+		// Validate the response structure
+		const resolutionSchema = z.object({
+			chosenSolution: z.string(),
+			instanceId: z.string(),
+			justification: z.string(),
+			recommendations: z.array(z.string()),
+			modifications: z.array(z.string()).optional()
+		});
+		
+		return resolutionSchema.parse(response);
+	}
+	
+	/**
+	 * Synthesize progress via inference server
+	 */
+	public async synthesizeProgress(
+		sessionId: string,
+		input: SynthesisInput
+	): Promise<Integration> {
+		console.log(`[ClaudeSampling] Synthesizing ${input.completedSubtasks.length} completed subtasks`);
+		
+		const requestBody = {
+			sessionId,
+			completedSubtasks: input.completedSubtasks,
+			parentTask: input.parentTask
+		};
+		
+		const response = await this.makeRequest<Integration>(
+			'/synthesize',
+			'POST',
+			requestBody
+		);
+		
+		// Validate the response structure
+		const integrationSchema = z.object({
+			status: z.enum(["ready_for_integration", "requires_fixes", "integrated"]),
+			integrationSteps: z.array(z.string()),
+			potentialIssues: z.array(z.string()),
+			nextActions: z.array(z.string()),
+			mergedCode: z.string().optional()
+		});
+		
+		return integrationSchema.parse(response);
+	}
+	
+	/**
+	 * Get inference server statistics
+	 */
+	public async getStats(): Promise<any> {
+		try {
+			return await this.makeRequest('/stats', 'GET');
+		} catch (error) {
+			console.error('[ClaudeSampling] Failed to get stats:', error);
+			return null;
+		}
 	}
 }
 
-// Export singleton instance getter
-export const getSamplingService = () => SamplingService.getInstance();
+// Export singleton getter
+export const getSamplingService = () => ClaudeSamplingService.getInstance();

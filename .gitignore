@@ -9,3 +9,4 @@ apps/server/tmp
 .DS_Store
 **/.DS_Store
 backups/
+**/__pycache__
