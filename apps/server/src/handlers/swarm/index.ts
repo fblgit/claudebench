@@ -8,3 +8,4 @@ export * from "./swarm.context.handler";
 export * from "./swarm.resolve.handler";
 export * from "./swarm.synthesize.handler";
 export * from "./swarm.assign.handler";
+export * from "./swarm.create_project.handler";

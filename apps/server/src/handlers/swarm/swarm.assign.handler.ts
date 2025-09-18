@@ -147,25 +147,32 @@ export class SwarmAssignHandler {
 		
 		// Persist assignment to database
 		if (ctx.persist && ctx.prisma && result.specialistId) {
-			// Create assignment record
-			await ctx.prisma.swarmAssignment.create({
-				data: {
-					subtaskId: input.subtaskId,
-					specialistId: result.specialistId,
-					score: result.score,
-					assignedAt: new Date()
-				}
-			});
-			
-			// Update subtask status
-			await ctx.prisma.swarmSubtask.update({
-				where: { id: input.subtaskId },
-				data: {
-					status: "assigned",
-					assignedTo: result.specialistId,
-					updatedAt: new Date()
-				}
-			});
+			try {
+				// Create assignment record
+				await ctx.prisma.swarmAssignment.create({
+					data: {
+						subtaskId: input.subtaskId,
+						specialistId: result.specialistId,
+						score: result.score,
+						assignedAt: new Date()
+					}
+				});
+				
+				// Update subtask status
+				await ctx.prisma.swarmSubtask.update({
+					where: { id: input.subtaskId },
+					data: {
+						status: "assigned",
+						assignedTo: result.specialistId,
+						updatedAt: new Date()
+					}
+				});
+				console.log(`[SwarmAssign] Persisted assignment of ${input.subtaskId} to ${result.specialistId}`);
+			} catch (error) {
+				// Log but don't fail the entire operation
+				console.error(`[SwarmAssign] Failed to persist to PostgreSQL:`, error);
+				// Continue with Redis storage which already succeeded
+			}
 		}
 		
 		// Update Redis with assignment

@@ -52,7 +52,8 @@ describe("Contract Validation: swarm.context", () => {
 					mandatoryReadings: [
 						{
 							title: "Component Guidelines",
-							path: "docs/components.md"
+							path: "docs/components.md",
+							reason: "Understand component structure and patterns"
 						}
 					],
 					architectureConstraints: [

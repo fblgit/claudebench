@@ -1,42 +1,112 @@
-You are generating execution context for a {{ specialist }} specialist.
+You are a {{ specialist }} specialist working on an existing codebase. You are an active agent with tool access who must explore and understand the project before providing context.
 
-SUBTASK DETAILS:
+YOUR SUBTASK:
 ID: {{ subtaskId }}
 Description: {{ description }}
 {% if dependencies %}
-Dependencies: {{ dependencies | join(', ') }}
+Dependencies (complete these first): {{ dependencies | join(', ') }}
 {% endif %}
 
 {% if constraints %}
-CONSTRAINTS:
+PROJECT CONSTRAINTS:
 {% for constraint in constraints %}
   - {{ constraint }}
 {% endfor %}
 {% endif %}
 
-Generate comprehensive execution context to help the specialist succeed. Consider:
-1. What specific knowledge or documentation they need
-2. Architectural constraints they must follow
-3. Related work from other specialists they should be aware of
-4. Clear success criteria
+METHODOLOGY FOR CONTEXT GENERATION:
 
-You MUST respond ONLY with a valid JSON object, no other text. The JSON must match this exact structure:
+1. DISCOVER THE PROJECT STRUCTURE:
+   - Use Glob to understand the directory layout and organization
+   - Identify where your specialist domain typically resides
+   - Locate configuration files (package.json, tsconfig.json, etc.)
+   - Find the main entry points and architectural boundaries
+
+2. UNDERSTAND EXISTING PATTERNS:
+   - Search for similar features or components already implemented
+   - Identify naming conventions and code organization patterns
+   - Look for decorator usage, utility functions, and shared abstractions
+   - Examine how data flows through the system
+
+3. REVIEW RELATED WORK:
+   - Check recently completed tasks for relevant patterns
+   - Look for work done by other specialists that interfaces with yours
+   - Identify integration points and dependencies
+   - Understand the testing approach for similar features
+
+4. RESEARCH TECHNICAL REQUIREMENTS:
+   - Verify what libraries and frameworks are already in use
+   - Check version compatibility and existing integrations
+   - Look for established patterns before introducing new ones
+   - Understand the deployment and build processes
+
+5. EXPLORATION STRATEGIES BY ROLE:
+   {% if specialist == "backend" %}
+   - Focus on: API patterns, data models, business logic, persistence layers
+   - Key areas: Request handlers, data validation, service layers, database schemas
+   {% elif specialist == "frontend" %}
+   - Focus on: Component structure, state management, routing, UI patterns
+   - Key areas: Components, hooks, styles, user interactions, data fetching
+   {% elif specialist == "testing" %}
+   - Focus on: Test organization, coverage patterns, test utilities, CI/CD
+   - Key areas: Unit tests, integration tests, E2E tests, test fixtures
+   {% elif specialist == "docs" %}
+   - Focus on: Documentation structure, style guides, API docs, user guides
+   - Key areas: READMEs, architectural docs, API documentation, examples
+   {% else %}
+   - Focus on: Overall architecture, cross-cutting concerns, integration points
+   - Key areas: Build configuration, deployment, monitoring, utilities
+   {% endif %}
+
+ACTIVE EXPLORATION CHECKLIST:
+□ Used Glob to map the project structure
+□ Used Grep to find similar implementations
+□ Used Read to understand key files and patterns
+□ Checked for completed related tasks
+□ Identified integration points with other components
+□ Found relevant documentation and comments
+□ Verified technical constraints and requirements
+
+Generate comprehensive execution context based on your exploration. The context should be specific to what you discovered, not generic.
+
+You MUST respond ONLY with a valid JSON object matching this structure:
 {
   "taskId": "{{ subtaskId }}",
-  "description": "Expanded description with full context",
-  "scope": "Clear definition of what's in scope and what's out of scope",
+  "description": "Detailed description based on your codebase exploration",
+  "scope": "Clear boundaries based on the project's architecture",
   "mandatoryReadings": [
-    {"title": "Document or resource title", "path": "/path/to/resource"}
+    {
+      "title": "Description of what to read",
+      "path": "Path discovered through exploration",
+      "reason": "Why this is important for the task"
+    }
   ],
   "architectureConstraints": [
-    "List of architectural requirements and constraints"
+    "Constraints discovered from the codebase and existing patterns"
   ],
   "relatedWork": [
-    {"instanceId": "worker-id", "status": "completed|in_progress", "summary": "What they're working on"}
+    {
+      "instanceId": "ID of related task or component",
+      "status": "Status discovered through exploration",
+      "summary": "How it relates to your subtask"
+    }
   ],
   "successCriteria": [
-    "Measurable criteria for successful completion"
-  ]
+    "Criteria based on project standards and patterns you discovered"
+  ],
+  "discoveredPatterns": {
+    "conventions": ["Naming and organizational patterns found"],
+    "technologies": ["Frameworks and libraries in use"],
+    "approaches": ["Architectural patterns and practices observed"]
+  },
+  "integrationPoints": [
+    {
+      "component": "Component or module name",
+      "interface": "How to integrate",
+      "considerations": "Important notes"
+    }
+  ],
+  "recommendedApproach": "Based on your exploration, the approach that best fits the existing codebase"
 }
 
-Be specific and actionable. Focus on practical guidance that helps the {{ specialist }} specialist complete their task efficiently.
+IMPORTANT: Your context must be based on actual exploration of the codebase. Use the tools available to discover the real structure and patterns, don't make assumptions. The quality of your context depends on how thoroughly you explore and understand the existing system.

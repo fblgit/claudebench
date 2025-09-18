@@ -73,7 +73,7 @@ export class SwarmResolveHandler {
 	@Instrumented(60) // Cache resolutions briefly
 	@Resilient({
 		rateLimit: { limit: 20, windowMs: 60000 }, // 20 resolutions per minute
-		timeout: 20000, // 20 seconds for LLM response
+		timeout: 300000, // 300 seconds (5 minutes) for LLM response
 		circuitBreaker: { 
 			threshold: 3, 
 			timeout: 60000,
@@ -225,15 +225,22 @@ export class SwarmResolveHandler {
 		
 		// Persist to database if needed
 		if (ctx.persist && ctx.prisma) {
-			await ctx.prisma.swarmConflict.update({
-				where: { id: input.conflictId },
-				data: {
-					status: "resolved",
-					resolution: resolution as any,
-					resolvedBy: ctx.instanceId,
-					resolvedAt: new Date()
-				}
-			});
+			try {
+				await ctx.prisma.swarmConflict.update({
+					where: { id: input.conflictId },
+					data: {
+						status: "resolved",
+						resolution: resolution as any,
+						resolvedBy: ctx.instanceId,
+						resolvedAt: new Date()
+					}
+				});
+				console.log(`[SwarmResolve] Persisted conflict resolution for ${input.conflictId}`);
+			} catch (error) {
+				// Log but don't fail the entire operation
+				console.error(`[SwarmResolve] Failed to persist to PostgreSQL:`, error);
+				// Continue with Redis storage which already succeeded
+			}
 		}
 		
 		// Publish resolution event

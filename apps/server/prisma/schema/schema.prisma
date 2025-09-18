@@ -59,6 +59,24 @@ enum InstanceStatus {
 
 // SWARM INTELLIGENCE MODELS
 
+model SwarmProject {
+  id              String   @id // Format: proj-{timestamp}-{random}
+  description     String   @db.Text
+  priority        Int      @default(75)
+  constraints     String[] // Array of constraints
+  metadata        Json?    // Custom metadata
+  status          ProjectStatus @default(queued)
+  jobId           String?  // BullMQ job ID
+  createdBy       String   // Instance ID that created
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  completedAt     DateTime?
+  
+  @@index([status])
+  @@index([createdAt])
+  @@index([createdBy])
+}
+
 model SwarmDecomposition {
   id              String   @id // Same as parent task ID
   taskId          String   @unique
@@ -67,6 +85,7 @@ model SwarmDecomposition {
   strategy        ExecutionStrategy
   totalComplexity Int
   reasoning       String
+  architecturalConsiderations String[] @default([]) // Key architectural decisions
   progress        Int      @default(0) // Percentage complete
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -88,6 +107,8 @@ model SwarmSubtask {
   assignedTo      String?  // Instance ID
   dependencies    String[] // Array of subtask IDs
   context         Json     // Files, patterns, constraints
+  rationale       String?  @db.Text // Why this subtask is necessary
+  generatedContext Json?   // Enhanced context from specialist exploration
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   completedAt     DateTime?
@@ -203,5 +224,12 @@ enum IntegrationStatus {
   ready_for_integration
   requires_fixes
   integrated
+  failed
+}
+
+enum ProjectStatus {
+  queued
+  processing
+  completed
   failed
 }

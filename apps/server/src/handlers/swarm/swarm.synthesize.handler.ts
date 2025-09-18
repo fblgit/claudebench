@@ -77,7 +77,7 @@ export class SwarmSynthesizeHandler {
 	@Instrumented(0) // No caching for synthesis
 	@Resilient({
 		rateLimit: { limit: 10, windowMs: 60000 }, // 10 syntheses per minute
-		timeout: 30000, // 30 seconds for LLM response
+		timeout: 300000, // 300 seconds (5 minutes) for LLM response
 		circuitBreaker: { 
 			threshold: 3, 
 			timeout: 60000,
@@ -172,39 +172,46 @@ export class SwarmSynthesizeHandler {
 		
 		// Persist integration to database
 		if (ctx.persist && ctx.prisma) {
-			await ctx.prisma.swarmIntegration.create({
-				data: {
-					taskId: input.taskId,
-					status: integration.status === "integrated" ? "integrated" : 
-					        integration.status === "requires_fixes" ? "requires_fixes" : 
-					        "ready_for_integration",
-					steps: integration.integrationSteps,
-					issues: integration.potentialIssues,
-					mergedCode: integration.mergedCode,
-					createdAt: new Date(),
-					completedAt: integration.status === "integrated" ? new Date() : null
-				}
-			});
-			
-			// Update decomposition progress
-			const progress = integration.status === "integrated" ? 100 : 90;
-			await ctx.prisma.swarmDecomposition.update({
-				where: { id: input.taskId },
-				data: {
-					progress: progress,
-					updatedAt: new Date()
-				}
-			});
-			
-			// If fully integrated, update all subtasks to completed
-			if (integration.status === "integrated") {
-				await ctx.prisma.swarmSubtask.updateMany({
-					where: { parentId: input.taskId },
-					data: { 
-						status: "completed",
-						completedAt: new Date()
+			try {
+				await ctx.prisma.swarmIntegration.create({
+					data: {
+						taskId: input.taskId,
+						status: integration.status === "integrated" ? "integrated" : 
+						        integration.status === "requires_fixes" ? "requires_fixes" : 
+						        "ready_for_integration",
+						steps: integration.integrationSteps,
+						issues: integration.potentialIssues,
+						mergedCode: integration.mergedCode,
+						createdAt: new Date(),
+						completedAt: integration.status === "integrated" ? new Date() : null
 					}
 				});
+				
+				// Update decomposition progress
+				const progress = integration.status === "integrated" ? 100 : 90;
+				await ctx.prisma.swarmDecomposition.update({
+					where: { id: input.taskId },
+					data: {
+						progress: progress,
+						updatedAt: new Date()
+					}
+				});
+				
+				// If fully integrated, update all subtasks to completed
+				if (integration.status === "integrated") {
+					await ctx.prisma.swarmSubtask.updateMany({
+						where: { parentId: input.taskId },
+						data: { 
+							status: "completed",
+							completedAt: new Date()
+						}
+					});
+				}
+				console.log(`[SwarmSynthesize] Persisted integration for task ${input.taskId} with status ${integration.status}`);
+			} catch (error) {
+				// Log but don't fail the entire operation
+				console.error(`[SwarmSynthesize] Failed to persist to PostgreSQL:`, error);
+				// Continue with Redis storage which already succeeded
 			}
 		}
 		

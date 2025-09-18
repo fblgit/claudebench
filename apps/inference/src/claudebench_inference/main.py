@@ -9,10 +9,12 @@ from datetime import datetime
 from typing import Dict, Any
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 import uvicorn
+import asyncio
 
 from .models import (
     DecompositionRequest, DecompositionResponse,
@@ -35,6 +37,34 @@ logger = logging.getLogger(__name__)
 sampling_engine: SamplingEngine = None
 prompt_builder: PromptBuilder = None
 start_time: float = None
+
+# Configuration
+REQUEST_TIMEOUT_SECONDS = 300  # 5 minutes for LLM operations
+
+
+class TimeoutMiddleware(BaseHTTPMiddleware):
+    """Middleware to enforce request timeout"""
+    
+    def __init__(self, app, timeout: int = REQUEST_TIMEOUT_SECONDS):
+        super().__init__(app)
+        self.timeout = timeout
+    
+    async def dispatch(self, request: Request, call_next):
+        try:
+            # Set timeout for the request
+            return await asyncio.wait_for(
+                call_next(request),
+                timeout=self.timeout
+            )
+        except asyncio.TimeoutError:
+            logger.error(f"Request timeout after {self.timeout} seconds: {request.url.path}")
+            return JSONResponse(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                content={
+                    "detail": f"Request timeout after {self.timeout} seconds. LLM operations may take time, please retry.",
+                    "timeout": self.timeout
+                }
+            )
 
 
 @asynccontextmanager
@@ -62,6 +92,9 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan
 )
+
+# Add timeout middleware (300 seconds for LLM operations)
+app.add_middleware(TimeoutMiddleware, timeout=REQUEST_TIMEOUT_SECONDS)
 
 # Configure CORS
 app.add_middleware(
@@ -104,7 +137,16 @@ async def health_check():
         version="0.1.0",
         timestamp=datetime.utcnow().isoformat(),
         uptime=uptime,
-        requests_processed=stats.get("total_requests", 0)
+        requests_processed=stats.get("total_requests", 0),
+        config={
+            "request_timeout": REQUEST_TIMEOUT_SECONDS,
+            "endpoints": {
+                "/api/v1/decompose": "Task decomposition (300s timeout)",
+                "/api/v1/context": "Context generation (300s timeout)",
+                "/api/v1/conflict": "Conflict resolution (300s timeout)",
+                "/api/v1/synthesize": "Progress synthesis (300s timeout)"
+            }
+        }
     )
 
 
@@ -133,6 +175,34 @@ async def decompose_task(request: DecompositionRequest):
         # Validate and return response
         response = DecompositionResponse(**result)
         logger.info(f"Decomposed into {len(response.subtasks)} subtasks")
+        
+        # Log detailed decomposition results
+        logger.info("=" * 80)
+        logger.info("DECOMPOSITION RESULTS:")
+        logger.info(f"Execution Strategy: {response.executionStrategy}")
+        logger.info(f"Total Complexity: {response.totalComplexity}")
+        logger.info(f"Reasoning: {response.reasoning}")
+        
+        if response.architecturalConsiderations:
+            logger.info("-" * 40)
+            logger.info("Architectural Considerations:")
+            for consideration in response.architecturalConsiderations[:3]:
+                logger.info(f"  • {consideration}")
+        
+        logger.info("-" * 40)
+        for i, subtask in enumerate(response.subtasks, 1):
+            logger.info(f"Subtask {i} ({subtask.id}):")
+            logger.info(f"  Specialist: {subtask.specialist}")
+            logger.info(f"  Description: {subtask.description}")
+            logger.info(f"  Complexity: {subtask.complexity}")
+            logger.info(f"  Est. Minutes: {subtask.estimatedMinutes}")
+            logger.info(f"  Dependencies: {subtask.dependencies}")
+            if subtask.rationale:
+                logger.info(f"  Rationale: {subtask.rationale[:100]}...")
+            if subtask.context:
+                logger.info(f"  Context hints: {len(subtask.context.files)} files, {len(subtask.context.patterns)} patterns")
+        logger.info("=" * 80)
+        
         return response
         
     except ValueError as e:
@@ -168,6 +238,52 @@ async def generate_context(request: ContextRequest):
         
         # Validate and return response
         response = SpecialistContextResponse(**result)
+        
+        # Log detailed context generation results
+        logger.info("=" * 80)
+        logger.info(f"CONTEXT GENERATED FOR {request.specialist.upper()} SPECIALIST:")
+        logger.info(f"Task ID: {response.taskId}")
+        logger.info(f"Description: {response.description}")
+        logger.info(f"Scope: {response.scope}")
+        logger.info("-" * 40)
+        logger.info("Mandatory Readings:")
+        for reading in response.mandatoryReadings[:3]:  # Show first 3
+            logger.info(f"  - {reading.title} ({reading.path})")
+            logger.info(f"    Reason: {reading.reason}")
+        if len(response.mandatoryReadings) > 3:
+            logger.info(f"  ... and {len(response.mandatoryReadings) - 3} more")
+        logger.info("-" * 40)
+        
+        if response.discoveredPatterns:
+            logger.info("Discovered Patterns:")
+            if response.discoveredPatterns.conventions:
+                logger.info(f"  Conventions: {', '.join(response.discoveredPatterns.conventions[:3])}")
+            if response.discoveredPatterns.technologies:
+                logger.info(f"  Technologies: {', '.join(response.discoveredPatterns.technologies[:3])}")
+            if response.discoveredPatterns.approaches:
+                logger.info(f"  Approaches: {', '.join(response.discoveredPatterns.approaches[:3])}")
+            logger.info("-" * 40)
+        
+        if response.integrationPoints:
+            logger.info("Integration Points:")
+            for point in response.integrationPoints[:2]:  # Show first 2
+                logger.info(f"  - {point.component}: {point.interface}")
+            if len(response.integrationPoints) > 2:
+                logger.info(f"  ... and {len(response.integrationPoints) - 2} more")
+            logger.info("-" * 40)
+        
+        logger.info("Success Criteria:")
+        for criteria in response.successCriteria[:3]:  # Show first 3
+            logger.info(f"  ✓ {criteria}")
+        if len(response.successCriteria) > 3:
+            logger.info(f"  ... and {len(response.successCriteria) - 3} more")
+        
+        if response.recommendedApproach:
+            logger.info("-" * 40)
+            logger.info(f"Recommended Approach: {response.recommendedApproach[:200]}...")
+        
+        logger.info("=" * 80)
+        
         return response
         
     except ValueError as e:
@@ -268,13 +384,16 @@ def main():
     port = int(os.environ.get("INFERENCE_PORT", "8000"))
     reload = os.environ.get("INFERENCE_RELOAD", "false").lower() == "true"
     
-    logger.info(f"Starting server on {host}:{port}")
+    logger.info(f"Starting server on {host}:{port} with {REQUEST_TIMEOUT_SECONDS}s timeout")
     uvicorn.run(
         "claudebench_inference.main:app",
         host=host,
         port=port,
         reload=reload,
-        log_level="info"
+        log_level="info",
+        timeout_keep_alive=REQUEST_TIMEOUT_SECONDS,  # Keep connections alive for long requests
+        timeout_graceful_shutdown=30,  # 30s graceful shutdown
+        limit_max_requests=1000  # Restart workers after 1000 requests to prevent memory issues
     )
 
 

@@ -123,6 +123,7 @@ class Subtask(BaseModel):
     complexity: int = Field(ge=1, le=10)
     context: SubtaskContext
     estimatedMinutes: int = Field(gt=0)
+    rationale: Optional[str] = None  # Why this subtask is necessary
 
 
 class DecompositionResponse(BaseModel):
@@ -131,12 +132,14 @@ class DecompositionResponse(BaseModel):
     executionStrategy: ExecutionStrategy
     totalComplexity: int = Field(ge=0)
     reasoning: str
+    architecturalConsiderations: Optional[List[str]] = Field(default_factory=list)  # Key architectural decisions
 
 
 class MandatoryReading(BaseModel):
     """A required reading for context"""
     title: str
     path: str
+    reason: str  # Added: why this is important
 
 
 class RelatedWork(BaseModel):
@@ -144,6 +147,20 @@ class RelatedWork(BaseModel):
     instanceId: str
     status: str
     summary: str
+
+
+class DiscoveredPatterns(BaseModel):
+    """Patterns discovered during exploration"""
+    conventions: List[str] = Field(default_factory=list)
+    technologies: List[str] = Field(default_factory=list)
+    approaches: List[str] = Field(default_factory=list)
+
+
+class IntegrationPoint(BaseModel):
+    """Integration point with other components"""
+    component: str
+    interface: str
+    considerations: str
 
 
 class SpecialistContextResponse(BaseModel):
@@ -155,6 +172,9 @@ class SpecialistContextResponse(BaseModel):
     architectureConstraints: List[str] = Field(default_factory=list)
     relatedWork: List[RelatedWork] = Field(default_factory=list)
     successCriteria: List[str] = Field(default_factory=list)
+    discoveredPatterns: Optional[DiscoveredPatterns] = None
+    integrationPoints: List[IntegrationPoint] = Field(default_factory=list)
+    recommendedApproach: Optional[str] = None
 
 
 class ResolutionResponse(BaseModel):
@@ -184,3 +204,4 @@ class HealthStatus(BaseModel):
     timestamp: str
     uptime: float
     requests_processed: int = 0
+    config: Optional[Dict[str, Any]] = None  # Configuration info including timeouts

@@ -61,7 +61,7 @@ export class SwarmContextHandler {
 	@Instrumented(300) // Cache context for 5 minutes
 	@Resilient({
 		rateLimit: { limit: 50, windowMs: 60000 }, // 50 contexts per minute
-		timeout: 15000, // 15 seconds for LLM response
+		timeout: 300000, // 300 seconds (5 minutes) for LLM response
 		circuitBreaker: { 
 			threshold: 5, 
 			timeout: 30000,
@@ -136,9 +136,27 @@ export class SwarmContextHandler {
 				// Generate the prompt for the specialist
 				const prompt = this.generateSpecialistPrompt(specialistContext);
 				
+				// Map the context to match the expected schema
+				const mappedContext = {
+					taskId: specialistContext.taskId,
+					description: specialistContext.description,
+					scope: specialistContext.scope,
+					mandatoryReadings: (specialistContext.mandatoryReadings || []).map(reading => ({
+						title: reading.title,
+						path: reading.path,
+						reason: (reading as any).reason || "Required for task completion"
+					})),
+					architectureConstraints: specialistContext.architectureConstraints || [],
+					relatedWork: specialistContext.relatedWork || [],
+					successCriteria: specialistContext.successCriteria || [],
+					discoveredPatterns: (specialistContext as any).discoveredPatterns,
+					integrationPoints: (specialistContext as any).integrationPoints,
+					recommendedApproach: (specialistContext as any).recommendedApproach
+				};
+				
 				return {
 					subtaskId: input.subtaskId,
-					context: specialistContext,
+					context: mappedContext,
 					prompt
 				};
 			}
@@ -177,6 +195,24 @@ export class SwarmContextHandler {
 		// Generate the prompt for the specialist
 		const prompt = this.generateSpecialistPrompt(specialistContext);
 		
+		// Map the context to match the expected schema
+		const mappedContext = {
+			taskId: specialistContext.taskId,
+			description: specialistContext.description,
+			scope: specialistContext.scope,
+			mandatoryReadings: (specialistContext.mandatoryReadings || []).map(reading => ({
+				title: reading.title,
+				path: reading.path,
+				reason: (reading as any).reason || "Required for task completion"
+			})),
+			architectureConstraints: specialistContext.architectureConstraints || [],
+			relatedWork: specialistContext.relatedWork || [],
+			successCriteria: specialistContext.successCriteria || [],
+			discoveredPatterns: (specialistContext as any).discoveredPatterns,
+			integrationPoints: (specialistContext as any).integrationPoints,
+			recommendedApproach: (specialistContext as any).recommendedApproach
+		};
+		
 		// Publish context generated event
 		await ctx.publish({
 			type: "swarm.context.generated",
@@ -193,7 +229,7 @@ export class SwarmContextHandler {
 		
 		return {
 			subtaskId: input.subtaskId,
-			context: specialistContext,
+			context: mappedContext,
 			prompt
 		};
 	}

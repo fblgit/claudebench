@@ -47,7 +47,7 @@ export class SwarmDecomposeHandler {
 	@Instrumented(0) // No caching for decomposition
 	@Resilient({
 		rateLimit: { limit: 10, windowMs: 60000 }, // 10 decompositions per minute
-		timeout: 30000, // 30 seconds for LLM response
+		timeout: 300000, // 300 seconds (5 minutes) for LLM response
 		circuitBreaker: { 
 			threshold: 3, 
 			timeout: 60000,
@@ -105,30 +105,59 @@ export class SwarmDecomposeHandler {
 		
 		// Persist decomposition to PostgreSQL using Prisma
 		if (ctx.persist && ctx.prisma) {
-			// Create the main decomposition record
-			await ctx.prisma.swarmDecomposition.create({
-				data: {
-					id: input.taskId,
-					taskId: input.taskId,
-					taskText: input.task,
-					subtaskCount: result.subtaskCount,
-					strategy: decomposition.executionStrategy,
-					totalComplexity: decomposition.totalComplexity,
-					reasoning: decomposition.reasoning,
-					subtasks: {
-						create: decomposition.subtasks.map(subtask => ({
-							id: subtask.id,
-							description: subtask.description,
-							specialist: subtask.specialist,
-							complexity: subtask.complexity,
-							estimatedMinutes: subtask.estimatedMinutes,
-							dependencies: subtask.dependencies,
-							context: subtask.context,
-							status: "pending"
-						}))
-					}
+			try {
+				// First check if decomposition already exists
+				const existing = await ctx.prisma.swarmDecomposition.findUnique({
+					where: { id: input.taskId },
+					include: { subtasks: true }
+				});
+				
+				if (existing) {
+					// Update existing record
+					await ctx.prisma.swarmDecomposition.update({
+						where: { id: input.taskId },
+						data: {
+							taskText: input.task,
+							subtaskCount: result.subtaskCount,
+							strategy: decomposition.executionStrategy,
+							totalComplexity: decomposition.totalComplexity,
+							reasoning: decomposition.reasoning,
+							updatedAt: new Date(),
+						}
+					});
+					console.log(`[SwarmDecompose] Updated existing decomposition for task ${input.taskId}`);
+				} else {
+					// Create new record with subtasks
+					await ctx.prisma.swarmDecomposition.create({
+						data: {
+							id: input.taskId,
+							taskId: input.taskId,
+							taskText: input.task,
+							subtaskCount: result.subtaskCount,
+							strategy: decomposition.executionStrategy,
+							totalComplexity: decomposition.totalComplexity,
+							reasoning: decomposition.reasoning,
+							subtasks: {
+								create: decomposition.subtasks.map(subtask => ({
+									id: subtask.id,
+									description: subtask.description,
+									specialist: subtask.specialist,
+									complexity: subtask.complexity,
+									estimatedMinutes: subtask.estimatedMinutes,
+									dependencies: subtask.dependencies,
+									context: subtask.context,
+									status: "pending"
+								}))
+							}
+						}
+					});
+					console.log(`[SwarmDecompose] Created new decomposition for task ${input.taskId}`);
 				}
-			});
+			} catch (error) {
+				// Log but don't fail the entire operation
+				console.error(`[SwarmDecompose] Failed to persist to PostgreSQL:`, error);
+				// Continue with Redis storage which already succeeded
+			}
 		}
 		
 		// Trigger assignment for ready subtasks (those without dependencies)

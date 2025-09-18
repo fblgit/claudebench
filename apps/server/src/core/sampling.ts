@@ -22,7 +22,7 @@ export interface Decomposition {
 	subtasks: Array<{
 		id: string;
 		description: string;
-		specialist: "frontend" | "backend" | "testing" | "docs";
+		specialist: "frontend" | "backend" | "testing" | "docs" | "general";
 		dependencies: string[];
 		complexity: number;
 		context: {
@@ -214,7 +214,7 @@ export class ClaudeSamplingService {
 			subtasks: z.array(z.object({
 				id: z.string(),
 				description: z.string(),
-				specialist: z.enum(["frontend", "backend", "testing", "docs"]),
+				specialist: z.enum(["frontend", "backend", "testing", "docs", "general"]),
 				dependencies: z.array(z.string()),
 				complexity: z.number().min(1).max(10),
 				context: z.object({

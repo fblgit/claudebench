@@ -31,10 +31,12 @@ export const swarmDecomposeOutput = z.object({
 				constraints: z.array(z.string()),
 			}),
 			estimatedMinutes: z.number(),
+			rationale: z.string().optional(), // Why this subtask is necessary
 		})),
 		executionStrategy: z.enum(["parallel", "sequential", "mixed"]),
 		totalComplexity: z.number(),
 		reasoning: z.string(),
+		architecturalConsiderations: z.array(z.string()).optional(), // Key architectural decisions
 	}),
 });
 
@@ -59,6 +61,7 @@ export const swarmContextOutput = z.object({
 		mandatoryReadings: z.array(z.object({
 			title: z.string(),
 			path: z.string(),
+			reason: z.string(), // Why this reading is important
 		})),
 		architectureConstraints: z.array(z.string()),
 		relatedWork: z.array(z.object({
@@ -67,6 +70,17 @@ export const swarmContextOutput = z.object({
 			summary: z.string(),
 		})),
 		successCriteria: z.array(z.string()),
+		discoveredPatterns: z.object({
+			conventions: z.array(z.string()),
+			technologies: z.array(z.string()),
+			approaches: z.array(z.string()),
+		}).optional(),
+		integrationPoints: z.array(z.object({
+			component: z.string(),
+			interface: z.string(),
+			considerations: z.string(),
+		})).optional(),
+		recommendedApproach: z.string().optional(),
 	}),
 	prompt: z.string(), // The generated prompt for the specialist
 });
@@ -155,3 +169,25 @@ export const swarmAssignOutput = z.object({
 
 export type SwarmAssignInput = z.infer<typeof swarmAssignInput>;
 export type SwarmAssignOutput = z.infer<typeof swarmAssignOutput>;
+
+/**
+ * Project Creation (Queue-based)
+ */
+export const swarmCreateProjectInput = z.object({
+	project: z.string().min(1).max(2000),
+	priority: z.number().int().min(0).max(100).default(75),
+	constraints: z.array(z.string()).optional(),
+	metadata: z.record(z.any()).optional(),
+});
+
+export const swarmCreateProjectOutput = z.object({
+	jobId: z.string(),
+	projectId: z.string(),
+	status: z.enum(["queued", "processing", "completed", "failed"]),
+	queuePosition: z.number(),
+	estimatedMinutes: z.number().optional(),
+	message: z.string(),
+});
+
+export type SwarmCreateProjectInput = z.infer<typeof swarmCreateProjectInput>;
+export type SwarmCreateProjectOutput = z.infer<typeof swarmCreateProjectOutput>;

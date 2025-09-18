@@ -12,6 +12,7 @@ const connection = {
 // Define job queues
 export const systemQueue = new Queue("system-jobs", { connection });
 export const monitoringQueue = new Queue("monitoring-jobs", { connection });
+export const swarmQueue = new Queue("swarm-jobs", { connection });
 
 // Define job types
 export type SystemJob = 
@@ -24,6 +25,18 @@ export type MonitoringJob =
 	| { type: "health-check" }
 	| { type: "failure-detection" }
 	| { type: "redistribute-tasks" };
+
+export type SwarmJob =
+	| { 
+		type: "create-project",
+		projectId: string,
+		project: string,
+		priority: number,
+		constraints?: string[],
+		metadata?: Record<string, any>,
+		sessionId?: string,
+		instanceId?: string
+	};
 
 // Create workers
 export const systemWorker = new Worker<SystemJob>(
@@ -185,6 +198,259 @@ export const monitoringWorker = new Worker<MonitoringJob>(
 	{ connection }
 );
 
+// Create swarm worker
+export const swarmWorker = new Worker<SwarmJob>(
+	"swarm-jobs",
+	async (job) => {
+		console.log(`[SwarmWorker] Processing ${job.data.type} for project ${job.data.projectId}`);
+		const { eventBus } = await import("./bus");
+		const { createContext } = await import("./context");
+		const { registry } = await import("./registry");
+		
+		switch (job.data.type) {
+			case "create-project": {
+				const { projectId, project, priority, constraints, metadata, sessionId, instanceId } = job.data;
+				const redis = getRedis();
+				
+				try {
+					// Emit project started event
+					await eventBus.publish({
+						type: "swarm.project.started",
+						payload: {
+							projectId,
+							project,
+							priority,
+							jobId: job.id
+						},
+						metadata: { sessionId, instanceId }
+					});
+					
+					// Step 1: Create main task
+					// Generate unique task ID to avoid collisions on retries
+					const taskId = `t-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+					const ctx = await createContext("swarm.create_project", projectId, true, { 
+						sessionId, 
+						clientId: sessionId,
+						instanceId 
+					});
+					
+					// Create the main task
+					const taskResult = await registry.executeHandler("task.create", {
+						text: project,
+						priority,
+						metadata: {
+							...metadata,
+							projectId,
+							taskId,
+							type: "swarm_project"
+						}
+					}, sessionId || instanceId);
+					
+					// Emit decomposing event
+					await eventBus.publish({
+						type: "swarm.project.decomposing",
+						payload: {
+							projectId,
+							taskId,
+							message: "Breaking down project into subtasks..."
+						},
+						metadata: { sessionId, instanceId }
+					});
+					
+					// Step 2: Decompose the project
+					let decomposition;
+					try {
+						decomposition = await registry.executeHandler("swarm.decompose", {
+							taskId,
+							task: project,
+							priority,
+							constraints
+						}, sessionId || instanceId);
+						
+						console.log(`[SwarmWorker] Decomposition result:`, JSON.stringify({
+							taskId,
+							subtaskCount: decomposition?.subtaskCount,
+							hasDecomposition: !!decomposition?.decomposition,
+							subtasks: decomposition?.decomposition?.subtasks?.length
+						}));
+					} catch (error) {
+						console.error(`[SwarmWorker] Decomposition failed:`, error);
+						throw new Error(`Decomposition failed: ${error instanceof Error ? error.message : String(error)}`);
+					}
+					
+					if (!decomposition || !decomposition.decomposition || decomposition.subtaskCount === 0) {
+						console.error(`[SwarmWorker] Invalid decomposition result:`, decomposition);
+						throw new Error(`Failed to decompose project: ${!decomposition ? 'no result' : 'no subtasks generated'}`);
+					}
+					
+					// Emit tasks created event
+					await eventBus.publish({
+						type: "swarm.project.tasks_created",
+						payload: {
+							projectId,
+							taskId,
+							subtaskCount: decomposition.subtaskCount,
+							message: `Created ${decomposition.subtaskCount} subtasks`
+						},
+						metadata: { sessionId, instanceId }
+					});
+					
+					// Step 3: Create tasks for each subtask and assign to specialists
+					let assignedCount = 0;
+					const createdSubtaskIds = [];
+					
+					for (const subtask of decomposition.decomposition.subtasks) {
+						try {
+							// First create the actual task for this subtask
+							const subtaskResult = await registry.executeHandler("task.create", {
+								text: subtask.description,
+								priority: Math.max(priority - 10, 0), // Slightly lower priority than parent
+								metadata: {
+									type: "swarm_subtask",
+									parentTaskId: taskId,
+									projectId,
+									subtaskId: subtask.id,
+									specialist: subtask.specialist,
+									complexity: subtask.complexity,
+									estimatedMinutes: subtask.estimatedMinutes,
+									dependencies: subtask.dependencies,
+									context: subtask.context
+								}
+							}, sessionId || instanceId);
+							
+							createdSubtaskIds.push(subtaskResult.id);
+							console.log(`[SwarmWorker] Created task ${subtaskResult.id} for subtask ${subtask.id}`);
+							
+							// Then assign it to a specialist
+							await registry.executeHandler("swarm.assign", {
+								subtaskId: subtask.id,
+								specialist: subtask.specialist,
+								requiredCapabilities: subtask.context.patterns
+							}, sessionId || instanceId);
+							assignedCount++;
+							
+							// Emit progress
+							await eventBus.publish({
+								type: "swarm.project.progress",
+								payload: {
+									projectId,
+									message: `Created and assigned subtask ${subtask.id} to ${subtask.specialist} specialist`,
+									progress: Math.round((assignedCount / decomposition.subtaskCount) * 30) // 0-30% for assignment
+								},
+								metadata: { sessionId, instanceId }
+							});
+						} catch (error) {
+							console.error(`Failed to create/assign subtask ${subtask.id}:`, error);
+						}
+					}
+					
+					// Step 4: Generate contexts for each subtask
+					await eventBus.publish({
+						type: "swarm.project.context_generating",
+						payload: {
+							projectId,
+							message: "Generating specialized contexts for each subtask..."
+						},
+						metadata: { sessionId, instanceId }
+					});
+					
+					let contextCount = 0;
+					for (let i = 0; i < decomposition.decomposition.subtasks.length; i++) {
+						const subtask = decomposition.decomposition.subtasks[i];
+						try {
+							// Generate context for the subtask
+							const contextResult = await registry.executeHandler("swarm.context", {
+								subtaskId: subtask.id,
+								specialist: subtask.specialist,
+								parentTaskId: taskId
+							}, sessionId || instanceId);
+							
+							// Update the corresponding task with the generated context
+							if (createdSubtaskIds[i]) {
+								// First get the current task to preserve existing metadata
+								const taskKey = `cb:task:${createdSubtaskIds[i]}`;
+								const currentTaskData = await redis.pub.hgetall(taskKey);
+								const existingMetadata = currentTaskData.metadata ? JSON.parse(currentTaskData.metadata) : {};
+								
+								await registry.executeHandler("task.update", {
+									id: createdSubtaskIds[i],
+									updates: {
+										metadata: {
+											...existingMetadata,  // Preserve all existing metadata
+											generatedContext: contextResult.context,
+											contextPrompt: contextResult.prompt,
+											contextGeneratedAt: new Date().toISOString(),
+											contextGeneratedBy: instanceId
+										}
+									}
+								}, sessionId || instanceId);
+								
+								console.log(`[SwarmWorker] Updated task ${createdSubtaskIds[i]} with context for subtask ${subtask.id}`);
+							}
+							
+							contextCount++;
+							
+							// Emit progress
+							await eventBus.publish({
+								type: "swarm.project.progress",
+								payload: {
+									projectId,
+									message: `Generated context for ${subtask.specialist} specialist`,
+									progress: 30 + Math.round((contextCount / decomposition.subtaskCount) * 40) // 30-70% for context
+								},
+								metadata: { sessionId, instanceId }
+							});
+						} catch (error) {
+							console.error(`Failed to generate context for ${subtask.id}:`, error);
+						}
+					}
+					
+					// Step 5: Mark project as ready for execution
+					await eventBus.publish({
+						type: "swarm.project.completed",
+						payload: {
+							projectId,
+							taskId,
+							subtaskCount: decomposition.subtaskCount,
+							assignedCount,
+							contextCount,
+							message: "Project successfully prepared for execution",
+							progress: 100
+						},
+						metadata: { sessionId, instanceId }
+					});
+					
+					return {
+						projectId,
+						taskId,
+						status: "completed",
+						subtaskCount: decomposition.subtaskCount,
+						assignedCount,
+						contextCount
+					};
+					
+				} catch (error) {
+					console.error(`[SwarmWorker] Project creation failed:`, error);
+					
+					// Emit failure event
+					await eventBus.publish({
+						type: "swarm.project.failed",
+						payload: {
+							projectId,
+							error: error instanceof Error ? error.message : String(error),
+							jobId: job.id
+						},
+						metadata: { sessionId, instanceId }
+					});
+					
+					throw error;
+				}
+			}
+		}
+	},
+	{ connection }
+);
+
 // Scheduler for recurring jobs
 export class JobScheduler {
 	private started = false;
@@ -279,6 +545,7 @@ export class JobScheduler {
 		
 		await systemWorker.close();
 		await monitoringWorker.close();
+		await swarmWorker.close();
 		
 		this.started = false;
 		console.log("[JobScheduler] Job scheduler stopped");
