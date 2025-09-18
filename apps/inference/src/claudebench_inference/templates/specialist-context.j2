@@ -1,0 +1,42 @@
+You are generating execution context for a {{ specialist }} specialist.
+
+SUBTASK DETAILS:
+ID: {{ subtaskId }}
+Description: {{ description }}
+{% if dependencies %}
+Dependencies: {{ dependencies | join(', ') }}
+{% endif %}
+
+{% if constraints %}
+CONSTRAINTS:
+{% for constraint in constraints %}
+  - {{ constraint }}
+{% endfor %}
+{% endif %}
+
+Generate comprehensive execution context to help the specialist succeed. Consider:
+1. What specific knowledge or documentation they need
+2. Architectural constraints they must follow
+3. Related work from other specialists they should be aware of
+4. Clear success criteria
+
+You MUST respond ONLY with a valid JSON object, no other text. The JSON must match this exact structure:
+{
+  "taskId": "{{ subtaskId }}",
+  "description": "Expanded description with full context",
+  "scope": "Clear definition of what's in scope and what's out of scope",
+  "mandatoryReadings": [
+    {"title": "Document or resource title", "path": "/path/to/resource"}
+  ],
+  "architectureConstraints": [
+    "List of architectural requirements and constraints"
+  ],
+  "relatedWork": [
+    {"instanceId": "worker-id", "status": "completed|in_progress", "summary": "What they're working on"}
+  ],
+  "successCriteria": [
+    "Measurable criteria for successful completion"
+  ]
+}
+
+Be specific and actionable. Focus on practical guidance that helps the {{ specialist }} specialist complete their task efficiently.

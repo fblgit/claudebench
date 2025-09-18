@@ -1,0 +1,15 @@
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+pydantic>=2.0.0
+claude-code-sdk>=0.0.23
+python-dotenv>=1.0.0
+httpx>=0.25.0
+asyncio>=3.4.3
+
+[dev]
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+black>=23.7.0
+ruff>=0.0.280
+mypy>=1.4.0

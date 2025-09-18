@@ -1,0 +1,14 @@
+{
+  "sessionId": "test-session-002",
+  "subtaskId": "st-2",
+  "specialist": "backend",
+  "subtask": {
+    "description": "Set up WebSocket server with Socket.io for real-time communication",
+    "dependencies": [],
+    "context": {
+      "files": ["src/socket/server.ts", "src/socket/handlers.ts"],
+      "patterns": ["event-driven", "pub/sub"],
+      "constraints": ["Support 1000+ connections", "Handle disconnections gracefully"]
+    }
+  }
+}

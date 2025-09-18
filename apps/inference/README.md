@@ -1,0 +1,230 @@
+# ClaudeBench Inference Server
+
+A FastAPI-based inference server that provides LLM sampling capabilities for ClaudeBench swarm coordination using the claude-code-sdk.
+
+## Overview
+
+The inference server acts as a bridge between ClaudeBench's TypeScript backend and Claude's sampling capabilities. It provides REST API endpoints for:
+
+- **Task Decomposition**: Breaking down complex tasks into subtasks for specialists
+- **Context Generation**: Creating execution context for specialist subtasks
+- **Conflict Resolution**: Resolving conflicts between competing solutions
+- **Progress Synthesis**: Integrating completed subtasks into cohesive solutions
+
+## Installation
+
+### Using pip
+
+```bash
+cd apps/inference
+pip install -r requirements.txt
+```
+
+### Using pyproject.toml (development)
+
+```bash
+cd apps/inference
+pip install -e ".[dev]"
+```
+
+## Configuration
+
+The server can be configured using environment variables:
+
+- `INFERENCE_HOST`: Server host (default: `0.0.0.0`)
+- `INFERENCE_PORT`: Server port (default: `8000`)
+- `INFERENCE_RELOAD`: Enable auto-reload for development (default: `false`)
+- `CORS_ORIGINS`: Comma-separated list of allowed CORS origins (default: `http://localhost:3000,http://localhost:3001`)
+
+## Running the Server
+
+### Development Mode
+
+```bash
+cd apps/inference
+python -m claudebench_inference.main
+```
+
+Or with auto-reload:
+
+```bash
+INFERENCE_RELOAD=true python -m claudebench_inference.main
+```
+
+### Production Mode
+
+```bash
+uvicorn claudebench_inference.main:app --host 0.0.0.0 --port 8000
+```
+
+## API Endpoints
+
+### Health Check
+
+```
+GET /health
+```
+
+Returns server health status and basic metrics.
+
+### Task Decomposition
+
+```
+POST /api/v1/decompose
+```
+
+Decomposes a complex task into subtasks for parallel specialist execution.
+
+**Request Body:**
+```json
+{
+  "sessionId": "session-123",
+  "task": "Implement user authentication system",
+  "context": {
+    "specialists": [...],
+    "priority": 80,
+    "constraints": ["Use JWT tokens"]
+  }
+}
+```
+
+### Context Generation
+
+```
+POST /api/v1/context
+```
+
+Generates execution context for a specialist subtask.
+
+**Request Body:**
+```json
+{
+  "sessionId": "session-123",
+  "subtaskId": "st-1",
+  "specialist": "backend",
+  "subtask": {...}
+}
+```
+
+### Conflict Resolution
+
+```
+POST /api/v1/resolve
+```
+
+Resolves conflicts between competing specialist solutions.
+
+**Request Body:**
+```json
+{
+  "sessionId": "session-123",
+  "solutions": [...],
+  "context": {
+    "projectType": "React Application",
+    "requirements": [...],
+    "constraints": [...]
+  }
+}
+```
+
+### Progress Synthesis
+
+```
+POST /api/v1/synthesize
+```
+
+Synthesizes completed subtasks into an integrated solution.
+
+**Request Body:**
+```json
+{
+  "sessionId": "session-123",
+  "completedSubtasks": [...],
+  "parentTask": "Original task description"
+}
+```
+
+### Statistics
+
+```
+GET /api/v1/stats
+```
+
+Returns server statistics including uptime and sampling metrics.
+
+## Development
+
+### Running Tests
+
+```bash
+pytest tests/
+```
+
+### Code Formatting
+
+```bash
+black src/
+ruff check src/
+```
+
+### Type Checking
+
+```bash
+mypy src/
+```
+
+## Architecture
+
+The inference server uses:
+
+- **FastAPI**: Modern web framework for building APIs
+- **claude-code-sdk**: Python SDK for interacting with Claude
+- **Jinja2**: Template engine for prompt construction
+- **Pydantic**: Data validation and serialization
+- **uvicorn**: ASGI server for running the application
+
+### Project Structure
+
+```
+apps/inference/
+├── src/
+│   └── claudebench_inference/
+│       ├── __init__.py          # Package initialization
+│       ├── main.py              # FastAPI application
+│       ├── models.py            # Pydantic models
+│       ├── sampling.py          # Claude sampling engine
+│       ├── prompts.py           # Jinja2 prompt builder
+│       └── templates/           # Jinja2 templates
+│           ├── decomposition.j2
+│           ├── specialist-context.j2
+│           ├── conflict-resolution.j2
+│           └── progress-synthesis.j2
+├── tests/                       # Test suite
+├── pyproject.toml              # Package configuration
+├── requirements.txt            # Dependencies
+└── README.md                   # This file
+```
+
+## Integration with ClaudeBench
+
+The TypeScript server (`apps/server`) communicates with this inference server via HTTP. The `claude-sampling.ts` module should be updated to make HTTP requests to the inference server endpoints instead of trying to spawn CLI processes.
+
+Example integration:
+
+```typescript
+// In apps/server/src/core/claude-sampling.ts
+const INFERENCE_SERVER_URL = process.env.INFERENCE_SERVER_URL || 'http://localhost:8000';
+
+async function requestDecomposition(sessionId: string, task: string, context: DecompositionContext) {
+  const response = await fetch(`${INFERENCE_SERVER_URL}/api/v1/decompose`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId, task, context })
+  });
+  return response.json();
+}
+```
+
+## License
+
+Part of the ClaudeBench project.

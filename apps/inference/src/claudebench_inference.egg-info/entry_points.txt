@@ -1,0 +1,2 @@
+[console_scripts]
+claudebench-inference = claudebench_inference.main:main
