@@ -168,7 +168,7 @@ async def decompose_task(request: DecompositionRequest):
         # Perform sampling
         result = await sampling_engine.sample_json(
             prompt=prompt,
-            max_tokens=2500,
+            max_tokens=8192,
             temperature=0.7
         )
         
@@ -232,7 +232,7 @@ async def generate_context(request: ContextRequest):
         # Perform sampling
         result = await sampling_engine.sample_json(
             prompt=prompt,
-            max_tokens=1500,
+            max_tokens=16384,
             temperature=0.5  # Lower temperature for more focused context
         )
         
@@ -312,7 +312,7 @@ async def resolve_conflict(request: ConflictRequest):
         # Perform sampling
         result = await sampling_engine.sample_json(
             prompt=prompt,
-            max_tokens=1000,
+            max_tokens=8192,
             temperature=0.3  # Low temperature for decision-making
         )
         
@@ -347,7 +347,7 @@ async def synthesize_progress(request: SynthesisRequest):
         # Perform sampling
         result = await sampling_engine.sample_json(
             prompt=prompt,
-            max_tokens=2000,
+            max_tokens=4096,
             temperature=0.6
         )
         

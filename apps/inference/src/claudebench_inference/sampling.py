@@ -25,9 +25,18 @@ class SamplingEngine:
         """
         self.default_system_prompt = system_prompt or (
             "You are an expert assistant helping with software architecture and task coordination. "
-            "You MUST respond ONLY with valid JSON matching the requested structure. "
-            "Do not include any explanatory text outside the JSON."
+            "Follow the instructions in the prompt carefully, including any specific format requirements."
         )
+        # Tools needed for codebase exploration as referenced in templates
+        # Note: Only read-only tools for safe exploration
+        self.allowed_tools = [
+            "Read",
+            "Glob", 
+            "Grep",
+            "Search",
+            "WebFetch",
+            "WebSearch"
+        ]
         self.stats = {
             "total_requests": 0,
             "successful_requests": 0,
@@ -40,7 +49,8 @@ class SamplingEngine:
         prompt: str,
         max_tokens: int = 2000,  # Note: not directly used by SDK
         temperature: float = 0.7,  # Note: not directly used by SDK
-        system_prompt: Optional[str] = None
+        system_prompt: Optional[str] = None,
+        max_turns: int = 50  # Allow extensive exploration
     ) -> str:
         """
         Perform sampling using claude-code-sdk
@@ -50,6 +60,7 @@ class SamplingEngine:
             max_tokens: Maximum tokens in response (not used by SDK)
             temperature: Sampling temperature (not used by SDK)
             system_prompt: Override the default system prompt
+            max_turns: Maximum number of turns for tool usage
             
         Returns:
             The response text from Claude
@@ -61,8 +72,10 @@ class SamplingEngine:
             self.stats["total_requests"] += 1
             
             options = ClaudeCodeOptions(
-                max_turns=1,
-                system_prompt=system_prompt or self.default_system_prompt
+                max_turns=max_turns,  # Allow multiple turns for exploration
+                system_prompt=system_prompt or self.default_system_prompt,
+                allowed_tools=self.allowed_tools,
+                permission_mode='bypassPermissions'  # Allow tool use without prompting
             )
             
             response_text = ""
@@ -119,7 +132,8 @@ class SamplingEngine:
         prompt: str,
         max_tokens: int = 2000,
         temperature: float = 0.7,
-        system_prompt: Optional[str] = None
+        system_prompt: Optional[str] = None,
+        max_turns: int = 50  # Allow extensive exploration
     ) -> Dict[str, Any]:
         """
         Sample and parse JSON response
@@ -129,6 +143,7 @@ class SamplingEngine:
             max_tokens: Maximum tokens in response
             temperature: Sampling temperature
             system_prompt: Override the default system prompt
+            max_turns: Maximum number of turns for tool usage
             
         Returns:
             Parsed JSON response as dictionary
@@ -136,7 +151,7 @@ class SamplingEngine:
         Raises:
             Exception: If sampling or parsing fails
         """
-        response = await self.sample(prompt, max_tokens, temperature, system_prompt)
+        response = await self.sample(prompt, max_tokens, temperature, system_prompt, max_turns)
         return self.extract_json(response)
     
     def get_stats(self) -> Dict[str, Any]:

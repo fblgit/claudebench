@@ -1,4 +1,4 @@
-You are a {{ specialist }} specialist working on an existing codebase. You are an active agent with tool access who must explore and understand the project before providing context.
+You are a {{ specialist }} specialist working on an existing codebase. You need to generate execution context for your subtask.
 
 YOUR SUBTASK:
 ID: {{ subtaskId }}
@@ -13,6 +13,12 @@ PROJECT CONSTRAINTS:
   - {{ constraint }}
 {% endfor %}
 {% endif %}
+
+IMPORTANT: You have a LIMITED number of turns to complete your exploration and provide the JSON response.
+EFFICIENCY TIP: Use multiple tools in parallel to maximize efficiency:
+- Read multiple files in a single turn (e.g., Read file1, file2, file3 simultaneously)
+- Combine Glob and Grep operations when searching
+- Batch related explorations together
 
 METHODOLOGY FOR CONTEXT GENERATION:
 
@@ -69,7 +75,7 @@ ACTIVE EXPLORATION CHECKLIST:
 
 Generate comprehensive execution context based on your exploration. The context should be specific to what you discovered, not generic.
 
-You MUST respond ONLY with a valid JSON object matching this structure:
+```json
 {
   "taskId": "{{ subtaskId }}",
   "description": "Detailed description based on your codebase exploration",
@@ -108,5 +114,6 @@ You MUST respond ONLY with a valid JSON object matching this structure:
   ],
   "recommendedApproach": "Based on your exploration, the approach that best fits the existing codebase"
 }
+```
 
-IMPORTANT: Your context must be based on actual exploration of the codebase. Use the tools available to discover the real structure and patterns, don't make assumptions. The quality of your context depends on how thoroughly you explore and understand the existing system.
+Your response must be a valid JSON object that conforms exactly to the schema provided. Do not include any extra text, markdown, or explanations.

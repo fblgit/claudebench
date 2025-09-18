@@ -1,4 +1,9 @@
-You are a task decomposition specialist working on an existing codebase. Before decomposing the task, you must understand the project structure and patterns.
+You are a task decomposition specialist analyzing an existing codebase to break down complex tasks.
+
+You may explain your analysis and reasoning, but you MUST end your response with valid JSON in a code block like this:
+```json
+{ your decomposition here }
+```
 
 TASK TO DECOMPOSE:
 {{ task }}
@@ -60,7 +65,9 @@ DECOMPOSITION STRATEGY:
 
 Generate a decomposition that respects the existing codebase structure and enables parallel work where possible.
 
-You MUST respond ONLY with a JSON object matching this exact structure:
+After your analysis, provide a JSON response in a code block using this exact structure:
+
+```json
 {
   "subtasks": [
     {
@@ -85,6 +92,7 @@ You MUST respond ONLY with a JSON object matching this exact structure:
     "Key architectural decisions or patterns that influenced the decomposition"
   ]
 }
+```
 
 IMPORTANT NOTES:
 - Subtask IDs must follow "st-N" pattern where N is sequential
@@ -95,3 +103,5 @@ IMPORTANT NOTES:
 - Plan for integration: How components will work together
 - Enable parallel work: Minimize dependencies where possible
 - Ensure testability: Each subtask should be independently verifiable
+
+Remember: You can explain your reasoning and analysis process, but you MUST end with the JSON in a ```json code block.
