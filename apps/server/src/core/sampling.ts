@@ -100,7 +100,7 @@ export interface Integration {
 const INFERENCE_CONFIG = {
 	baseUrl: process.env.INFERENCE_SERVER_URL || 'http://localhost:8000',
 	apiVersion: 'v1',
-	timeout: 120000, // 120 seconds - give Claude more time to think
+	timeout: 600000, // 600 seconds (10 minutes) - allow extensive exploration with tools
 	retryAttempts: 3,
 	retryDelay: 1000
 };

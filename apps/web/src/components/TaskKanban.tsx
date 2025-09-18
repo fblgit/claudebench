@@ -57,6 +57,7 @@ import {
 	Zap,
 } from "lucide-react";
 import { TaskCard } from "./TaskCard";
+import { TaskDetailModal } from "./TaskDetailModal";
 import { InstanceManager } from "./InstanceManager";
 import { RoleSelector } from "./RoleSelector";
 import {
@@ -76,8 +77,11 @@ interface Task {
 	priority: number;
 	createdAt: string;
 	updatedAt?: string;
+	completedAt?: string | null;
 	metadata?: Record<string, any>;
 	assignedTo?: string;
+	result?: any;
+	error?: any;
 }
 
 interface Instance {
@@ -104,6 +108,8 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 	// State
 	const [tasks, setTasks] = useState<Task[]>([]);
 	const [instances, setInstances] = useState<Instance[]>([]);
+	const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+	const [detailModalOpen, setDetailModalOpen] = useState(false);
 	const [columns, setColumns] = useState<Column[]>([
 		{
 			id: "pending",
@@ -243,8 +249,11 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 				priority: task.priority || 50,
 				createdAt: task.createdAt || new Date().toISOString(),
 				updatedAt: task.updatedAt,
+				completedAt: task.completedAt,
 				metadata: task.metadata || {},
 				assignedTo: task.assignedTo || task.assignee,
+				result: task.result,
+				error: task.error,
 			}));
 			setTasks(taskList);
 		}
@@ -488,6 +497,12 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 		}
 	};
 
+	// Handle task click
+	const handleTaskClick = (task: Task) => {
+		setSelectedTask(task);
+		setDetailModalOpen(true);
+	};
+
 	// Get active task for drag overlay
 	const activeTask = useMemo(() => {
 		return tasks.find((t) => t.id === activeId);
@@ -720,6 +735,7 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 																onUpdate={handleTaskUpdate}
 																onComplete={handleTaskComplete}
 																onAssign={handleTaskAssign}
+																onClick={handleTaskClick}
 																instances={instances}
 															/>
 														))}
@@ -755,6 +771,23 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 					/>
 				</TabsContent>
 			</Tabs>
+
+			{/* Task Detail Modal */}
+			<TaskDetailModal
+				task={selectedTask}
+				open={detailModalOpen}
+				onOpenChange={(open) => {
+					setDetailModalOpen(open);
+					if (!open) {
+						// Refresh tasks when closing in case of changes
+						refetchState();
+					}
+				}}
+				onUpdate={handleTaskUpdate}
+				onComplete={handleTaskComplete}
+				onAssign={handleTaskAssign}
+				instances={instances}
+			/>
 		</div>
 	);
 }

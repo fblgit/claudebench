@@ -40,8 +40,11 @@ interface Task {
 	priority: number;
 	createdAt: string;
 	updatedAt?: string;
+	completedAt?: string | null;
 	metadata?: Record<string, any>;
 	assignedTo?: string;
+	result?: any;
+	error?: any;
 }
 
 interface TaskCardProps {
@@ -51,6 +54,7 @@ interface TaskCardProps {
 	onComplete?: (taskId: string) => void;
 	onAssign?: (taskId: string, instanceId: string) => void;
 	onDelete?: (taskId: string) => void;
+	onClick?: (task: Task) => void;
 	instances?: Array<{ id: string; roles: string[] }>;
 }
 
@@ -61,6 +65,7 @@ export function TaskCard({
 	onComplete,
 	onAssign,
 	onDelete,
+	onClick,
 	instances = [],
 }: TaskCardProps) {
 	const {
@@ -124,6 +129,16 @@ export function TaskCard({
 					task.status === "completed" && "opacity-75",
 					task.status === "failed" && "border-red-500"
 				)}
+				onClick={(e) => {
+					// Only trigger onClick if not dragging and not clicking on interactive elements
+					if (!isDragging && onClick && !e.defaultPrevented) {
+						const target = e.target as HTMLElement;
+						// Don't trigger if clicking on buttons or dropdown
+						if (!target.closest('button') && !target.closest('[role="menu"]')) {
+							onClick(task);
+						}
+					}
+				}}
 				{...attributes}
 				{...listeners}
 			>

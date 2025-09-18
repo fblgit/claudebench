@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
+import { CodeViewer } from "./CodeEditor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -365,9 +366,16 @@ export function EventStream({
 										<TabsTrigger value="metadata">Metadata</TabsTrigger>
 									</TabsList>
 									<TabsContent value="payload" className="mt-4">
-										<pre className="text-xs bg-muted p-3 rounded-md overflow-auto">
-											{JSON.stringify(selectedEvent.payload, null, 2)}
-										</pre>
+										<CodeViewer
+											value={JSON.stringify(selectedEvent.payload, null, 2)}
+											language="json"
+											height="300px"
+											minimap={false}
+											lineNumbers="off"
+											folding={true}
+											wordWrap="on"
+											fontSize={12}
+										/>
 									</TabsContent>
 									<TabsContent value="metadata" className="mt-4">
 										<div className="space-y-2">
@@ -390,10 +398,17 @@ export function EventStream({
 											</div>
 											{selectedEvent.metadata && (
 												<div className="mt-3">
-													<span className="text-xs font-medium">Additional Metadata:</span>
-													<pre className="text-xs bg-muted p-2 rounded-md mt-1 overflow-auto">
-														{JSON.stringify(selectedEvent.metadata, null, 2)}
-													</pre>
+													<span className="text-xs font-medium mb-2 block">Additional Metadata:</span>
+													<CodeViewer
+														value={JSON.stringify(selectedEvent.metadata, null, 2)}
+														language="json"
+														height="150px"
+														minimap={false}
+														lineNumbers="off"
+														folding={false}
+														wordWrap="on"
+														fontSize={11}
+													/>
 												</div>
 											)}
 										</div>

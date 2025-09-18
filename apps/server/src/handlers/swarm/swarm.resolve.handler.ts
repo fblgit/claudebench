@@ -62,7 +62,7 @@ const templates = nunjucks.configure(join(process.cwd(), "templates/swarm"), {
 				"MCP sampling capability enabled"
 			],
 			warnings: [
-				"Resolution uses LLM sampling which takes 60-120 seconds",
+				"Resolution uses LLM sampling which may take up to 600 seconds",
 				"Resolution is final and cannot be undone",
 				"May trigger swarm.synthesize if all conflicts resolved"
 			]

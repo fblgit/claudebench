@@ -39,7 +39,7 @@ prompt_builder: PromptBuilder = None
 start_time: float = None
 
 # Configuration
-REQUEST_TIMEOUT_SECONDS = 300  # 5 minutes for LLM operations
+REQUEST_TIMEOUT_SECONDS = 600  # 10 minutes for LLM operations with extensive exploration
 
 
 class TimeoutMiddleware(BaseHTTPMiddleware):
@@ -93,7 +93,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Add timeout middleware (300 seconds for LLM operations)
+# Add timeout middleware (600 seconds for LLM operations)
 app.add_middleware(TimeoutMiddleware, timeout=REQUEST_TIMEOUT_SECONDS)
 
 # Configure CORS
@@ -141,10 +141,10 @@ async def health_check():
         config={
             "request_timeout": REQUEST_TIMEOUT_SECONDS,
             "endpoints": {
-                "/api/v1/decompose": "Task decomposition (300s timeout)",
-                "/api/v1/context": "Context generation (300s timeout)",
-                "/api/v1/conflict": "Conflict resolution (300s timeout)",
-                "/api/v1/synthesize": "Progress synthesis (300s timeout)"
+                "/api/v1/decompose": "Task decomposition (600s timeout)",
+                "/api/v1/context": "Context generation (600s timeout)",
+                "/api/v1/conflict": "Conflict resolution (600s timeout)",
+                "/api/v1/synthesize": "Progress synthesis (600s timeout)"
             }
         }
     )

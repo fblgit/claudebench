@@ -36,7 +36,7 @@ import { getSamplingService } from "@/core/sampling";
 				"MCP sampling capability enabled"
 			],
 			warnings: [
-				"Decomposition uses LLM sampling which takes 60-120 seconds",
+				"Decomposition uses LLM sampling which may take up to 600 seconds",
 				"Ensure sufficient specialists are available for assignment",
 				"Large tasks may produce many subtasks affecting system load"
 			]
