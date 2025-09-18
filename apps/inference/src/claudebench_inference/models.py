@@ -13,6 +13,7 @@ class SpecialistType(str, Enum):
     BACKEND = "backend"
     TESTING = "testing"
     DOCS = "docs"
+    GENERAL = "general"
 
 
 class ExecutionStrategy(str, Enum):
