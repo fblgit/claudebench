@@ -26,7 +26,7 @@ const flushOutput = z.object({
 	rateLimit: 1, // Very low rate limit - this is a dangerous operation
 	description: "Flush all ClaudeBench data from Redis and optionally PostgreSQL",
 	mcp: {
-		visible: false, // Dangerous operation, not for Claude to use
+		visible: true, // Dangerous operation, not for Claude to use
 	}
 })
 export class SystemFlushHandler {

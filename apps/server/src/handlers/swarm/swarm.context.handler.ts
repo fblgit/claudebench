@@ -51,7 +51,7 @@ const nunjucksEnv = nunjucks.configure(templatesDir, {
 				"MCP sampling capability enabled"
 			],
 			warnings: [
-				"Context generation uses LLM sampling",
+				"Context generation uses LLM sampling which takes 60-120 seconds",
 				"Generated context is not persisted by default"
 			]
 		}
