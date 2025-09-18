@@ -74,14 +74,24 @@ export class TaskListHandler {
 		const hasMore = input.offset + input.limit < totalCount;
 
 		// Format dates to ISO strings and handle type conversions
-		const formattedTasks = tasks.map(task => ({
-			...task,
-			metadata: task.metadata as Record<string, unknown> | null,
-			result: task.result as unknown,
-			createdAt: task.createdAt.toISOString(),
-			updatedAt: task.updatedAt.toISOString(),
-			completedAt: task.completedAt ? task.completedAt.toISOString() : null,
-		}));
+		// Also fetch attachment counts for each task
+		const formattedTasks = await Promise.all(
+			tasks.map(async (task) => {
+				// Count attachments in Redis
+				const attachmentsIndexKey = `cb:task:${task.id}:attachments`;
+				const attachmentCount = await ctx.redis.pub.zcard(attachmentsIndexKey);
+				
+				return {
+					...task,
+					metadata: task.metadata as Record<string, unknown> | null,
+					result: task.result as unknown,
+					createdAt: task.createdAt.toISOString(),
+					updatedAt: task.updatedAt.toISOString(),
+					completedAt: task.completedAt ? task.completedAt.toISOString() : null,
+					attachmentCount,
+				};
+			})
+		);
 
 		return {
 			tasks: formattedTasks,

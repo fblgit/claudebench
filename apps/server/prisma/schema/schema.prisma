@@ -23,9 +23,35 @@ model Task {
   updatedAt   DateTime @updatedAt
   completedAt DateTime?
   
+  // Relations
+  attachments TaskAttachment[]
+  
   @@index([status])
   @@index([assignedTo])
   @@index([priority])
+}
+
+model TaskAttachment {
+  id         String   @id @default(cuid()) // Format: ta-{timestamp}-{random}
+  taskId     String   
+  key        String   // Attachment key/name (e.g., "analysis", "logs", "context")
+  type       AttachmentType // Type of attachment
+  value      Json?    // For structured JSON data
+  content    String?  @db.Text // For text/markdown content
+  url        String?  // For external references
+  size       Int?     // Size in bytes
+  mimeType   String?  // MIME type for binary attachments
+  createdBy  String?  // Instance/user ID that created this
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  // Relations
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  
+  @@index([taskId])
+  @@index([key])
+  @@index([type])
+  @@unique([taskId, key]) // One attachment per key per task
 }
 
 model Instance {
@@ -48,6 +74,14 @@ enum TaskStatus {
   in_progress
   completed
   failed
+}
+
+enum AttachmentType {
+  json      // Structured JSON data
+  markdown  // Markdown formatted text
+  text      // Plain text
+  url       // External URL reference
+  binary    // Binary data reference
 }
 
 enum InstanceStatus {

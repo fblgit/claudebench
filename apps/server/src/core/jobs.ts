@@ -53,7 +53,13 @@ export const systemWorker = new Worker<SystemJob>(
 			case "sync-state":
 				const redis = getRedis();
 				const instanceKeys = await redis.stream.keys("cb:instance:*");
-				const taskKeys = await redis.stream.keys("cb:task:*");
+				// Only match direct task keys (cb:task:t-*), not attachment keys
+				const allTaskKeys = await redis.stream.keys("cb:task:*");
+				const taskKeys = allTaskKeys.filter(key => {
+					const parts = key.split(":");
+					// Should be exactly 3 parts: cb, task, and task-id
+					return parts.length === 3 && parts[2].startsWith("t-");
+				});
 				
 				const state = {
 					instances: instanceKeys.length,

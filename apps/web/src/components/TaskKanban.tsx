@@ -82,6 +82,7 @@ interface Task {
 	assignedTo?: string;
 	result?: any;
 	error?: any;
+	attachmentCount?: number;
 }
 
 interface Instance {
@@ -254,6 +255,7 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 				assignedTo: task.assignedTo || task.assignee,
 				result: task.result,
 				error: task.error,
+				attachmentCount: task.attachmentCount || 0,
 			}));
 			setTasks(taskList);
 		}

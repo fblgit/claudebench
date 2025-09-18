@@ -1,5 +1,6 @@
 import { format, formatDistanceToNow, parseISO } from "date-fns";
 import { CodeViewer } from "./CodeEditor";
+import { AttachmentViewer } from "./AttachmentViewer";
 import {
 	Dialog,
 	DialogContent,
@@ -36,6 +37,7 @@ import {
 	TrendingUp,
 	Users,
 	Package,
+	Paperclip,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -158,7 +160,7 @@ export function TaskDetailModal({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0">
+			<DialogContent className="!max-w-[90vw] !w-[90vw] h-[90vh] flex flex-col p-0 sm:!max-w-[90vw]">
 				<DialogHeader className="px-6 pt-6 pb-4 border-b bg-gradient-to-r from-background to-muted/20">
 					<div className="flex items-start justify-between">
 						<div className="flex-1">
@@ -206,7 +208,7 @@ export function TaskDetailModal({
 
 				<ScrollArea className="flex-1 px-6">
 					<Tabs defaultValue="overview" className="py-4">
-						<TabsList className="grid w-full grid-cols-4">
+						<TabsList className="grid w-full grid-cols-5">
 							<TabsTrigger value="overview">
 								<Info className="h-4 w-4 mr-2" />
 								Overview
@@ -218,6 +220,10 @@ export function TaskDetailModal({
 							<TabsTrigger value="timeline">
 								<Activity className="h-4 w-4 mr-2" />
 								Timeline
+							</TabsTrigger>
+							<TabsTrigger value="attachments">
+								<Paperclip className="h-4 w-4 mr-2" />
+								Attachments
 							</TabsTrigger>
 							<TabsTrigger value="result">
 								<Target className="h-4 w-4 mr-2" />
@@ -539,6 +545,10 @@ export function TaskDetailModal({
 									</div>
 								</CardContent>
 							</Card>
+						</TabsContent>
+
+						<TabsContent value="attachments" className="mt-6">
+							<AttachmentViewer taskId={task.id} />
 						</TabsContent>
 
 						<TabsContent value="result" className="mt-6">

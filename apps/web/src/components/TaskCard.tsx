@@ -30,6 +30,7 @@ import {
 	Calendar,
 	Tag,
 	Hash,
+	Paperclip,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -45,6 +46,7 @@ interface Task {
 	assignedTo?: string;
 	result?: any;
 	error?: any;
+	attachmentCount?: number;
 }
 
 interface TaskCardProps {
@@ -289,6 +291,21 @@ export function TaskCard({
 								</TooltipTrigger>
 								<TooltipContent>
 									{dependencies.length} dependencies
+								</TooltipContent>
+							</Tooltip>
+						)}
+
+						{/* Attachments Indicator */}
+						{task.attachmentCount && task.attachmentCount > 0 && (
+							<Tooltip>
+								<TooltipTrigger>
+									<Badge variant="outline" className="text-xs bg-blue-50 text-blue-600 border-blue-200">
+										<Paperclip className="h-3 w-3 mr-1" />
+										{task.attachmentCount}
+									</Badge>
+								</TooltipTrigger>
+								<TooltipContent>
+									{task.attachmentCount} attachment{task.attachmentCount > 1 ? 's' : ''}
 								</TooltipContent>
 							</Tooltip>
 						)}

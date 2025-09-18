@@ -47,7 +47,13 @@ export class MetricsCollector {
 
 		// Tasks metrics
 		const taskPattern = redisKey("task", "*");
-		const taskKeys = await this.redis.stream.keys(taskPattern);
+		const allTaskKeys = await this.redis.stream.keys(taskPattern);
+		// Filter to only get actual task keys (cb:task:t-*), not attachment keys
+		const taskKeys = allTaskKeys.filter(key => {
+			const parts = key.split(":");
+			// Should be exactly 3 parts: cb, task, and task-id starting with t-
+			return parts.length === 3 && parts[2].startsWith("t-");
+		});
 		let pending = 0, completed = 0;
 		
 		// Sample first 100 tasks for performance
