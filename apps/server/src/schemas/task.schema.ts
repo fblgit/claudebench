@@ -135,6 +135,7 @@ export const taskListOutput = z.object({
 		createdAt: z.string().datetime(),
 		updatedAt: z.string().datetime(),
 		completedAt: z.string().datetime().nullable(),
+		attachmentCount: z.number().int().min(0).default(0),
 	})),
 	totalCount: z.number(),
 	hasMore: z.boolean(),

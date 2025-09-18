@@ -79,7 +79,13 @@ export class TaskListHandler {
 			tasks.map(async (task) => {
 				// Count attachments in Redis
 				const attachmentsIndexKey = `cb:task:${task.id}:attachments`;
-				const attachmentCount = await ctx.redis.pub.zcard(attachmentsIndexKey);
+				let attachmentCount = 0;
+				try {
+					attachmentCount = await ctx.redis.pub.zcard(attachmentsIndexKey);
+				} catch (error) {
+					// Silently handle Redis errors - attachment count is non-critical
+					attachmentCount = 0;
+				}
 				
 				return {
 					...task,
