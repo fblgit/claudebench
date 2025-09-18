@@ -1,0 +1,10 @@
+{
+  "name": "inference",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "python3 -m claudebench_inference.main",
+    "start": "python3 -m claudebench_inference.main",
+    "check-types": "echo 'Type checking not applicable for Python'"
+  }
+}
