@@ -4,6 +4,7 @@ import { taskCompleteInput, taskCompleteOutput } from "@/schemas/task.schema";
 import type { TaskCompleteInput, TaskCompleteOutput } from "@/schemas/task.schema";
 import { redisScripts } from "@/core/redis-scripts";
 import { redisKey } from "@/core/redis";
+import { registry } from "@/core/registry";
 
 @EventHandler({
 	event: "task.complete",
@@ -114,24 +115,43 @@ export class TaskCompleteHandler {
 					}
 				}
 				
-				// Store result directly in the result field, not in metadata
-				// PostgreSQL JSON fields can handle up to 1GB of data
+				const resultSize = parsedResult ? JSON.stringify(parsedResult).length : 0;
+				
+				// MIGRATION PHASE 1: Store result in BOTH places
+				// Store result directly in the result field for backward compatibility
 				await ctx.prisma.task.update({
 					where: { id: taskId },
 					data: {
 						status: result.status as any,
 						completedAt: new Date(completedAt),
-						result: parsedResult as any, // Store complete result in dedicated field
+						result: parsedResult as any, // Keep storing in result field for now
 						metadata: {
 							...(taskData.metadata ? JSON.parse(taskData.metadata) : {}),
 							duration,
 							completedBy: input.workerId || taskData.assignedTo,
-							resultSize: JSON.stringify(parsedResult).length, // Track size for monitoring
+							resultSize, // Track size for monitoring
 						},
 					},
 				});
 				
-				console.log(`Task ${taskId} completed and persisted. Result size: ${JSON.stringify(parsedResult).length} bytes`);
+				// ALSO store the result as an attachment using the handler
+				if (parsedResult !== null && parsedResult !== undefined) {
+					try {
+						await registry.executeHandler("task.create_attachment", {
+							taskId: taskId,
+							key: "result",
+							type: "json",
+							value: parsedResult
+						}, ctx.metadata?.clientId);
+						
+						console.log(`Task ${taskId} result ALSO stored as attachment (migration). Size: ${resultSize} bytes`);
+					} catch (attachmentError) {
+						// Log but don't fail - result is already in the result field
+						console.warn(`Failed to create result attachment for migration:`, attachmentError);
+					}
+				}
+				
+				console.log(`Task ${taskId} completed and persisted. Result size: ${resultSize} bytes`);
 			} catch (error) {
 				// Log error but don't fail the task completion
 				console.error(`Failed to persist task ${taskId} to database:`, error);

@@ -215,6 +215,29 @@ export class SwarmSynthesizeHandler {
 			}
 		}
 		
+		// MIGRATION PHASE 1: Also store synthesis as attachment
+		try {
+			await registry.executeHandler("task.create_attachment", {
+				taskId: input.taskId,
+				key: "synthesis",
+				type: "json",
+				value: {
+					completedSubtasks: input.completedSubtasks,
+					parentTask: input.parentTask,
+					integration: integration,
+					decomposition: decomposition,
+					progressData: progressData,
+					synthesizedAt: new Date().toISOString(),
+					synthesizedBy: ctx.instanceId
+				}
+			}, ctx.metadata?.clientId);
+			
+			console.log(`[SwarmSynthesize] Synthesis ALSO stored as attachment (migration) for task ${input.taskId}`);
+		} catch (attachmentError) {
+			// Log but don't fail - synthesis is already stored
+			console.warn(`[SwarmSynthesize] Failed to create synthesis attachment:`, attachmentError);
+		}
+		
 		// Publish synthesis event
 		const finalProgress = integration.status === "integrated" ? 100 : 90;
 		await ctx.publish({
