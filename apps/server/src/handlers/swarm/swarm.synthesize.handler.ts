@@ -5,6 +5,7 @@ import type { SwarmSynthesizeInput, SwarmSynthesizeOutput } from "@/schemas/swar
 import { getSamplingService } from "@/core/sampling";
 import { redisScripts } from "@/core/redis-scripts";
 import { getRedis } from "@/core/redis";
+import { registry } from "@/core/registry";
 import nunjucks from "nunjucks";
 import { join } from "path";
 

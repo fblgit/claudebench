@@ -105,6 +105,12 @@ export const taskClaimOutput = z.object({
 		createdAt: z.string().datetime(),
 		updatedAt: z.string().datetime(),
 		completedAt: z.string().datetime().nullable(),
+		attachments: z.record(z.string(), z.object({
+			type: z.string(),
+			value: z.unknown(),
+			createdAt: z.string()
+		})).optional(),
+		attachmentCount: z.number().optional(),
 	}).optional(),
 });
 
@@ -136,6 +142,7 @@ export const taskListOutput = z.object({
 		updatedAt: z.string().datetime(),
 		completedAt: z.string().datetime().nullable(),
 		attachmentCount: z.number().int().min(0).default(0),
+		attachmentKeys: z.array(z.string()).optional(),
 	})),
 	totalCount: z.number(),
 	hasMore: z.boolean(),

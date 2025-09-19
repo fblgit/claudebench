@@ -4,6 +4,7 @@ import { taskClaimInput, taskClaimOutput } from "@/schemas/task.schema";
 import type { TaskClaimInput, TaskClaimOutput } from "@/schemas/task.schema";
 import { redisScripts } from "@/core/redis-scripts";
 import { redisKey } from "@/core/redis";
+import { registry } from "@/core/registry";
 
 @EventHandler({
 	event: "task.claim",
@@ -66,7 +67,40 @@ export class TaskClaimHandler {
 			},
 		});
 		
-		// Return complete task details including metadata
+		// Fetch attachments using the list_attachments handler
+		let attachments: Record<string, any> = {};
+		try {
+			const attachmentList = await registry.executeHandler("task.list_attachments", {
+				taskId: task.id,
+				limit: 100 // Get all attachments (reasonable limit)
+			}, ctx.metadata?.clientId);
+			
+			if (attachmentList && attachmentList.attachments && attachmentList.attachments.length > 0) {
+				// Fetch each attachment's data using get_attachment handler
+				for (const attachment of attachmentList.attachments) {
+					try {
+						const attachmentData = await registry.executeHandler("task.get_attachment", {
+							taskId: task.id,
+							key: attachment.key
+						}, ctx.metadata?.clientId);
+						
+						attachments[attachment.key] = {
+							type: attachmentData.type,
+							value: attachmentData.value,
+							createdAt: attachmentData.createdAt
+						};
+					} catch (getError) {
+						// Log individual attachment fetch failures
+						console.warn(`[TaskClaim] Failed to fetch attachment '${attachment.key}' for task ${task.id}:`, getError);
+					}
+				}
+			}
+		} catch (error) {
+			// Log but don't fail the claim if attachments can't be listed
+			console.warn(`[TaskClaim] Failed to list attachments for task ${task.id}:`, error);
+		}
+		
+		// Return complete task details including metadata and attachments
 		return {
 			claimed: true,
 			taskId: result.taskId!,
@@ -82,6 +116,8 @@ export class TaskClaimHandler {
 				createdAt: task.createdAt,
 				updatedAt: task.updatedAt || task.createdAt,
 				completedAt: task.completedAt || null,
+				attachments: attachments, // Include all attachment data
+				attachmentCount: Object.keys(attachments).length
 			},
 		};
 	}

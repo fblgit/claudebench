@@ -72,7 +72,7 @@ export function TaskExpandableCards({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [active]);
 
-  useOutsideClick(ref, () => setActive(null));
+  useOutsideClick(ref as React.RefObject<HTMLDivElement>, () => setActive(null));
 
   const getPriorityColor = (priority: number) => {
     if (priority >= 80) return "text-red-500 border-red-500";
@@ -98,13 +98,13 @@ export function TaskExpandableCards({
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
-        return "success";
+        return "default"; // Green styling via status icon
       case "failed":
         return "destructive";
       case "in_progress":
-        return "default";
-      default:
         return "secondary";
+      default:
+        return "outline";
     }
   };
 
