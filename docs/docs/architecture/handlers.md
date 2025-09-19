@@ -245,12 +245,12 @@ async handle(input, context) {
 
 ```mermaid
 graph LR
-    A[Request] --> B[@EventHandler]
+    A[Request] --> B["@EventHandler"]
     B --> C[Schema Validation]
-    C --> D[@Resilient] 
+    C --> D["@Resilient"] 
     D --> E[Rate Limit Check]
     E --> F[Circuit Breaker Check]
-    F --> G[@Instrumented]
+    F --> G["@Instrumented"]
     G --> H[Cache Lookup]
     H --> I[Handler Execution]
     I --> J[Cache Update]

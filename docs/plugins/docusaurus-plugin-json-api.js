@@ -1,10 +1,7 @@
 const fs = require('fs').promises;
 const path = require('path');
 const matter = require('gray-matter');
-const glob = require('glob');
-const { promisify } = require('util');
-
-const globAsync = promisify(glob);
+const { glob } = require('glob');
 
 module.exports = function docsApiPlugin(context, options = {}) {
 	const { siteDir, generatedFilesDir } = context;
@@ -16,7 +13,7 @@ module.exports = function docsApiPlugin(context, options = {}) {
 
 		async loadContent() {
 			// Find all markdown files
-			const files = await globAsync('**/*.{md,mdx}', {
+			const files = await glob('**/*.{md,mdx}', {
 				cwd: docsDir,
 				ignore: ['**/node_modules/**'],
 			});
