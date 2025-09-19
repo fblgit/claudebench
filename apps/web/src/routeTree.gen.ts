@@ -13,6 +13,8 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as EventsRouteImport } from './routes/events'
+import { Route as DocusaurusRouteImport } from './routes/docusaurus'
+import { Route as DocsRouteImport } from './routes/docs'
 import { Route as IndexRouteImport } from './routes/index'
 
 const SystemLazyRouteImport = createFileRoute('/system')()
@@ -32,6 +34,16 @@ const EventsRoute = EventsRouteImport.update({
   path: '/events',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DocusaurusRoute = DocusaurusRouteImport.update({
+  id: '/docusaurus',
+  path: '/docusaurus',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsRoute = DocsRouteImport.update({
+  id: '/docs',
+  path: '/docs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -40,12 +52,16 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/docs': typeof DocsRoute
+  '/docusaurus': typeof DocusaurusRoute
   '/events': typeof EventsRoute
   '/tasks': typeof TasksRoute
   '/system': typeof SystemLazyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/docs': typeof DocsRoute
+  '/docusaurus': typeof DocusaurusRoute
   '/events': typeof EventsRoute
   '/tasks': typeof TasksRoute
   '/system': typeof SystemLazyRoute
@@ -53,20 +69,31 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/docs': typeof DocsRoute
+  '/docusaurus': typeof DocusaurusRoute
   '/events': typeof EventsRoute
   '/tasks': typeof TasksRoute
   '/system': typeof SystemLazyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/events' | '/tasks' | '/system'
+  fullPaths: '/' | '/docs' | '/docusaurus' | '/events' | '/tasks' | '/system'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/events' | '/tasks' | '/system'
-  id: '__root__' | '/' | '/events' | '/tasks' | '/system'
+  to: '/' | '/docs' | '/docusaurus' | '/events' | '/tasks' | '/system'
+  id:
+    | '__root__'
+    | '/'
+    | '/docs'
+    | '/docusaurus'
+    | '/events'
+    | '/tasks'
+    | '/system'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DocsRoute: typeof DocsRoute
+  DocusaurusRoute: typeof DocusaurusRoute
   EventsRoute: typeof EventsRoute
   TasksRoute: typeof TasksRoute
   SystemLazyRoute: typeof SystemLazyRoute
@@ -95,6 +122,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EventsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/docusaurus': {
+      id: '/docusaurus'
+      path: '/docusaurus'
+      fullPath: '/docusaurus'
+      preLoaderRoute: typeof DocusaurusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs': {
+      id: '/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof DocsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -107,6 +148,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DocsRoute: DocsRoute,
+  DocusaurusRoute: DocusaurusRoute,
   EventsRoute: EventsRoute,
   TasksRoute: TasksRoute,
   SystemLazyRoute: SystemLazyRoute,

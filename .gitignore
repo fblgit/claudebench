@@ -1,8 +1,22 @@
+# Dependencies
 node_modules
+
+# Build outputs
 .turbo
-.alchemy
+dist/
+build/
+out/
+
+# Environment variables - NEVER commit these!
 .env
+.env.local
+.env.production
+.env.*.local
+**/.env
+
+# Logs and temporary files
 plans/logs*
+*.log
 tmp/
 apps/server/tmp
 .playwright-mcp
@@ -10,3 +24,5 @@ apps/server/tmp
 **/.DS_Store
 backups/
 **/__pycache__
+*.swp
+**/*.swp

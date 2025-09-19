@@ -1,10 +1,33 @@
 {
   "name": "claudebench",
+  "version": "2.0.0",
+  "description": "Redis-first event-driven benchmarking framework with swarm intelligence for distributed task orchestration",
   "private": true,
+  "license": "MIT",
   "type": "module",
+  "author": "FBLGIT JUANAKO.AI",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fblgit/claudebench.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fblgit/claudebench/issues"
+  },
+  "homepage": "https://github.com/fblgit/claudebench#readme",
+  "keywords": [
+    "event-driven",
+    "redis",
+    "benchmarking",
+    "swarm-intelligence",
+    "distributed-systems",
+    "task-orchestration",
+    "mcp",
+    "jsonrpc"
+  ],
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "docs"
   ],
   "scripts": {
     "check": "oxlint",
@@ -16,6 +39,7 @@
     "dev:web": "turbo -F web dev",
     "dev:server": "turbo -F server dev",
     "dev:inference": "turbo -F inference dev",
+    "dev:docs": "turbo -F claudebench-docs dev",
     "db:push": "turbo -F server db:push",
     "db:studio": "turbo -F server db:studio",
     "db:generate": "turbo -F server db:generate",
@@ -40,14 +64,15 @@
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-tooltip": "^1.2.8",
-    "fetch-to-node": "^2.1.0"
+    "fetch-to-node": "^2.1.0",
+    "ts-prune": "^0.10.3"
   },
   "devDependencies": {
-    "turbo": "^2.5.4",
     "@biomejs/biome": "^2.2.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.2",
-    "oxlint": "^1.12.0"
+    "oxlint": "^1.12.0",
+    "turbo": "^2.5.4"
   },
   "lint-staged": {
     "**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx,vue,astro,svelte}": "oxlint"
