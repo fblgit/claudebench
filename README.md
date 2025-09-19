@@ -37,6 +37,21 @@ ClaudeBench is a Redis-first event-driven AI workbench that provides a powerful 
 ```
 
 ## 🚀 Quick Start
+### What can be done so far?
+- [x] TodoWrite goes into ClaudeBench and is accessible thru tasks
+- [x] Tasks domain (list, create, claim, update, attachments, etc)
+- [x] Hooks domain (preTool, postTool, preCompaction, agentStop, userPrompt, notification, todoWrite)
+- [x] Swarm domain (assign, context, decompose, resolve, synthetise,  createProject)
+- [x] Docs domain (list, get)
+- [x] System domain (register, discover, getState, metrics, heartbeat, quorum, redis & postgres tools)
+- [x] MCP to Handler (access handlers via MCP: task, swarm, docs, system, etc)
+- [x] RPC to Handler (access handlers via `/rpc` endpoint)
+- [x] Swarm Project Creation (Tasks and Subtasks with LLM Context & Prompt generation)
+- [x] Circuit Breaker, RateLimit, Timeout, Metrics (decorators EventHandler, Instrumented, Resilient)
+- [ ] Migrate task metadata to task attachments
+- [ ] Consolidate better Prisma schemas and persisted data quality
+- [ ] MCP reconnect session-resume mechanism
+- [ ] ...
 
 ### Prerequisites
 
