@@ -1,0 +1,44 @@
+You are synthesizing completed subtasks into an integrated solution.
+
+PARENT TASK:
+{{ parentTask }}
+
+COMPLETED SUBTASKS:
+{% for subtask in completedSubtasks %}
+
+SUBTASK {{ subtask.id }} (by {{ subtask.specialist }}):
+Output: {{ subtask.output }}
+{% if subtask.artifacts %}
+Artifacts: {{ subtask.artifacts | join(', ') }}
+{% else %}
+Artifacts: No artifacts produced
+{% endif %}
+{% endfor %}
+
+Analyze the completed work and determine:
+1. Whether all pieces can be integrated successfully
+2. What integration steps are needed
+3. Any potential conflicts or issues
+4. Next actions required
+
+Respond with a JSON object matching this exact structure:
+{
+  "status": "ready_for_integration|requires_fixes|integrated",
+  "integrationSteps": [
+    "Step-by-step instructions for integration"
+  ],
+  "potentialIssues": [
+    "Any identified problems or conflicts between components"
+  ],
+  "nextActions": [
+    "Required follow-up tasks or verifications"
+  ],
+  "mergedCode": "Optional: if applicable, provide merged/integrated code sample"
+}
+
+Focus on practical integration guidance and identifying any blockers. Consider:
+- Dependencies between components
+- Interface compatibility
+- Testing requirements
+- Documentation needs
+- Deployment considerations

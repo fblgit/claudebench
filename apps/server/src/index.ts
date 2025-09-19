@@ -1,26 +1,27 @@
-import "dotenv/config";
-import { Hono } from "hono";
-import { cors } from "hono/cors";
-import { logger } from "hono/logger";
+import { app, initialize } from "./server";
+import { websocket } from "./transports/websocket";
 
-const app = new Hono();
-
-app.use(logger());
-app.use(
-  "/*",
-  cors({
-    origin: process.env.CORS_ORIGIN || "",
-    allowMethods: ["GET", "POST", "OPTIONS"],
-  })
-);
-
-
-
-
-
-
-app.get("/", (c) => {
-  return c.text("OK");
+// Initialize the server when this module loads
+let initialized = false;
+const initPromise = initialize().then(() => {
+	initialized = true;
+	console.log("✅ ClaudeBench server initialized");
+}).catch((error) => {
+	console.error("❌ Failed to initialize ClaudeBench server:", error);
+	process.exit(1);
 });
 
-export default app;
+// Export for Bun with WebSocket support
+export default {
+	async fetch(request: Request, server: any) {
+		// Wait for initialization to complete on first request
+		if (!initialized) {
+			await initPromise;
+		}
+		return app.fetch(request, server);
+	},
+	websocket,
+};
+
+// Re-export for testing
+export { app, initialize };

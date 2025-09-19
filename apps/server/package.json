@@ -15,18 +15,32 @@
     "db:start": "docker compose up -d",
     "db:watch": "docker compose up",
     "db:stop": "docker compose stop",
-    "db:down": "docker compose down"
+    "db:down": "docker compose down",
+    "test": "bun test ./tests",
+    "test:contract": "bun test ./tests/contract",
+    "test:integration": "bun test ./tests/integration",
+    "test:watch": "bun test --watch ./tests"
   },
   "dependencies": {
+    "@hono/node-server": "^1.13.9",
+    "@modelcontextprotocol/sdk": "^1.17.5",
+    "@prisma/client": "^6.15.0",
+    "@types/nunjucks": "^3.2.6",
+    "bullmq": "^5.58.5",
     "dotenv": "^17.2.1",
-    "zod": "^4.0.2",
     "hono": "^4.8.2",
-    "@prisma/client": "^6.15.0"
+    "ioredis": "^5.7.0",
+    "nunjucks": "^3.2.4",
+    "prom-client": "^15.1.0",
+    "reflect-metadata": "^0.2.2",
+    "zod": "3.25.76",
+    "zod-to-json-schema": "^3.24.6"
   },
   "devDependencies": {
-    "tsdown": "^0.14.1",
-    "typescript": "^5.8.2",
     "@types/bun": "^1.2.6",
-    "prisma": "^6.15.0"
+    "@types/node": "^24.3.1",
+    "prisma": "^6.15.0",
+    "tsdown": "^0.14.1",
+    "typescript": "^5.8.2"
   }
 }

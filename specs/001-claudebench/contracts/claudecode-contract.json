@@ -1,0 +1,999 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Claude Code JSON-RPC 2.0 Contract Specification",
+  "description": "Comprehensive contract specification for Claude Code's JSON-RPC 2.0 protocol implementation, including MCP (Model Context Protocol) integration, tool contracts, and behavior patterns.",
+  "version": "2025-06-18",
+  "protocolVersion": "2.0",
+  "baseProtocols": [
+    "JSON-RPC 2.0",
+    "Model Context Protocol (MCP) 2025-06-18"
+  ],
+  
+  "messageFormats": {
+    "request": {
+      "type": "object",
+      "required": ["jsonrpc", "method", "id"],
+      "properties": {
+        "jsonrpc": {
+          "type": "string",
+          "enum": ["2.0"],
+          "description": "JSON-RPC version identifier"
+        },
+        "method": {
+          "type": "string",
+          "description": "Method name to invoke"
+        },
+        "params": {
+          "oneOf": [
+            { "type": "object" },
+            { "type": "array" }
+          ],
+          "description": "Method parameters"
+        },
+        "id": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "number" },
+            { "type": "null" }
+          ],
+          "description": "Request identifier for correlation"
+        }
+      }
+    },
+    
+    "notification": {
+      "type": "object",
+      "required": ["jsonrpc", "method"],
+      "properties": {
+        "jsonrpc": {
+          "type": "string",
+          "enum": ["2.0"]
+        },
+        "method": {
+          "type": "string"
+        },
+        "params": {
+          "oneOf": [
+            { "type": "object" },
+            { "type": "array" }
+          ]
+        }
+      },
+      "description": "One-way message that doesn't expect a response"
+    },
+    
+    "response": {
+      "type": "object",
+      "required": ["jsonrpc", "id"],
+      "properties": {
+        "jsonrpc": {
+          "type": "string",
+          "enum": ["2.0"]
+        },
+        "result": {
+          "description": "Successful response data"
+        },
+        "error": {
+          "$ref": "#/definitions/errorObject"
+        },
+        "id": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "number" },
+            { "type": "null" }
+          ]
+        }
+      }
+    }
+  },
+  
+  "definitions": {
+    "errorObject": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "type": "integer",
+          "description": "Error code indicating the type of error"
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable error message"
+        },
+        "data": {
+          "description": "Additional error information"
+        }
+      }
+    },
+    
+    "capability": {
+      "type": "object",
+      "properties": {
+        "experimental": {
+          "type": "object",
+          "description": "Experimental capabilities"
+        },
+        "sampling": {
+          "type": "object",
+          "description": "LLM sampling capabilities"
+        },
+        "roots": {
+          "type": "object",
+          "properties": {
+            "listChanged": {
+              "type": "boolean",
+              "description": "Whether the client supports root list changes"
+            }
+          }
+        }
+      }
+    }
+  },
+  
+  "errorCodes": {
+    "standardJsonRpc": {
+      "-32700": {
+        "name": "PARSE_ERROR",
+        "description": "Invalid JSON was received by the server"
+      },
+      "-32600": {
+        "name": "INVALID_REQUEST",
+        "description": "The JSON sent is not a valid Request object"
+      },
+      "-32601": {
+        "name": "METHOD_NOT_FOUND",
+        "description": "The method does not exist / is not available"
+      },
+      "-32602": {
+        "name": "INVALID_PARAMS",
+        "description": "Invalid method parameter(s)"
+      },
+      "-32603": {
+        "name": "INTERNAL_ERROR",
+        "description": "Internal JSON-RPC error"
+      }
+    },
+    
+    "mcpSpecific": {
+      "-32000": {
+        "name": "INVALID_PROTOCOL_VERSION",
+        "description": "Unsupported protocol version"
+      },
+      "-32001": {
+        "name": "CAPABILITY_NOT_SUPPORTED",
+        "description": "Requested capability is not supported"
+      },
+      "-32002": {
+        "name": "RESOURCE_NOT_FOUND",
+        "description": "Requested resource does not exist"
+      },
+      "-32003": {
+        "name": "TOOL_EXECUTION_ERROR",
+        "description": "Error occurred during tool execution"
+      },
+      "-32004": {
+        "name": "AUTHENTICATION_REQUIRED",
+        "description": "Authentication is required but not provided"
+      }
+    }
+  },
+  
+  "methods": {
+    "initialization": {
+      "initialize": {
+        "type": "request",
+        "description": "Initialize the protocol session and negotiate capabilities",
+        "params": {
+          "type": "object",
+          "required": ["protocolVersion", "capabilities", "clientInfo"],
+          "properties": {
+            "protocolVersion": {
+              "type": "string",
+              "enum": ["2025-06-18"],
+              "description": "MCP protocol version"
+            },
+            "capabilities": {
+              "$ref": "#/definitions/capability",
+              "description": "Client capabilities"
+            },
+            "clientInfo": {
+              "type": "object",
+              "required": ["name", "version"],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Client application name"
+                },
+                "version": {
+                  "type": "string",
+                  "description": "Client version"
+                }
+              }
+            }
+          }
+        },
+        "result": {
+          "type": "object",
+          "required": ["protocolVersion", "capabilities", "serverInfo"],
+          "properties": {
+            "protocolVersion": {
+              "type": "string",
+              "description": "Negotiated protocol version"
+            },
+            "capabilities": {
+              "$ref": "#/definitions/capability",
+              "description": "Server capabilities"
+            },
+            "serverInfo": {
+              "type": "object",
+              "required": ["name", "version"],
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    
+    "notifications": {
+      "notifications/initialized": {
+        "type": "notification",
+        "description": "Sent after successful initialization",
+        "params": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      
+      "notifications/cancelled": {
+        "type": "notification",
+        "description": "Cancel a previously issued request",
+        "params": {
+          "type": "object",
+          "required": ["requestId"],
+          "properties": {
+            "requestId": {
+              "oneOf": [
+                { "type": "string" },
+                { "type": "number" }
+              ],
+              "description": "ID of request to cancel"
+            },
+            "reason": {
+              "type": "string",
+              "description": "Optional reason for cancellation"
+            }
+          }
+        }
+      }
+    },
+    
+    "tools": {
+      "tools/list": {
+        "type": "request",
+        "description": "List all available tools",
+        "params": {
+          "type": "object",
+          "properties": {
+            "cursor": {
+              "type": "string",
+              "description": "Pagination cursor"
+            }
+          }
+        },
+        "result": {
+          "type": "object",
+          "required": ["tools"],
+          "properties": {
+            "tools": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "description"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Tool identifier"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Human-readable description"
+                  },
+                  "inputSchema": {
+                    "type": "object",
+                    "description": "JSON Schema for tool input"
+                  }
+                }
+              }
+            },
+            "nextCursor": {
+              "type": "string",
+              "description": "Next pagination cursor"
+            }
+          }
+        }
+      },
+      
+      "tools/call": {
+        "type": "request",
+        "description": "Execute a specific tool",
+        "params": {
+          "type": "object",
+          "required": ["name"],
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Tool name to execute"
+            },
+            "arguments": {
+              "type": "object",
+              "description": "Tool arguments"
+            }
+          }
+        },
+        "result": {
+          "type": "object",
+          "required": ["content"],
+          "properties": {
+            "content": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["type"],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["text", "image", "resource"]
+                  },
+                  "text": {
+                    "type": "string",
+                    "description": "Text content"
+                  },
+                  "data": {
+                    "type": "string",
+                    "description": "Base64 encoded data"
+                  },
+                  "mimeType": {
+                    "type": "string",
+                    "description": "MIME type for binary data"
+                  }
+                }
+              }
+            },
+            "isError": {
+              "type": "boolean",
+              "description": "Whether execution resulted in error"
+            }
+          }
+        }
+      }
+    },
+    
+    "resources": {
+      "resources/list": {
+        "type": "request",
+        "description": "List available resources",
+        "params": {
+          "type": "object",
+          "properties": {
+            "cursor": {
+              "type": "string"
+            }
+          }
+        },
+        "result": {
+          "type": "object",
+          "required": ["resources"],
+          "properties": {
+            "resources": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["uri", "name"],
+                "properties": {
+                  "uri": {
+                    "type": "string",
+                    "description": "Resource URI"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Human-readable name"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Resource description"
+                  },
+                  "mimeType": {
+                    "type": "string",
+                    "description": "MIME type"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      
+      "resources/read": {
+        "type": "request",
+        "description": "Read a specific resource",
+        "params": {
+          "type": "object",
+          "required": ["uri"],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "description": "Resource URI to read"
+            }
+          }
+        },
+        "result": {
+          "type": "object",
+          "required": ["contents"],
+          "properties": {
+            "contents": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["uri"],
+                "properties": {
+                  "uri": {
+                    "type": "string"
+                  },
+                  "mimeType": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "blob": {
+                    "type": "string",
+                    "description": "Base64 encoded binary data"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    
+    "prompts": {
+      "prompts/list": {
+        "type": "request",
+        "description": "List available prompts",
+        "params": {
+          "type": "object",
+          "properties": {
+            "cursor": {
+              "type": "string"
+            }
+          }
+        },
+        "result": {
+          "type": "object",
+          "required": ["prompts"],
+          "properties": {
+            "prompts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "description"],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "arguments": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["name", "description"],
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "required": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      
+      "prompts/get": {
+        "type": "request",
+        "description": "Get a specific prompt",
+        "params": {
+          "type": "object",
+          "required": ["name"],
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "arguments": {
+              "type": "object"
+            }
+          }
+        },
+        "result": {
+          "type": "object",
+          "required": ["description", "messages"],
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "messages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["role", "content"],
+                "properties": {
+                  "role": {
+                    "type": "string",
+                    "enum": ["user", "assistant", "system"]
+                  },
+                  "content": {
+                    "type": "object",
+                    "required": ["type", "text"],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["text"]
+                      },
+                      "text": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    
+    "sampling": {
+      "sampling/createMessage": {
+        "type": "request",
+        "description": "Request LLM to create a message",
+        "params": {
+          "type": "object",
+          "required": ["messages", "modelPreferences"],
+          "properties": {
+            "messages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["role", "content"],
+                "properties": {
+                  "role": {
+                    "type": "string",
+                    "enum": ["user", "assistant", "system"]
+                  },
+                  "content": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "required": ["type", "text"],
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "enum": ["text"]
+                          },
+                          "text": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "modelPreferences": {
+              "type": "object",
+              "properties": {
+                "hints": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "costPriority": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "speedPriority": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "intelligencePriority": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "systemPrompt": {
+              "type": "string"
+            },
+            "includeContext": {
+              "type": "string",
+              "enum": ["none", "thisServer", "allServers"]
+            },
+            "temperature": {
+              "type": "number"
+            },
+            "maxTokens": {
+              "type": "integer"
+            },
+            "stopSequences": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "metadata": {
+              "type": "object"
+            }
+          }
+        },
+        "result": {
+          "type": "object",
+          "required": ["role", "content", "model"],
+          "properties": {
+            "role": {
+              "type": "string",
+              "enum": ["assistant"]
+            },
+            "content": {
+              "type": "object",
+              "required": ["type", "text"],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["text"]
+                },
+                "text": {
+                  "type": "string"
+                }
+              }
+            },
+            "model": {
+              "type": "string"
+            },
+            "stopReason": {
+              "type": "string",
+              "enum": ["endTurn", "stopSequence", "maxTokens"]
+            }
+          }
+        }
+      }
+    },
+    
+    "utility": {
+      "ping": {
+        "type": "request",
+        "description": "Simple health check",
+        "params": {
+          "type": "object",
+          "properties": {}
+        },
+        "result": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    }
+  },
+  
+  "claudeCodeSpecific": {
+    "outputFormats": {
+      "text": {
+        "description": "Plain text output format"
+      },
+      "json": {
+        "description": "Structured JSON output for programmatic parsing",
+        "usage": "--output-format json",
+        "features": [
+          "Programmatic response parsing",
+          "Cost tracking (cost_usd field)",
+          "Result extraction",
+          "Integration with tools like jq"
+        ]
+      },
+      "stream-json": {
+        "description": "Streaming JSON for real-time processing",
+        "usage": "--output-format stream-json",
+        "features": [
+          "Real-time streaming responses",
+          "Partial message inclusion with --include-partial-messages",
+          "Event-based processing"
+        ]
+      }
+    },
+    
+    "cliFlags": {
+      "--output-format": {
+        "type": "string",
+        "enum": ["text", "json", "stream-json"],
+        "description": "Output format for responses"
+      },
+      "--input-format": {
+        "type": "string",
+        "enum": ["text", "stream-json"],
+        "description": "Input format specification"
+      },
+      "--include-partial-messages": {
+        "type": "boolean",
+        "description": "Include partial streaming events in stream-json format"
+      },
+      "--max-turns": {
+        "type": "integer",
+        "description": "Limit agentic turns in non-interactive mode"
+      },
+      "--verbose": {
+        "type": "boolean",
+        "description": "Enable detailed logging"
+      }
+    },
+    
+    "authentication": {
+      "primary": {
+        "method": "API_KEY",
+        "envVar": "ANTHROPIC_API_KEY",
+        "description": "Primary authentication via Anthropic API key"
+      },
+      "providers": {
+        "bedrock": {
+          "envVar": "CLAUDE_CODE_USE_BEDROCK",
+          "value": "1",
+          "description": "Use Amazon Bedrock as provider"
+        },
+        "vertex": {
+          "envVar": "CLAUDE_CODE_USE_VERTEX",
+          "value": "1",
+          "description": "Use Google Vertex AI as provider"
+        }
+      }
+    },
+    
+    "toolPermissions": {
+      "allowedTools": {
+        "type": "array",
+        "description": "Explicitly permit specific tools"
+      },
+      "disallowedTools": {
+        "type": "array",
+        "description": "Block specific tools"
+      },
+      "permissionMode": {
+        "type": "string",
+        "description": "Overall permission strategy"
+      }
+    }
+  },
+  
+  "behaviorPatterns": {
+    "initialization": {
+      "sequence": [
+        "Client sends initialize request with capabilities",
+        "Server responds with negotiated protocol version and capabilities",
+        "Client sends notifications/initialized notification",
+        "Session is established and ready for method calls"
+      ]
+    },
+    
+    "errorHandling": {
+      "parseErrors": "Return PARSE_ERROR (-32700) for invalid JSON",
+      "invalidRequests": "Return INVALID_REQUEST (-32600) for malformed requests",
+      "unknownMethods": "Return METHOD_NOT_FOUND (-32601) for unrecognized methods",
+      "parameterErrors": "Return INVALID_PARAMS (-32602) for invalid parameters",
+      "internalErrors": "Return INTERNAL_ERROR (-32603) for server errors"
+    },
+    
+    "notifications": {
+      "resourceChanges": "notifications/resources/list_changed when resource list changes",
+      "toolChanges": "notifications/tools/list_changed when tool list changes",
+      "logging": "notifications/message for logging events",
+      "progress": "notifications/progress for long-running operations"
+    },
+    
+    "batchRequests": {
+      "supported": true,
+      "format": "Array of request objects",
+      "response": "Array of response objects in corresponding order",
+      "errorHandling": "Individual requests can fail without affecting others"
+    }
+  },
+  
+  "exitCodes": {
+    "0": {
+      "name": "SUCCESS",
+      "description": "Operation completed successfully"
+    },
+    "1": {
+      "name": "GENERAL_ERROR",
+      "description": "General error occurred"
+    },
+    "2": {
+      "name": "AUTHENTICATION_ERROR",
+      "description": "Authentication failed"
+    },
+    "3": {
+      "name": "NETWORK_ERROR",
+      "description": "Network connection error"
+    },
+    "4": {
+      "name": "INVALID_INPUT",
+      "description": "Invalid input provided"
+    },
+    "5": {
+      "name": "TOOL_ERROR",
+      "description": "Tool execution failed"
+    },
+    "6": {
+      "name": "TIMEOUT_ERROR",
+      "description": "Operation timed out"
+    }
+  },
+  
+  "exampleRequests": {
+    "initialize": {
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+          "protocolVersion": "2025-06-18",
+          "capabilities": {
+            "roots": {
+              "listChanged": true
+            },
+            "sampling": {}
+          },
+          "clientInfo": {
+            "name": "Claude Code",
+            "version": "1.0.0"
+          }
+        }
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": {
+          "protocolVersion": "2025-06-18",
+          "capabilities": {
+            "tools": {
+              "listChanged": true
+            },
+            "resources": {
+              "listChanged": true
+            }
+          },
+          "serverInfo": {
+            "name": "MCP Server",
+            "version": "1.0.0"
+          }
+        }
+      }
+    },
+    
+    "toolsList": {
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/list"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "result": {
+          "tools": [
+            {
+              "name": "read_file",
+              "description": "Read contents of a file",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "description": "File path to read"
+                  }
+                },
+                "required": ["path"]
+              }
+            }
+          ]
+        }
+      }
+    },
+    
+    "toolCall": {
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "tools/call",
+        "params": {
+          "name": "read_file",
+          "arguments": {
+            "path": "/path/to/file.txt"
+          }
+        }
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "File contents here..."
+            }
+          ],
+          "isError": false
+        }
+      }
+    },
+    
+    "error": {
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 4,
+        "method": "nonexistent/method"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": 4,
+        "error": {
+          "code": -32601,
+          "message": "Method not found",
+          "data": {
+            "method": "nonexistent/method"
+          }
+        }
+      }
+    }
+  },
+  
+  "integrationNotes": {
+    "mcpCompatibility": {
+      "version": "2025-06-18",
+      "transport": "Streamable HTTP (replacing HTTP+SSE)",
+      "authentication": "OAuth 2.1 for remote servers",
+      "batching": "JSON-RPC batch requests supported"
+    },
+    
+    "claudeCodeExtensions": {
+      "outputFormatting": "Supports text, json, and stream-json output modes",
+      "cliIntegration": "Designed for scripting and automation",
+      "contextManagement": "Project-specific and user-level configurations",
+      "toolEcosystem": "Rich set of built-in tools for development workflows"
+    }
+  }
+}

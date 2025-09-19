@@ -9,3 +9,261 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model Task {
+  id          String   @id // Format: t-{timestamp}
+  text        String   // Changed from title to text
+  status      TaskStatus @default(pending)
+  priority    Int      @default(50) // Changed default from 0 to 50
+  assignedTo  String?  // Instance ID
+  result      Json?    // Task completion result
+  error       String?  // Error message if failed
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  completedAt DateTime?
+  
+  // Relations
+  attachments TaskAttachment[]
+  
+  @@index([status])
+  @@index([assignedTo])
+  @@index([priority])
+}
+
+model TaskAttachment {
+  id         String   @id @default(cuid()) // Format: ta-{timestamp}-{random}
+  taskId     String   
+  key        String   // Attachment key/name (e.g., "analysis", "logs", "context")
+  type       AttachmentType // Type of attachment
+  value      Json?    // For structured JSON data
+  content    String?  @db.Text // For text/markdown content
+  url        String?  // For external references
+  size       Int?     // Size in bytes
+  mimeType   String?  // MIME type for binary attachments
+  createdBy  String?  // Instance/user ID that created this
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  // Relations
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  
+  @@index([taskId])
+  @@index([key])
+  @@index([type])
+  @@unique([taskId, key]) // One attachment per key per task
+}
+
+model Instance {
+  id          String   @id @default(cuid())
+  name        String
+  role        String   // worker, supervisor, etc.
+  status      InstanceStatus @default(ACTIVE)
+  lastHeartbeat DateTime @default(now())
+  capabilities Json?   // What handlers this instance supports
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([status])
+  @@index([role])
+}
+
+enum TaskStatus {
+  pending
+  in_progress
+  completed
+  failed
+}
+
+enum AttachmentType {
+  json      // Structured JSON data
+  markdown  // Markdown formatted text
+  text      // Plain text
+  url       // External URL reference
+  binary    // Binary data reference
+}
+
+enum InstanceStatus {
+  ACTIVE
+  IDLE
+  BUSY
+  OFFLINE
+}
+
+// SWARM INTELLIGENCE MODELS
+
+model SwarmProject {
+  id              String   @id // Format: proj-{timestamp}-{random}
+  description     String   @db.Text
+  priority        Int      @default(75)
+  constraints     String[] // Array of constraints
+  metadata        Json?    // Custom metadata
+  status          ProjectStatus @default(queued)
+  jobId           String?  // BullMQ job ID
+  createdBy       String   // Instance ID that created
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  completedAt     DateTime?
+  
+  @@index([status])
+  @@index([createdAt])
+  @@index([createdBy])
+}
+
+model SwarmDecomposition {
+  id              String   @id // Same as parent task ID
+  taskId          String   @unique
+  taskText        String
+  subtaskCount    Int
+  strategy        ExecutionStrategy
+  totalComplexity Int
+  reasoning       String
+  architecturalConsiderations String[] @default([]) // Key architectural decisions
+  progress        Int      @default(0) // Percentage complete
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  subtasks        SwarmSubtask[]
+  
+  @@index([taskId])
+  @@index([createdAt])
+}
+
+model SwarmSubtask {
+  id              String   @id // Format: st-{unique}
+  parentId        String
+  description     String
+  specialist      SpecialistType
+  complexity      Int
+  estimatedMinutes Int
+  status          SubtaskStatus @default(pending)
+  assignedTo      String?  // Instance ID
+  dependencies    String[] // Array of subtask IDs
+  context         Json     // Files, patterns, constraints
+  rationale       String?  @db.Text // Why this subtask is necessary
+  generatedContext Json?   // Enhanced context from specialist exploration
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  completedAt     DateTime?
+  
+  parent          SwarmDecomposition @relation(fields: [parentId], references: [id])
+  assignment      SwarmAssignment?
+  progress        SwarmProgress[]
+  
+  @@index([parentId])
+  @@index([specialist])
+  @@index([status])
+  @@index([assignedTo])
+}
+
+model SwarmAssignment {
+  id              String   @id @default(cuid())
+  subtaskId       String   @unique
+  specialistId    String   // Instance ID
+  score           Int      // Assignment score
+  assignedAt      DateTime @default(now())
+  
+  subtask         SwarmSubtask @relation(fields: [subtaskId], references: [id])
+  
+  @@index([specialistId])
+  @@index([assignedAt])
+}
+
+model SwarmConflict {
+  id              String   @id // Format: conflict-{taskId}-{timestamp}
+  taskId          String
+  solutions       Json     // Array of proposed solutions
+  instanceCount   Int
+  status          ConflictStatus @default(pending)
+  resolution      Json?    // Resolution decision
+  resolvedBy      String?  // Instance ID that resolved
+  createdAt       DateTime @default(now())
+  resolvedAt      DateTime?
+  
+  @@index([taskId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model SwarmProgress {
+  id              String   @id @default(cuid())
+  subtaskId       String
+  instanceId      String
+  output          String
+  artifacts       String[] // File paths or identifiers
+  status          ProgressStatus
+  createdAt       DateTime @default(now())
+  
+  subtask         SwarmSubtask @relation(fields: [subtaskId], references: [id])
+  
+  @@index([subtaskId])
+  @@index([instanceId])
+  @@index([createdAt])
+}
+
+model SwarmIntegration {
+  id              String   @id @default(cuid())
+  taskId          String
+  status          IntegrationStatus
+  steps           String[] // Integration steps
+  issues          String[] // Potential issues
+  mergedCode      String?  @db.Text
+  createdAt       DateTime @default(now())
+  completedAt     DateTime?
+  
+  @@index([taskId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum ExecutionStrategy {
+  parallel
+  sequential
+  mixed
+}
+
+enum SpecialistType {
+  frontend
+  backend
+  testing
+  docs
+  general
+}
+
+enum SubtaskStatus {
+  pending
+  assigned
+  in_progress
+  completed
+  failed
+  blocked
+}
+
+enum ConflictStatus {
+  pending
+  resolved
+  escalated
+  dismissed
+}
+
+enum ProgressStatus {
+  started
+  in_progress
+  completed
+  failed
+}
+
+enum IntegrationStatus {
+  ready_for_integration
+  requires_fixes
+  integrated
+  failed
+}
+
+enum ProjectStatus {
+  queued
+  processing
+  completed
+  failed
+}

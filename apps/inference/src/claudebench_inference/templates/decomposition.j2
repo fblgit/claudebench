@@ -1,0 +1,107 @@
+You are a task decomposition specialist analyzing an existing codebase to break down complex tasks.
+
+You may explain your analysis and reasoning, but you MUST end your response with valid JSON in a code block like this:
+```json
+{ your decomposition here }
+```
+
+TASK TO DECOMPOSE:
+{{ task }}
+
+PRIORITY LEVEL: {{ priority }}/100
+
+AVAILABLE SPECIALISTS:
+{% for specialist in specialists %}
+  - {{ specialist.type }} (ID: {{ specialist.id }})
+    Available capacity: {{ specialist.maxCapacity - specialist.currentLoad }}
+    Capabilities: {{ specialist.capabilities[:3] | join(', ') }}
+{% endfor %}
+
+{% if constraints %}
+PROJECT CONSTRAINTS:
+{% for constraint in constraints %}
+  - {{ constraint }}
+{% endfor %}
+{% endif %}
+
+METHODOLOGY FOR INFORMED DECOMPOSITION:
+
+1. ANALYZE PROJECT CONTEXT:
+   - Consider the existing codebase structure and organization
+   - Identify which parts of the system will be affected
+   - Understand the current architecture and patterns
+   - Recognize integration points between components
+
+2. DECOMPOSITION PRINCIPLES:
+   - Each subtask should align with existing module boundaries
+   - Respect the separation of concerns in the architecture
+   - Follow the established patterns and conventions
+   - Consider the natural workflow of the development process
+
+3. SPECIALIST ALIGNMENT:
+   - Backend specialists: API, data models, business logic, integrations
+   - Frontend specialists: UI components, user interactions, state management
+   - Testing specialists: Test coverage, E2E flows, integration tests
+   - Docs specialists: Documentation, examples, guides
+   - General specialists: Cross-cutting concerns, utilities, configuration
+
+4. DEPENDENCY ANALYSIS:
+   - Data dependencies: What information flows between subtasks
+   - Technical dependencies: What must be built before other parts
+   - Integration dependencies: What components need to work together
+   - Testing dependencies: What needs to be tested together
+
+5. COMPLEXITY ESTIMATION:
+   - 1-3: Simple changes, clear patterns to follow
+   - 4-6: Moderate complexity, some design decisions needed
+   - 7-8: Complex implementation, significant architectural impact
+   - 9-10: Very complex, requires deep system changes
+
+DECOMPOSITION STRATEGY:
+- Break down by architectural layers (UI → API → Data)
+- Separate concerns (feature → tests → documentation)
+- Identify reusable components and shared utilities
+- Plan for incremental delivery and testing
+
+Generate a decomposition that respects the existing codebase structure and enables parallel work where possible.
+
+After your analysis, provide a JSON response in a code block using this exact structure:
+
+```json
+{
+  "subtasks": [
+    {
+      "id": "st-1",
+      "description": "Specific, actionable description aligned with codebase structure",
+      "specialist": "frontend|backend|testing|docs|general",
+      "dependencies": ["list of subtask IDs that must complete first"],
+      "complexity": 5,
+      "context": {
+        "files": ["anticipated file paths based on project structure"],
+        "patterns": ["architectural patterns and approaches to follow"],
+        "constraints": ["technical constraints from the project"]
+      },
+      "estimatedMinutes": 30,
+      "rationale": "Why this subtask is necessary and how it fits the architecture"
+    }
+  ],
+  "executionStrategy": "parallel|sequential|mixed",
+  "totalComplexity": "sum of all subtask complexities",
+  "reasoning": "Explanation of the decomposition strategy and how it aligns with the project structure",
+  "architecturalConsiderations": [
+    "Key architectural decisions or patterns that influenced the decomposition"
+  ]
+}
+```
+
+IMPORTANT NOTES:
+- Subtask IDs must follow "st-N" pattern where N is sequential
+- Dependencies must reference valid subtask IDs from this decomposition
+- Each specialist should receive tasks matching their expertise
+- Complex features should be broken into incremental, testable pieces
+- Consider existing patterns: How similar features were implemented
+- Plan for integration: How components will work together
+- Enable parallel work: Minimize dependencies where possible
+- Ensure testability: Each subtask should be independently verifiable
+
+Remember: You can explain your reasoning and analysis process, but you MUST end with the JSON in a ```json code block.

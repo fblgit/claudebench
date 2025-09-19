@@ -2,3 +2,11 @@ node_modules
 .turbo
 .alchemy
 .env
+plans/logs*
+tmp/
+apps/server/tmp
+.playwright-mcp
+.DS_Store
+**/.DS_Store
+backups/
+**/__pycache__

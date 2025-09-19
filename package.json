@@ -15,6 +15,7 @@
     "dev:native": "turbo -F native dev",
     "dev:web": "turbo -F web dev",
     "dev:server": "turbo -F server dev",
+    "dev:inference": "turbo -F inference dev",
     "db:push": "turbo -F server db:push",
     "db:studio": "turbo -F server db:studio",
     "db:generate": "turbo -F server db:generate",
@@ -22,9 +23,25 @@
     "db:start": "turbo -F server db:start",
     "db:watch": "turbo -F server db:watch",
     "db:stop": "turbo -F server db:stop",
-    "db:down": "turbo -F server db:down"
+    "db:down": "turbo -F server db:down",
+    "db:backup": "bun scripts/db-backup.ts",
+    "db:restore": "bun scripts/db-restore.ts",
+    "test": "turbo test",
+    "test:server": "turbo -F server test",
+    "test:web": "turbo -F web test",
+    "test:contract": "turbo -F server test:contract",
+    "test:integration": "turbo -F server test:integration",
+    "test:watch": "turbo -F server test:watch",
+    "relay": "bun scripts/relay.ts",
+    "relay:worker1": "bun scripts/relay.ts worker-1",
+    "relay:worker2": "bun scripts/relay.ts worker-2",
+    "relay:worker3": "bun scripts/relay.ts worker-3"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@radix-ui/react-accordion": "^1.2.12",
+    "@radix-ui/react-tooltip": "^1.2.8",
+    "fetch-to-node": "^2.1.0"
+  },
   "devDependencies": {
     "turbo": "^2.5.4",
     "@biomejs/biome": "^2.2.0",

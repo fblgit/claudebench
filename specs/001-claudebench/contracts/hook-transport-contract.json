@@ -1,0 +1,776 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ClaudeBench Hook Transport Contract",
+  "description": "Comprehensive contract specification defining the transport layer between Claude Code hook scripts and ClaudeBench server REST endpoints",
+  "version": "1.0.0",
+  "created": "2025-09-11",
+  
+  "overview": {
+    "description": "This contract defines how Claude Code communicates with ClaudeBench server through hook scripts that act as bridges. Claude Code calls external scripts which then make HTTP requests to the ClaudeBench server endpoints.",
+    "flow": "Claude Code -> Hook Script (stdin JSON) -> HTTP Request -> ClaudeBench Server -> HTTP Response -> Hook Script -> Claude Code (stdout/exit code)",
+    "transport": "HTTP REST over JSON",
+    "authentication": "Environment variables and session tokens",
+    "timeout": "5 seconds default, configurable per hook type"
+  },
+
+  "hookTypes": {
+    "pre_tool": {
+      "description": "Called before tool execution to validate, modify, or block tool calls",
+      "claudeCodeEvent": "PreToolUse",
+      "matcher": "All tools (Write, Read, Bash, etc.)",
+      "priority": 10,
+      "cacheable": true,
+      "async": false
+    },
+    "post_tool": {
+      "description": "Called after successful tool execution for cleanup, logging, or processing results",
+      "claudeCodeEvent": "PostToolUse", 
+      "matcher": "All tools (Write, Read, Bash, etc.)",
+      "priority": 20,
+      "cacheable": false,
+      "async": true
+    },
+    "user_prompt": {
+      "description": "Called when user submits a prompt, before Claude processes it",
+      "claudeCodeEvent": "UserPromptSubmit",
+      "matcher": "N/A (all prompts)",
+      "priority": 5,
+      "cacheable": false,
+      "async": false
+    },
+    "todo_write": {
+      "description": "Called when todo list is modified to track task changes",
+      "claudeCodeEvent": "PostToolUse",
+      "matcher": "TodoWrite",
+      "priority": 30,
+      "cacheable": false,
+      "async": true
+    }
+  },
+
+  "endpoints": {
+    "baseUrl": "http://localhost:3000",
+    "pathPattern": "/hook/{hook_type}",
+    "method": "POST",
+    "headers": {
+      "required": {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "User-Agent": "claudebench-hook/1.0"
+      },
+      "optional": {
+        "Authorization": "Bearer {session_token}",
+        "X-Instance-Id": "{instance_id}",
+        "X-Session-Id": "{session_id}",
+        "X-Request-Id": "{request_id}",
+        "X-Hook-Timeout": "{timeout_ms}"
+      }
+    }
+  },
+
+  "schemas": {
+    "pre_tool": {
+      "endpoint": "/hook/pre_tool",
+      "request": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": ["tool", "params", "sessionId", "timestamp"],
+        "properties": {
+          "tool": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Name of the tool being called (e.g., 'Write', 'Bash', 'Read')",
+            "examples": ["Write", "Bash", "Read", "Edit", "MultiEdit"]
+          },
+          "params": {
+            "description": "Parameters passed to the tool - varies by tool type",
+            "oneOf": [
+              {"type": "object"},
+              {"type": "string"},
+              {"type": "array"},
+              {"type": "null"}
+            ],
+            "examples": [
+              {"file_path": "/path/to/file.txt", "content": "file content"},
+              {"command": "ls -la", "description": "list files"},
+              "simple string parameter"
+            ]
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Unique Claude Code session identifier"
+          },
+          "instanceId": {
+            "type": "string",
+            "description": "ClaudeBench server instance ID",
+            "default": "worker-{timestamp}"
+          },
+          "timestamp": {
+            "type": "integer",
+            "description": "Unix timestamp in milliseconds when hook was triggered"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Additional context from Claude Code",
+            "properties": {
+              "projectDir": {"type": "string"},
+              "userPrompt": {"type": "string"},
+              "conversationId": {"type": "string"}
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "response": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": ["allow"],
+        "properties": {
+          "allow": {
+            "type": "boolean",
+            "description": "Whether to proceed with the tool execution"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Human-readable reason for blocking (required if allow=false)",
+            "minLength": 1
+          },
+          "modified": {
+            "description": "Modified parameters to use instead of original params",
+            "oneOf": [
+              {"type": "object"},
+              {"type": "string"}, 
+              {"type": "array"},
+              {"type": "null"}
+            ]
+          },
+          "warnings": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Non-blocking warnings to show user"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Additional response metadata",
+            "properties": {
+              "severity": {"enum": ["critical", "high", "medium", "low"]},
+              "category": {"type": "string"},
+              "ruleMatched": {"type": "string"}
+            }
+          }
+        },
+        "additionalProperties": false,
+        "if": {"properties": {"allow": {"const": false}}},
+        "then": {"required": ["allow", "reason"]}
+      }
+    },
+
+    "post_tool": {
+      "endpoint": "/hook/post_tool",
+      "request": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": ["tool", "result", "sessionId", "timestamp"],
+        "properties": {
+          "tool": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Name of the tool that was executed"
+          },
+          "result": {
+            "description": "Result returned by the tool execution",
+            "oneOf": [
+              {"type": "object"},
+              {"type": "string"},
+              {"type": "array"},
+              {"type": "boolean"},
+              {"type": "number"},
+              {"type": "null"}
+            ]
+          },
+          "params": {
+            "description": "Original parameters that were used (for context)",
+            "oneOf": [
+              {"type": "object"},
+              {"type": "string"},
+              {"type": "array"},
+              {"type": "null"}
+            ]
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Unique Claude Code session identifier"
+          },
+          "instanceId": {
+            "type": "string",
+            "description": "ClaudeBench server instance ID"
+          },
+          "timestamp": {
+            "type": "integer",
+            "description": "Unix timestamp in milliseconds when tool completed"
+          },
+          "executionTime": {
+            "type": "integer",
+            "description": "Tool execution time in milliseconds"
+          },
+          "success": {
+            "type": "boolean",
+            "description": "Whether the tool executed successfully"
+          }
+        },
+        "additionalProperties": false
+      },
+      "response": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": ["processed"],
+        "properties": {
+          "processed": {
+            "description": "Processed/transformed result to return to Claude",
+            "oneOf": [
+              {"type": "object"},
+              {"type": "string"},
+              {"type": "array"},
+              {"type": "boolean"},
+              {"type": "number"},
+              {"type": "null"}
+            ]
+          },
+          "notifications": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Notifications to show user"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Processing metadata",
+            "properties": {
+              "processedAt": {"type": "integer"},
+              "transformations": {"type": "array", "items": {"type": "string"}}
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+
+    "user_prompt": {
+      "endpoint": "/hook/user_prompt",
+      "request": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": ["prompt", "context", "sessionId", "timestamp"],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The user's input prompt text"
+          },
+          "context": {
+            "type": "object",
+            "description": "Current conversation context",
+            "properties": {
+              "conversationId": {"type": "string"},
+              "messageCount": {"type": "integer"},
+              "projectPath": {"type": "string"},
+              "activeFiles": {"type": "array", "items": {"type": "string"}}
+            },
+            "additionalProperties": true
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Unique Claude Code session identifier"
+          },
+          "instanceId": {
+            "type": "string",
+            "description": "ClaudeBench server instance ID"
+          },
+          "timestamp": {
+            "type": "integer",
+            "description": "Unix timestamp in milliseconds when prompt was submitted"
+          }
+        },
+        "additionalProperties": false
+      },
+      "response": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "modified": {
+            "type": "string",
+            "description": "Modified prompt text (optional - if not provided, original is used)"
+          },
+          "continue": {
+            "type": "boolean",
+            "description": "Whether to continue processing the prompt",
+            "default": true
+          },
+          "reason": {
+            "type": "string",
+            "description": "Reason for blocking prompt (required if continue=false)"
+          },
+          "addedContext": {
+            "type": "string",
+            "description": "Additional context to prepend to the conversation"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Additional prompt metadata",
+            "properties": {
+              "classification": {"type": "string"},
+              "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+            }
+          }
+        },
+        "additionalProperties": false,
+        "if": {"properties": {"continue": {"const": false}}},
+        "then": {"required": ["reason"]}
+      }
+    },
+
+    "todo_write": {
+      "endpoint": "/hook/todo_write",
+      "request": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": ["todos", "sessionId", "timestamp"],
+        "properties": {
+          "todos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["content", "status"],
+              "properties": {
+                "content": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Task description text"
+                },
+                "status": {
+                  "enum": ["pending", "in_progress", "completed"],
+                  "description": "Current task status"
+                },
+                "activeForm": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Present continuous form shown during execution"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "previousTodos": {
+            "type": "array",
+            "description": "Previous state of todos for diff tracking",
+            "items": {
+              "type": "object",
+              "properties": {
+                "content": {"type": "string"},
+                "status": {"enum": ["pending", "in_progress", "completed"]},
+                "activeForm": {"type": "string"}
+              }
+            }
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Unique Claude Code session identifier"
+          },
+          "instanceId": {
+            "type": "string",
+            "description": "ClaudeBench server instance ID"
+          },
+          "timestamp": {
+            "type": "integer",
+            "description": "Unix timestamp in milliseconds when todos were updated"
+          }
+        },
+        "additionalProperties": false
+      },
+      "response": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": ["processed"],
+        "properties": {
+          "processed": {
+            "type": "boolean",
+            "description": "Whether the todo update was successfully processed"
+          },
+          "summary": {
+            "type": "object",
+            "description": "Summary of changes made",
+            "properties": {
+              "added": {"type": "integer", "description": "Number of tasks added"},
+              "completed": {"type": "integer", "description": "Number of tasks completed"},
+              "modified": {"type": "integer", "description": "Number of tasks modified"}
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Warnings about todo structure or content"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+
+  "httpStatusCodes": {
+    "200": {
+      "description": "Success - hook executed successfully",
+      "response": "JSON response as per hook type schema"
+    },
+    "400": {
+      "description": "Bad Request - invalid request format or missing required fields",
+      "response": {
+        "error": "string",
+        "details": "object (optional)",
+        "validationErrors": "array (optional)"
+      }
+    },
+    "401": {
+      "description": "Unauthorized - invalid or missing authentication",
+      "response": {
+        "error": "string",
+        "requiredAuth": "boolean"
+      }
+    },
+    "403": {
+      "description": "Forbidden - insufficient permissions for this hook type",
+      "response": {
+        "error": "string",
+        "requiredRole": "string (optional)"
+      }
+    },
+    "429": {
+      "description": "Too Many Requests - rate limit exceeded",
+      "response": {
+        "error": "string",
+        "retryAfter": "integer (seconds)",
+        "currentLimit": "integer"
+      },
+      "headers": {
+        "Retry-After": "integer (seconds)"
+      }
+    },
+    "500": {
+      "description": "Internal Server Error - hook processing failed",
+      "response": {
+        "error": "string",
+        "requestId": "string (for debugging)"
+      }
+    },
+    "503": {
+      "description": "Service Unavailable - server temporarily unavailable",
+      "response": {
+        "error": "string",
+        "retryAfter": "integer (seconds)"
+      }
+    },
+    "504": {
+      "description": "Gateway Timeout - hook processing exceeded timeout",
+      "response": {
+        "error": "string",
+        "timeout": "integer (milliseconds)"
+      }
+    }
+  },
+
+  "bridgeImplementation": {
+    "environment": {
+      "required": [
+        "CLAUDEBENCH_SERVER_URL",
+        "CLAUDE_PROJECT_DIR",
+        "CLAUDE_SESSION_ID"
+      ],
+      "optional": [
+        "CLAUDEBENCH_AUTH_TOKEN",
+        "CLAUDEBENCH_INSTANCE_ID",
+        "CLAUDEBENCH_TIMEOUT",
+        "CLAUDEBENCH_RETRY_COUNT"
+      ]
+    },
+    
+    "timeouts": {
+      "default": 5000,
+      "byHookType": {
+        "pre_tool": 3000,
+        "post_tool": 10000,
+        "user_prompt": 2000,
+        "todo_write": 5000
+      },
+      "configurable": true
+    },
+
+    "retryLogic": {
+      "maxRetries": 2,
+      "backoffStrategy": "exponential",
+      "retryableStatus": [429, 500, 502, 503, 504],
+      "nonRetryableStatus": [400, 401, 403]
+    },
+
+    "errorHandling": {
+      "networkError": {
+        "action": "return_allow_false",
+        "exitCode": 2,
+        "message": "Failed to connect to ClaudeBench server"
+      },
+      "timeout": {
+        "action": "return_allow_true",
+        "exitCode": 0,
+        "message": "Hook timeout - proceeding with default behavior"
+      },
+      "serverError": {
+        "action": "return_allow_false", 
+        "exitCode": 2,
+        "message": "Server error during hook processing"
+      }
+    },
+
+    "caching": {
+      "enabled": true,
+      "keyStrategy": "md5_hash_of_request",
+      "ttl": {
+        "pre_tool": 300,
+        "post_tool": 0,
+        "user_prompt": 0,
+        "todo_write": 0
+      },
+      "storage": "memory"
+    }
+  },
+
+  "examples": {
+    "pre_tool": {
+      "scenario": "Claude attempts to run 'rm -rf /' command",
+      "claudeCodeToScript": {
+        "stdin": {
+          "session_id": "claude-session-123",
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "rm -rf /",
+            "description": "Remove all files"
+          }
+        }
+      },
+      "scriptToServer": {
+        "method": "POST",
+        "url": "http://localhost:3000/hook/pre_tool",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Session-Id": "claude-session-123"
+        },
+        "body": {
+          "tool": "Bash",
+          "params": {
+            "command": "rm -rf /",
+            "description": "Remove all files"
+          },
+          "sessionId": "claude-session-123",
+          "timestamp": 1694462400000
+        }
+      },
+      "serverResponse": {
+        "status": 200,
+        "body": {
+          "allow": false,
+          "reason": "dangerous command pattern detected: rm -rf",
+          "metadata": {
+            "severity": "critical",
+            "ruleMatched": "dangerous_operations"
+          }
+        }
+      },
+      "scriptToClaudeCode": {
+        "exitCode": 2,
+        "stdout": "{\"allow\":false,\"reason\":\"dangerous command pattern detected: rm -rf\"}"
+      }
+    },
+
+    "pre_tool_modification": {
+      "scenario": "Claude runs bash command without timeout, server adds default timeout",
+      "scriptToServer": {
+        "body": {
+          "tool": "Bash",
+          "params": {
+            "command": "sleep 60",
+            "description": "Long running command"
+          },
+          "sessionId": "claude-session-123", 
+          "timestamp": 1694462400000
+        }
+      },
+      "serverResponse": {
+        "status": 200,
+        "body": {
+          "allow": true,
+          "modified": {
+            "command": "sleep 60",
+            "description": "Long running command",
+            "timeout": 30000
+          },
+          "warnings": ["Added 30 second timeout for safety"]
+        }
+      },
+      "scriptToClaudeCode": {
+        "exitCode": 0,
+        "stdout": "{\"allow\":true,\"modified\":{\"command\":\"sleep 60\",\"description\":\"Long running command\",\"timeout\":30000}}"
+      }
+    },
+
+    "post_tool": {
+      "scenario": "File write completed successfully, log the action",
+      "scriptToServer": {
+        "body": {
+          "tool": "Write",
+          "result": {
+            "success": true,
+            "bytesWritten": 1024
+          },
+          "params": {
+            "file_path": "/path/to/file.txt",
+            "content": "file content"
+          },
+          "sessionId": "claude-session-123",
+          "timestamp": 1694462460000,
+          "executionTime": 150,
+          "success": true
+        }
+      },
+      "serverResponse": {
+        "status": 200,
+        "body": {
+          "processed": {
+            "success": true,
+            "bytesWritten": 1024,
+            "loggedAt": 1694462460000
+          },
+          "notifications": ["File write logged to audit trail"]
+        }
+      }
+    },
+
+    "user_prompt": {
+      "scenario": "User submits prompt, server adds context about current directory",
+      "scriptToServer": {
+        "body": {
+          "prompt": "List all JavaScript files",
+          "context": {
+            "conversationId": "conv-123",
+            "messageCount": 5,
+            "projectPath": "/Users/dev/myproject"
+          },
+          "sessionId": "claude-session-123",
+          "timestamp": 1694462400000
+        }
+      },
+      "serverResponse": {
+        "status": 200,
+        "body": {
+          "continue": true,
+          "addedContext": "Current working directory is /Users/dev/myproject which contains a Node.js project with TypeScript configuration.",
+          "metadata": {
+            "classification": "file_query",
+            "confidence": 0.95
+          }
+        }
+      }
+    },
+
+    "todo_write": {
+      "scenario": "Claude updates todo list with new tasks",
+      "scriptToServer": {
+        "body": {
+          "todos": [
+            {
+              "content": "Implement authentication",
+              "status": "pending",
+              "activeForm": "Implementing authentication"
+            },
+            {
+              "content": "Write unit tests",
+              "status": "in_progress",
+              "activeForm": "Writing unit tests"
+            },
+            {
+              "content": "Setup database", 
+              "status": "completed",
+              "activeForm": "Setting up database"
+            }
+          ],
+          "previousTodos": [
+            {
+              "content": "Setup database",
+              "status": "in_progress", 
+              "activeForm": "Setting up database"
+            }
+          ],
+          "sessionId": "claude-session-123",
+          "timestamp": 1694462400000
+        }
+      },
+      "serverResponse": {
+        "status": 200,
+        "body": {
+          "processed": true,
+          "summary": {
+            "added": 2,
+            "completed": 1,
+            "modified": 0
+          }
+        }
+      }
+    }
+  },
+
+  "securityConsiderations": {
+    "authentication": {
+      "method": "Bearer token or session-based",
+      "storage": "Environment variables only",
+      "rotation": "Configurable TTL with refresh mechanism"
+    },
+    "authorization": {
+      "hookPermissions": "Role-based access control per hook type",
+      "rateLimiting": "Per-session and per-hook-type limits",
+      "ipWhitelisting": "Optional IP-based restrictions"
+    },
+    "dataValidation": {
+      "inputSanitization": "All inputs validated against strict schemas",
+      "outputValidation": "All responses conform to defined schemas",
+      "sizeLimit": "Max 1MB per request/response"
+    },
+    "auditLogging": {
+      "allRequests": "Full request/response logging with retention",
+      "sensitiveData": "Automatic redaction of credentials and PII",
+      "compliance": "Structured logging for security audits"
+    }
+  },
+
+  "performanceConsiderations": {
+    "caching": {
+      "strategy": "Redis-based caching for pre_tool hooks only",
+      "invalidation": "TTL-based with manual invalidation API",
+      "compression": "JSON response compression for large payloads"
+    },
+    "concurrency": {
+      "maxConcurrent": "100 concurrent hook requests per instance",
+      "queuing": "Redis-backed queue for overflow requests", 
+      "backpressure": "Circuit breaker pattern for overload protection"
+    },
+    "monitoring": {
+      "metrics": "Response time, success rate, cache hit ratio",
+      "alerting": "Automatic alerts for failures and performance degradation",
+      "tracing": "Distributed tracing for request flow analysis"
+    }
+  },
+
+  "versioningStrategy": {
+    "contractVersion": "Semantic versioning with backward compatibility",
+    "migration": "Gradual rollout with version negotiation",
+    "deprecation": "12-month notice for breaking changes"
+  }
+}

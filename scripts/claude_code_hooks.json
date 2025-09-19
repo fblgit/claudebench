@@ -1,0 +1,125 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bun test:*)",
+      "Bash(bun run:*)",
+      "mcp__shadcn__get_component",
+      "mcp__shadcn__list_components",
+      "mcp__claudebench__task__create",
+      "mcp__claudebench__system__get_state",
+      "mcp__claudebench__system__health",
+      "mcp__claudebench__task__complete",
+      "mcp__claudebench__system__metrics",
+      "mcp__claudebench__task__assign",
+      "mcp__shadcn__list_blocks",
+      "mcp__shadcn__get_block",
+      "Bash(curl:*)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
+      "Bash(redis-cli:*)",
+      "mcp__playwright__browser_navigate"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /Users/mrv/Desktop/GIT/cb3/claudebench/scripts/claude_code_hooks.py"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /Users/mrv/Desktop/GIT/cb3/claudebench/scripts/claude_code_hooks.py"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /Users/mrv/Desktop/GIT/cb3/claudebench/scripts/claude_code_hooks.py"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /Users/mrv/Desktop/GIT/cb3/claudebench/scripts/claude_code_hooks.py"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /Users/mrv/Desktop/GIT/cb3/claudebench/scripts/claude_code_hooks.py"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /Users/mrv/Desktop/GIT/cb3/claudebench/scripts/claude_code_hooks.py"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /Users/mrv/Desktop/GIT/cb3/claudebench/scripts/claude_code_hooks.py"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /Users/mrv/Desktop/GIT/cb3/claudebench/scripts/claude_code_hooks.py"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /Users/mrv/Desktop/GIT/cb3/claudebench/scripts/claude_code_hooks.py"
+          }
+        ]
+      }
+    ]
+  },
+  "outputStyle": "enhanced-expert-debate"
+}

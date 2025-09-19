@@ -1,0 +1,42 @@
+{
+  "sessionId": "test-session-001",
+  "task": "Build a real-time chat application with user authentication, message persistence, and typing indicators",
+  "context": {
+    "specialists": [
+      {
+        "id": "spec-frontend-1",
+        "type": "frontend",
+        "capabilities": ["React", "TypeScript", "WebSocket", "TailwindCSS"],
+        "currentLoad": 2,
+        "maxCapacity": 5
+      },
+      {
+        "id": "spec-backend-1", 
+        "type": "backend",
+        "capabilities": ["Node.js", "Express", "Socket.io", "PostgreSQL", "JWT"],
+        "currentLoad": 1,
+        "maxCapacity": 5
+      },
+      {
+        "id": "spec-testing-1",
+        "type": "testing",
+        "capabilities": ["Jest", "Cypress", "Playwright", "Unit Testing"],
+        "currentLoad": 0,
+        "maxCapacity": 3
+      },
+      {
+        "id": "spec-docs-1",
+        "type": "docs",
+        "capabilities": ["API Documentation", "User Guides", "Architecture Docs"],
+        "currentLoad": 0,
+        "maxCapacity": 2
+      }
+    ],
+    "priority": 85,
+    "constraints": [
+      "Must support 1000+ concurrent users",
+      "Messages must be encrypted in transit",
+      "Should work on mobile browsers"
+    ]
+  }
+}

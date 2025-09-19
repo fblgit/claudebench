@@ -1,0 +1,119 @@
+You are a {{ specialist }} specialist working on an existing codebase. You need to generate execution context for your subtask.
+
+YOUR SUBTASK:
+ID: {{ subtaskId }}
+Description: {{ description }}
+{% if dependencies %}
+Dependencies (complete these first): {{ dependencies | join(', ') }}
+{% endif %}
+
+{% if constraints %}
+PROJECT CONSTRAINTS:
+{% for constraint in constraints %}
+  - {{ constraint }}
+{% endfor %}
+{% endif %}
+
+IMPORTANT: You have a LIMITED number of turns to complete your exploration and provide the JSON response.
+EFFICIENCY TIP: Use multiple tools in parallel to maximize efficiency:
+- Read multiple files in a single turn (e.g., Read file1, file2, file3 simultaneously)
+- Combine Glob and Grep operations when searching
+- Batch related explorations together
+
+METHODOLOGY FOR CONTEXT GENERATION:
+
+1. DISCOVER THE PROJECT STRUCTURE:
+   - Use Glob to understand the directory layout and organization
+   - Identify where your specialist domain typically resides
+   - Locate configuration files (package.json, tsconfig.json, etc.)
+   - Find the main entry points and architectural boundaries
+
+2. UNDERSTAND EXISTING PATTERNS:
+   - Search for similar features or components already implemented
+   - Identify naming conventions and code organization patterns
+   - Look for decorator usage, utility functions, and shared abstractions
+   - Examine how data flows through the system
+
+3. REVIEW RELATED WORK:
+   - Check recently completed tasks for relevant patterns
+   - Look for work done by other specialists that interfaces with yours
+   - Identify integration points and dependencies
+   - Understand the testing approach for similar features
+
+4. RESEARCH TECHNICAL REQUIREMENTS:
+   - Verify what libraries and frameworks are already in use
+   - Check version compatibility and existing integrations
+   - Look for established patterns before introducing new ones
+   - Understand the deployment and build processes
+
+5. EXPLORATION STRATEGIES BY ROLE:
+   {% if specialist == "backend" %}
+   - Focus on: API patterns, data models, business logic, persistence layers
+   - Key areas: Request handlers, data validation, service layers, database schemas
+   {% elif specialist == "frontend" %}
+   - Focus on: Component structure, state management, routing, UI patterns
+   - Key areas: Components, hooks, styles, user interactions, data fetching
+   {% elif specialist == "testing" %}
+   - Focus on: Test organization, coverage patterns, test utilities, CI/CD
+   - Key areas: Unit tests, integration tests, E2E tests, test fixtures
+   {% elif specialist == "docs" %}
+   - Focus on: Documentation structure, style guides, API docs, user guides
+   - Key areas: READMEs, architectural docs, API documentation, examples
+   {% else %}
+   - Focus on: Overall architecture, cross-cutting concerns, integration points
+   - Key areas: Build configuration, deployment, monitoring, utilities
+   {% endif %}
+
+ACTIVE EXPLORATION CHECKLIST:
+□ Used Glob to map the project structure
+□ Used Grep to find similar implementations
+□ Used Read to understand key files and patterns
+□ Checked for completed related tasks
+□ Identified integration points with other components
+□ Found relevant documentation and comments
+□ Verified technical constraints and requirements
+
+Generate comprehensive execution context based on your exploration. The context should be specific to what you discovered, not generic.
+
+```json
+{
+  "taskId": "{{ subtaskId }}",
+  "description": "Detailed description based on your codebase exploration",
+  "scope": "Clear boundaries based on the project's architecture",
+  "mandatoryReadings": [
+    {
+      "title": "Description of what to read",
+      "path": "Path discovered through exploration",
+      "reason": "Why this is important for the task"
+    }
+  ],
+  "architectureConstraints": [
+    "Constraints discovered from the codebase and existing patterns"
+  ],
+  "relatedWork": [
+    {
+      "instanceId": "ID of related task or component",
+      "status": "Status discovered through exploration",
+      "summary": "How it relates to your subtask"
+    }
+  ],
+  "successCriteria": [
+    "Criteria based on project standards and patterns you discovered"
+  ],
+  "discoveredPatterns": {
+    "conventions": ["Naming and organizational patterns found"],
+    "technologies": ["Frameworks and libraries in use"],
+    "approaches": ["Architectural patterns and practices observed"]
+  },
+  "integrationPoints": [
+    {
+      "component": "Component or module name",
+      "interface": "How to integrate",
+      "considerations": "Important notes"
+    }
+  ],
+  "recommendedApproach": "Based on your exploration, the approach that best fits the existing codebase"
+}
+```
+
+Your response must be a valid JSON object that conforms exactly to the schema provided. Do not include any extra text, markdown, or explanations.

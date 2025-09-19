@@ -1,0 +1,52 @@
+You are resolving a conflict between different implementation approaches.
+
+PROJECT CONTEXT:
+Type: {{ projectType }}
+
+REQUIREMENTS:
+{% for requirement in requirements %}
+  - {{ requirement }}
+{% endfor %}
+
+{% if constraints %}
+CONSTRAINTS:
+{% for constraint in constraints %}
+  - {{ constraint }}
+{% endfor %}
+{% endif %}
+
+COMPETING SOLUTIONS:
+{% for solution in solutions %}
+
+SOLUTION {{ loop.index }} (from {{ solution.instanceId }}):
+Approach: {{ solution.approach }}
+Reasoning: {{ solution.reasoning }}
+{% if solution.code %}
+Code Sample:
+```
+{{ solution.code[:500] }}{% if solution.code|length > 500 %}...{% endif %}
+```
+{% endif %}
+{% endfor %}
+
+Analyze these solutions and choose the best one based on:
+1. Alignment with project requirements
+2. Technical merit and best practices
+3. Maintainability and scalability
+4. Performance implications
+5. Team capabilities
+
+Respond with a JSON object matching this exact structure:
+{
+  "chosenSolution": "Clear description of the chosen approach",
+  "instanceId": "ID of the specialist whose solution was chosen",
+  "justification": "Detailed reasoning for why this solution is best",
+  "recommendations": [
+    "Specific improvements or modifications to the chosen solution"
+  ],
+  "modifications": [
+    "Optional: specific changes needed before implementation"
+  ]
+}
+
+Be objective and provide clear technical justification for your decision. Consider trade-offs and explain why the chosen solution best balances all requirements.

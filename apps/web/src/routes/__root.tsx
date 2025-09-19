@@ -1,6 +1,7 @@
 import Header from "@/components/header";
 import Loader from "@/components/loader";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ClaudeBenchLayout } from "@/components/ClaudeBenchLayout";
 import { Toaster } from "@/components/ui/sonner";
 import {
   HeadContent,
@@ -9,11 +10,10 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+import type { RouterContext } from "@/router";
 import "../index.css";
 
-export interface RouterAppContext {}
-
-export const Route = createRootRouteWithContext<RouterAppContext>()({
+export const Route = createRootRouteWithContext<RouterContext>()({
   component: RootComponent,
   head: () => ({
     meta: [
@@ -49,10 +49,9 @@ function RootComponent() {
         disableTransitionOnChange
         storageKey="vite-ui-theme"
       >
-        <div className="grid grid-rows-[auto_1fr] h-svh">
-          <Header />
+        <ClaudeBenchLayout>
           {isFetching ? <Loader /> : <Outlet />}
-        </div>
+        </ClaudeBenchLayout>
         <Toaster richColors />
       </ThemeProvider>
       <TanStackRouterDevtools position="bottom-left" />

@@ -50,6 +50,22 @@
 		"db:down": {
 			"cache": false,
 			"persistent": true
+		},
+		"test": {
+			"cache": false,
+			"outputs": []
+		},
+		"test:contract": {
+			"cache": false,
+			"outputs": []
+		},
+		"test:integration": {
+			"cache": false,
+			"outputs": []
+		},
+		"test:watch": {
+			"cache": false,
+			"persistent": true
 		}
 	}
 }

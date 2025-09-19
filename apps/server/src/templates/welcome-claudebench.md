@@ -1,0 +1,221 @@
+# 🚀 Welcome to ClaudeBench
+
+## What is ClaudeBench?
+ClaudeBench is an event-driven orchestration system that enables AI agents to collaborate through a Redis-first architecture with MCP (Model Context Protocol) integration.
+
+## 🎯 Quick Start
+
+### 1. Event Relay
+The event relay monitors all ClaudeBench events in real-time:
+```bash
+bun relay  # Running as {{ instanceId }}
+```
+Current Status: **{{ instanceCount }}** active instances, **{{ eventCount }}** total events
+
+### 2. MCP Integration
+You have access to:
+
+#### 📋 Resources (Static Data)
+- **Task List** (`swarm://tasks`) - View all tasks in the system
+- **Pending Tasks** (`swarm://tasks/pending`) - Tasks ready to be claimed
+- **Swarm Conflicts** (`swarm://conflicts`) - Active conflicts requiring resolution
+- **Decompositions List** (`swarm://decompositions`) - All task decompositions
+
+#### 🔄 Resource Templates (Dynamic Data)
+- `swarm://decomposition/{taskId}` - Detailed task decomposition
+- `swarm://context/{subtaskId}` - Execution context for subtasks
+- `swarm://progress/{taskId}` - Real-time progress tracking
+
+#### 🛠️ Tools (Actions)
+All ClaudeBench handlers are exposed as MCP tools:
+- **task.create** - Create new tasks
+- **task.claim** - Claim tasks for processing
+- **task.complete** - Mark tasks as completed
+- **swarm.decompose** - Break down complex tasks
+- **swarm.resolve** - Resolve conflicts between specialists
+- **system.register** - Register new instances
+
+### 3. Task Management
+
+#### Creating Tasks
+```javascript
+// Use task.create tool
+{
+  "text": "Your task description",
+  "priority": 50,  // 0-100, higher = more important
+  "metadata": {}    // Optional custom data
+}
+```
+**Current Queue**: {{ pendingTasks }} pending, {{ inProgressTasks }} in progress
+
+#### Claiming Tasks
+Workers claim tasks from the queue:
+```javascript
+// Use task.claim tool
+{
+  "workerId": "{{ instanceId }}",
+  "maxTasks": 1
+}
+```
+
+### 4. Swarm Coordination
+
+The swarm system enables parallel task execution through specialist collaboration:
+
+```mermaid
+graph TB
+    subgraph Specialists
+        FE[Frontend<br/>Specialist]
+        BE[Backend<br/>Specialist]
+        TEST[Testing<br/>Specialist]
+        DOCS[Docs<br/>Specialist]
+    end
+    
+    COORD[Swarm<br/>Coordinator]
+    
+    FE --> COORD
+    BE --> COORD
+    TEST --> COORD
+    DOCS --> COORD
+    
+    COORD --> RESULT[Integrated<br/>Solution]
+```
+
+**Workflow**:
+
+```mermaid
+graph LR
+    A[Complex Task] -->|1. Decompose| B[Subtasks]
+    B -->|2. Assign| C[Specialists]
+    C -->|3. Execute| D[Parallel Work]
+    D -->|4. Resolve| E[Conflict Resolution]
+    E -->|5. Synthesize| F[Final Solution]
+```
+
+### 5. System Architecture
+
+```mermaid
+graph TB
+    CC[Claude Code]
+    MCP[MCP Handler]
+    CB[ClaudeBench<br/>Handlers]
+    REDIS[(Redis<br/>Events)]
+    PG[(PostgreSQL<br/>Persistence)]
+    
+    CC <--> MCP
+    MCP <--> CB
+    CB --> REDIS
+    CB --> PG
+    
+    REDIS -.->|Pub/Sub| CB
+    
+    style REDIS fill:#ff6b6b
+    style PG fill:#4dabf7
+    style MCP fill:#51cf66
+```
+
+### 6. Event Flow
+
+Events follow a predictable pattern:
+
+```mermaid
+sequenceDiagram
+    participant C as Claude Code
+    participant M as MCP Handler
+    participant H as Handler
+    participant R as Redis
+    participant S as Subscribers
+    participant E as Event Relay
+    
+    C->>M: Call Tool/Resource
+    M->>H: Execute Handler
+    H->>R: Publish Event
+    R-->>S: Pub/Sub Distribution
+    R-->>E: Event Stream
+    E-->>C: stdout (JSON)
+    H->>C: Return Result
+```
+
+**Active Event Streams**:
+{% for stream in eventStreams %}
+- `{{ stream.name }}`: {{ stream.count }} events
+{% endfor %}
+
+### 7. Current System Status
+
+| Metric | Value |
+|--------|-------|
+| **Active Instances** | {{ instanceCount }} |
+| **Total Tasks** | {{ totalTasks }} |
+| **Pending Tasks** | {{ pendingTasks }} |
+| **In Progress** | {{ inProgressTasks }} |
+| **Completed Today** | {{ completedToday }} |
+| **Success Rate** | {{ successRate }}% |
+| **Avg Response Time** | {{ avgResponseTime }}ms |
+| **Total Events** | {{ eventCount }} |
+
+### 8. TodoWrite Integration
+
+ClaudeBench integrates with Claude Code's TodoWrite tool:
+- Tasks are automatically tracked as todos
+- Progress updates trigger `hook.todo_write` events
+- Completion rates are monitored in real-time
+
+**Current Todo Stats**:
+- Completion Rate: {{ todoCompletionRate }}%
+- Active Todos: {{ activeTodos }}
+
+### 9. Monitoring Commands
+
+Essential monitoring tools:
+```bash
+# System health
+mcp__claudebench__system__health
+
+# Detailed metrics
+mcp__claudebench__system__metrics
+
+# Instance states
+mcp__claudebench__system__get_state
+
+# Redis keys inspection
+mcp__claudebench__system__redis__keys
+```
+
+### 10. Best Practices
+
+#### For Task Processing
+✅ Register your instance before claiming tasks
+✅ Use appropriate worker roles (frontend, backend, testing, docs)
+✅ Complete or reassign tasks you can't handle
+✅ Monitor your instance health regularly
+
+#### For System Design
+✅ Use events for loose coupling between components
+✅ Persist selectively to PostgreSQL (explicit `persist: true`)
+✅ Implement circuit breakers for resilience
+✅ Follow `domain.action` event naming convention
+
+#### For Performance
+✅ Batch Redis operations when possible
+✅ Use Lua scripts for atomic operations
+✅ Monitor rate limits and adjust as needed
+✅ Clean up completed tasks periodically
+
+## 🎉 Ready to Start!
+
+### Quick Actions:
+1. **View pending tasks**: Access `swarm://tasks/pending` resource
+2. **Create a task**: Use `task.create` tool with your task description
+3. **Monitor events**: Check the relay output in your terminal
+4. **Explore resources**: Browse available MCP resources in the sidebar
+
+### Useful Resources:
+- **Documentation**: `/docs/CLAUDEBENCH.md`
+- **MCP SDK Reference**: `/docs/MCP_SDK.md`
+- **Redis Scripts**: `/src/core/lua-scripts.ts`
+- **Event Handlers**: `/src/handlers/`
+
+---
+*ClaudeBench v2.0 - Redis-First Event-Driven Architecture*
+*Instance: {{ instanceId }} | Session: {{ sessionId }} | Timestamp: {{ timestamp }}*
