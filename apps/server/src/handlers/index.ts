@@ -9,3 +9,6 @@ export * from "./system";
 
 // Swarm intelligence handlers
 export * from "./swarm";
+
+// Documentation domain handlers
+export * from "./docs";

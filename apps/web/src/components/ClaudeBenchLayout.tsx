@@ -10,6 +10,7 @@ import {
   IconListDetails,
   IconRobot,
   IconBroadcast,
+  IconBook,
 } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -49,6 +50,13 @@ export function ClaudeBenchLayout({ children }: ClaudeBenchLayoutProps) {
       href: "/system",
       icon: (
         <IconRobot className="text-neutral-700 dark:text-neutral-200 h-5 w-5 shrink-0" />
+      ),
+    },
+    {
+      label: "Docs",
+      href: "/docs",
+      icon: (
+        <IconBook className="text-neutral-700 dark:text-neutral-200 h-5 w-5 shrink-0" />
       ),
     },
   ];
