@@ -55,6 +55,7 @@ import {
 	Tag,
 	ListTodo,
 	Zap,
+	Paperclip,
 } from "lucide-react";
 import { TaskCard } from "./TaskCard";
 import { TaskDetailModal } from "./TaskDetailModal";
@@ -521,6 +522,7 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 		const avgPriority = tasks.length > 0
 			? Math.round(tasks.reduce((sum, t) => sum + t.priority, 0) / tasks.length)
 			: 0;
+		const totalAttachments = tasks.reduce((sum, t) => sum + (t.attachmentCount || 0), 0);
 
 		return {
 			total,
@@ -530,6 +532,7 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 			failed,
 			assigned,
 			avgPriority,
+			totalAttachments,
 		};
 	}, [tasks]);
 
@@ -562,6 +565,10 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 							<Badge variant="outline" className="text-green-500 border-green-500">
 								<CheckCircle2 className="h-3 w-3 mr-1" />
 								{statistics.completed} done
+							</Badge>
+							<Badge variant="outline" className="text-purple-500 border-purple-500">
+								<Paperclip className="h-3 w-3 mr-1" />
+								{statistics.totalAttachments} attachments
 							</Badge>
 						</div>
 
