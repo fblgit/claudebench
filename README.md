@@ -1,6 +1,6 @@
 # ClaudeBench 🚀
 
-ClaudeBench is a modern, event-driven task orchestration system that leverages Redis for real-time coordination and swarm intelligence for complex task decomposition. Built with a focus on simplicity and performance, it transforms traditional 5000+ LOC enterprise patterns into a lean 500 LOC architecture.
+ClaudeBench is a Redis-first event-driven AI workbench that provides a powerful development platform for Claude and AI agents. Built with a focus on simplicity and performance, it features swarm intelligence for complex task decomposition and transforms traditional 5000+ LOC enterprise patterns into a lean 500 LOC architecture.
 
 ## Key Features
 
@@ -85,6 +85,9 @@ bun dev
 # Or run services individually:
 bun dev:server  # Backend server only
 bun dev:web     # Frontend only
+
+# Start documentation site (optional, on :3002)
+cd docs && bun dev
 ```
 
 ### Running the Event Relay
@@ -209,10 +212,46 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 
 ## 📚 Documentation
 
-- [Architecture Overview](docs/ARCHITECTURE.md)
-- [API Documentation](docs/API.md)
-- [Swarm Intelligence Guide](docs/SWARM.md)
-- [MCP Integration](docs/MCP.md)
+### Accessing Documentation
+
+ClaudeBench provides comprehensive documentation through multiple channels:
+
+#### 🌐 Docusaurus Documentation Site
+```bash
+# Start the documentation server
+cd docs && bun dev
+# Access at http://localhost:3002
+```
+
+#### 🖥️ Integrated Documentation Viewer
+The web application includes an embedded documentation viewer:
+1. Start the main application: `bun dev`
+2. Navigate to the **Docs** tab in the sidebar
+3. Browse documentation within the ClaudeBench interface
+
+#### 📡 API Documentation Access
+Programmatic access to documentation via handlers:
+- `docs.list` - List all documentation with metadata
+- `docs.get` - Retrieve specific document content
+
+### Documentation Structure
+
+The documentation source files are located in [`docs/docs/`](docs/docs/) and organized as follows:
+
+- **[Getting Started](docs/docs/intro.md)** - Quick introduction and setup
+- **[Architecture](docs/docs/architecture/)** - System design and patterns
+  - [Event Bus & Redis integration](docs/docs/architecture/event-bus.md)
+  - [Handler patterns and decorators](docs/docs/architecture/handlers.md)
+  - [MCP (Model Context Protocol) integration](docs/docs/architecture/mcp.md)
+  - [Circuit breakers and resilience](docs/docs/architecture/circuit-breaker.md)
+- **[API Reference](docs/docs/api/)** - Complete API documentation
+  - [Task operations](docs/docs/api/task/)
+  - [System management](docs/docs/api/system/)
+  - [Swarm intelligence](docs/docs/api/swarm/)
+- **[Guides](docs/docs/guides/)** - Practical tutorials and examples
+- **[Handlers](docs/docs/handlers/)** - Handler implementation details
+
+You can browse the documentation directly in the [`docs/docs/`](docs/docs/) directory or view them through the Docusaurus interface.
 
 ## 🛠️ Technology Stack
 
