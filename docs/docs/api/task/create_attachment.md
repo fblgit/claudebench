@@ -185,7 +185,7 @@ When an attachment is successfully created, an event is published:
 
 ## Related
 
-- [task.get_attachment](./get_attachment.md) - Get specific attachment by key
-- [task.list_attachments](./list_attachments.md) - List all attachments for a task
-- [task.create](./create.md) - Create a new task
-- [task.complete](./complete.md) - Mark task as completed
+- [task.get_attachment](./get_attachment) - Get specific attachment by key
+- [task.list_attachments](./list_attachments) - List all attachments for a task
+- [task.create](./create) - Create a new task
+- [task.complete](./complete) - Mark task as completed

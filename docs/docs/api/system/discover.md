@@ -322,6 +322,6 @@ const monitoringMethods = systemMethods.result.methods
 
 ## Related Methods
 
-- [`system.health`](./health.md) - Check system health before discovery
-- [`system.get_state`](./get_state.md) - Get current system state
+- [`system.health`](./health) - Check system health before discovery
+- [`system.get_state`](./get_state) - Get current system state
 - All discovered methods can be called using their `name` field

@@ -34,24 +34,24 @@ ws.on('message', (data) => {
 ClaudeBench organizes events into domains:
 
 ### Task Domain
-- [task.create](./task/create.md) - Create new task
-- [task.update](./task/update.md) - Update task
-- [task.complete](./task/complete.md) - Complete task
-- [task.claim](./task/claim.md) - Claim tasks for processing
-- [task.list](./task/list.md) - List tasks with filters
+- [task.create](./task/create) - Create new task
+- [task.update](./task/update) - Update task
+- [task.complete](./task/complete) - Complete task
+- [task.claim](./task/claim) - Claim tasks for processing
+- [task.list](./task/list) - List tasks with filters
 
 ### System Domain
-- [system.health](./system/health.md) - System health check
-- [system.metrics](./system/metrics.md) - Get metrics
-- [system.register](./system/register.md) - Register instance
+- [system.health](./system/health) - System health check
+- [system.metrics](./system/metrics) - Get metrics
+- [system.register](./system/register) - Register instance
 
 ### Swarm Domain
-- [swarm.decompose](./swarm/decompose.md) - Decompose complex tasks using LLM intelligence
-- [swarm.context](./swarm/context.md) - Generate specialized context for subtasks
-- [swarm.assign](./swarm/assign.md) - Assign subtasks to best available specialists  
-- [swarm.resolve](./swarm/resolve.md) - Resolve conflicts between specialist solutions
-- [swarm.synthesize](./swarm/synthesize.md) - Synthesize completed work into integrated solution
-- [swarm.create_project](./swarm/create_project.md) - Create new projects using swarm intelligence
+- [swarm.decompose](./swarm/decompose) - Decompose complex tasks using LLM intelligence
+- [swarm.context](./swarm/context) - Generate specialized context for subtasks
+- [swarm.assign](./swarm/assign) - Assign subtasks to best available specialists  
+- [swarm.resolve](./swarm/resolve) - Resolve conflicts between specialist solutions
+- [swarm.synthesize](./swarm/synthesize) - Synthesize completed work into integrated solution
+- [swarm.create_project](./swarm/create_project) - Create new projects using swarm intelligence
 
 ## Request Format
 

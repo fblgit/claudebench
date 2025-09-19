@@ -187,7 +187,7 @@ Get a specific task attachment by its key. This method retrieves attachment data
 
 ## Related
 
-- [task.create_attachment](./create_attachment.md) - Create a new attachment
-- [task.list_attachments](./list_attachments.md) - List all attachments for a task
-- [task.create](./create.md) - Create a new task
-- [task.update](./update.md) - Update task details
+- [task.create_attachment](./create_attachment) - Create a new attachment
+- [task.list_attachments](./list_attachments) - List all attachments for a task
+- [task.create](./create) - Create a new task
+- [task.update](./update) - Update task details

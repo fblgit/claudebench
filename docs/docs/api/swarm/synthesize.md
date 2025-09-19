@@ -438,6 +438,6 @@ Consider code compatibility, interface alignment, data flow, architecture consis
 
 ## Related Handlers
 
-- [`swarm.decompose`](./decompose.md) - Creates the subtasks being synthesized
-- [`swarm.resolve`](./resolve.md) - May be needed for integration conflicts
-- [`swarm.assign`](./assign.md) - Assigns the subtasks that feed into synthesis
+- [`swarm.decompose`](./decompose) - Creates the subtasks being synthesized
+- [`swarm.resolve`](./resolve) - May be needed for integration conflicts
+- [`swarm.assign`](./assign) - Assigns the subtasks that feed into synthesis

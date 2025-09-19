@@ -278,6 +278,6 @@ swarm__decompose '{
 
 ## Related Handlers
 
-- [`swarm.assign`](./assign.md) - Assigns subtasks to specialists
-- [`swarm.context`](./context.md) - Generates specialist context
-- [`swarm.synthesize`](./synthesize.md) - Integrates completed work
+- [`swarm.assign`](./assign) - Assigns subtasks to specialists
+- [`swarm.context`](./context) - Generates specialist context
+- [`swarm.synthesize`](./synthesize) - Integrates completed work

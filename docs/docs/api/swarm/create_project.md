@@ -419,6 +419,6 @@ bun relay | grep "swarm.project"
 
 ## Related Handlers
 
-- [`swarm.decompose`](./decompose.md) - Used internally for task breakdown
-- [`swarm.assign`](./assign.md) - Used for specialist assignment
-- [`swarm.synthesize`](./synthesize.md) - Used for final integration
+- [`swarm.decompose`](./decompose) - Used internally for task breakdown
+- [`swarm.assign`](./assign) - Used for specialist assignment
+- [`swarm.synthesize`](./synthesize) - Used for final integration

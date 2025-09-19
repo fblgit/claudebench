@@ -207,6 +207,6 @@ Emitted when batch processing completes successfully:
 
 ## Related Methods
 
-- [`system.quorum.vote`](./quorum_vote.md) - Distributed decision making
-- [`task.create`](../task/create.md) - Individual task creation
-- [`system.get_state`](./get_state.md) - Monitor batch processing status
+- [`system.quorum.vote`](./quorum_vote) - Distributed decision making
+- [`task.create`](../task/create) - Individual task creation
+- [`system.get_state`](./get_state) - Monitor batch processing status

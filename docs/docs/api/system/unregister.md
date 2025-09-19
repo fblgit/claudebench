@@ -208,7 +208,7 @@ Emitted after successful unregistration:
 
 ## Prerequisites
 
-- Instance should be registered via [`system.register`](./register.md)
+- Instance should be registered via [`system.register`](./register)
 - Redis server must be available for cleanup operations
 - Other healthy workers should exist for task reassignment
 - Session management should track instance lifecycle
@@ -244,7 +244,7 @@ This method is typically called by:
 
 ## Related Methods
 
-- [`system.register`](./register.md) - Instance registration
-- [`system.heartbeat`](./heartbeat.md) - Instance liveness
-- [`system.check_health`](./check_health.md) - Health monitoring with automatic cleanup
-- [`task.claim`](../task/claim.md) - Manual task claiming by workers
+- [`system.register`](./register) - Instance registration
+- [`system.heartbeat`](./heartbeat) - Instance liveness
+- [`system.check_health`](./check_health) - Health monitoring with automatic cleanup
+- [`task.claim`](../task/claim) - Manual task claiming by workers

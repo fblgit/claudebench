@@ -217,8 +217,8 @@ The method updates `cb:metrics:health` with:
 ## Prerequisites
 
 - Redis server must be available for health checks and task reassignment
-- Instances should be registered via [`system.register`](./register.md)
-- Healthy instances should send regular [`system.heartbeat`](./heartbeat.md)
+- Instances should be registered via [`system.register`](./register)
+- Healthy instances should send regular [`system.heartbeat`](./heartbeat)
 - Task assignment system should be properly configured
 
 ## Warnings
@@ -250,8 +250,8 @@ Health check results are ideal for:
 
 ## Related Methods
 
-- [`system.heartbeat`](./heartbeat.md) - Instance liveness reporting
-- [`system.register`](./register.md) - Instance registration
-- [`system.metrics`](./metrics.md) - System performance metrics
-- [`system.get_state`](./get_state.md) - Current system state overview
-- [`task.list`](../task/list.md) - View task assignments after reassignment
+- [`system.heartbeat`](./heartbeat) - Instance liveness reporting
+- [`system.register`](./register) - Instance registration
+- [`system.metrics`](./metrics) - System performance metrics
+- [`system.get_state`](./get_state) - Current system state overview
+- [`task.list`](../task/list) - View task assignments after reassignment

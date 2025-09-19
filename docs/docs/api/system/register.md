@@ -183,7 +183,7 @@ Assignment algorithm:
 
 ## Related Methods
 
-- [`system.heartbeat`](./heartbeat.md) - Renew instance registration
-- [`system.unregister`](./unregister.md) - Clean shutdown and task reassignment  
-- [`task.claim`](../task/claim.md) - Manual task claiming for workers
-- [`system.get_state`](./get_state.md) - View registered instances
+- [`system.heartbeat`](./heartbeat) - Renew instance registration
+- [`system.unregister`](./unregister) - Clean shutdown and task reassignment  
+- [`task.claim`](../task/claim) - Manual task claiming for workers
+- [`system.get_state`](./get_state) - View registered instances

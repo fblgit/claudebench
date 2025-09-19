@@ -9,49 +9,49 @@ Practical guides for working with ClaudeBench.
 
 ## Getting Started
 
-- [Quick Start](./quick-start.md) - Get up and running in 5 minutes
-- [Installation](./installation.md) - Detailed installation guide
-- [Configuration](./configuration.md) - Configure ClaudeBench
+- [Quick Start](./quick-start) - Get up and running in 5 minutes
+- [Installation](./installation) - Detailed installation guide
+- [Configuration](./configuration) - Configure ClaudeBench
 
 ## Development
 
-- [Creating Handlers](./creating-handlers.md) - Build custom event handlers
-- [Testing](./testing.md) - Write tests for your handlers
-- [Debugging](./debugging.md) - Debug ClaudeBench applications
+- [Creating Handlers](./creating-handlers) - Build custom event handlers
+- [Testing](./testing) - Write tests for your handlers
+- [Debugging](./debugging) - Debug ClaudeBench applications
 
 ## Operations
 
-- [Deployment](./deployment.md) - Deploy to production
-- [Monitoring](./monitoring.md) - Monitor your system
-- [Scaling](./scaling.md) - Scale ClaudeBench
+- [Deployment](./deployment) - Deploy to production
+- [Monitoring](./monitoring) - Monitor your system
+- [Scaling](./scaling) - Scale ClaudeBench
 
 ## Integration
 
-- [MCP Integration](./mcp-integration.md) - Integrate with Model Context Protocol
-- [Claude Code Hooks](./claude-hooks.md) - Setup Claude Code hooks
-- [WebSocket Events](./websocket-events.md) - Real-time event handling
+- [MCP Integration](./mcp-integration) - Integrate with Model Context Protocol
+- [Claude Code Hooks](./claude-hooks) - Setup Claude Code hooks
+- [WebSocket Events](./websocket-events) - Real-time event handling
 
 ## Best Practices
 
-- [Event Naming](./event-naming.md) - Naming conventions
-- [Error Handling](./error-handling.md) - Handle errors gracefully
-- [Performance](./performance.md) - Optimize performance
+- [Event Naming](./event-naming) - Naming conventions
+- [Error Handling](./error-handling) - Handle errors gracefully
+- [Performance](./performance) - Optimize performance
 
 ## Tutorials
 
 ### Basic Tasks
-1. [Create Your First Task](./tutorials/first-task.md)
-2. [Process Tasks with Workers](./tutorials/task-processing.md)
-3. [Monitor Task Progress](./tutorials/task-monitoring.md)
+1. [Create Your First Task](./tutorials/first-task)
+2. [Process Tasks with Workers](./tutorials/task-processing)
+3. [Monitor Task Progress](./tutorials/task-monitoring)
 
 ### Advanced Topics
-1. [Swarm Intelligence](./tutorials/swarm-intro.md)
-2. [Building Custom Handlers](./tutorials/custom-handlers.md)
-3. [Implementing Hooks](./tutorials/hooks.md)
+1. [Swarm Intelligence](./tutorials/swarm-intro)
+2. [Building Custom Handlers](./tutorials/custom-handlers)
+3. [Implementing Hooks](./tutorials/hooks)
 
 ## Troubleshooting
 
-- [Common Issues](./troubleshooting/common-issues.md)
-- [Redis Connection](./troubleshooting/redis.md)
-- [Database Issues](./troubleshooting/database.md)
-- [FAQ](./faq.md)
+- [Common Issues](./troubleshooting/common-issues)
+- [Redis Connection](./troubleshooting/redis)
+- [Database Issues](./troubleshooting/database)
+- [FAQ](./faq)

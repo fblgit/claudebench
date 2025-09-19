@@ -36,10 +36,10 @@ ClaudeBench follows a Redis-first event-driven architecture that emphasizes simp
 
 ## Key Components
 
-- [Event Bus](./event-bus.md) - Central message routing
-- [Redis Integration](./redis.md) - State management and coordination
-- [Handler Pattern](./handlers.md) - Business logic organization
-- [MCP Integration](./mcp.md) - Model Context Protocol support
+- [Event Bus](./event-bus) - Central message routing
+- [Redis Integration](./redis) - State management and coordination
+- [Handler Pattern](./handlers) - Business logic organization
+- [MCP Integration](./mcp) - Model Context Protocol support
 
 ## Design Goals
 

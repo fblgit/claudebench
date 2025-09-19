@@ -186,7 +186,7 @@ List and filter tasks from PostgreSQL with pagination and sorting capabilities. 
 
 ## Related
 
-- [task.create](./create.md) - Create a new task
-- [task.claim](./claim.md) - Claim a pending task
-- [task.update](./update.md) - Update task details
-- [task.complete](./complete.md) - Mark task as completed
+- [task.create](./create) - Create a new task
+- [task.claim](./claim) - Claim a pending task
+- [task.update](./update) - Update task details
+- [task.complete](./complete) - Mark task as completed

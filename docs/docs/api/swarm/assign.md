@@ -427,6 +427,6 @@ swarm__assign '{
 
 ## Related Handlers
 
-- [`swarm.decompose`](./decompose.md) - Creates subtasks that need assignment
-- [`swarm.context`](./context.md) - Triggered after successful assignment
-- [`swarm.resolve`](./resolve.md) - May reassign after conflict resolution
+- [`swarm.decompose`](./decompose) - Creates subtasks that need assignment
+- [`swarm.context`](./context) - Triggered after successful assignment
+- [`swarm.resolve`](./resolve) - May reassign after conflict resolution

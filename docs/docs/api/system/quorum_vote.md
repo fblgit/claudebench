@@ -207,7 +207,7 @@ Emitted when quorum is reached and decision finalized:
 ## Prerequisites
 
 - Redis server must be available for atomic script execution
-- Instance must be registered via [`system.register`](./register.md)
+- Instance must be registered via [`system.register`](./register)
 - Decision topic should be unique and descriptive
 - Total instances count should reflect actual system size
 
@@ -241,6 +241,6 @@ Emitted when quorum is reached and decision finalized:
 
 ## Related Methods
 
-- [`system.batch.process`](./batch_process.md) - Distributed batch coordination
-- [`system.register`](./register.md) - Instance registration for voting eligibility
-- [`system.get_state`](./get_state.md) - Monitor voting progress and results
+- [`system.batch.process`](./batch_process) - Distributed batch coordination
+- [`system.register`](./register) - Instance registration for voting eligibility
+- [`system.get_state`](./get_state) - Monitor voting progress and results

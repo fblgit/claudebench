@@ -437,6 +437,6 @@ Please provide a detailed resolution with clear justification.
 
 ## Related Handlers
 
-- [`swarm.decompose`](./decompose.md) - May create conflicting subtasks
-- [`swarm.assign`](./assign.md) - May lead to conflicting solutions
-- [`swarm.synthesize`](./synthesize.md) - Triggered when conflicts resolved
+- [`swarm.decompose`](./decompose) - May create conflicting subtasks
+- [`swarm.assign`](./assign) - May lead to conflicting solutions
+- [`swarm.synthesize`](./synthesize) - Triggered when conflicts resolved

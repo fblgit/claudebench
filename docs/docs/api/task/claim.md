@@ -122,7 +122,7 @@ When a task is successfully claimed, the following event is emitted:
 
 ## Related
 
-- [task.create](./create.md) - Create a new task
-- [task.complete](./complete.md) - Mark task as completed
-- [task.update](./update.md) - Update task details
-- [task.list](./list.md) - List tasks with filters
+- [task.create](./create) - Create a new task
+- [task.complete](./complete) - Mark task as completed
+- [task.update](./update) - Update task details
+- [task.list](./list) - List tasks with filters

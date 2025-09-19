@@ -403,6 +403,6 @@ templates/swarm/
 
 ## Related Handlers
 
-- [`swarm.decompose`](./decompose.md) - Creates subtasks that need context
-- [`swarm.assign`](./assign.md) - Uses context for specialist assignment
-- [`swarm.resolve`](./resolve.md) - May need context for conflict resolution
+- [`swarm.decompose`](./decompose) - Creates subtasks that need context
+- [`swarm.assign`](./assign) - Uses context for specialist assignment
+- [`swarm.resolve`](./resolve) - May need context for conflict resolution

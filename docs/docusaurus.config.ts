@@ -55,6 +55,11 @@ const config: Config = {
       } satisfies Preset.Options,
     ],
   ],
+  
+  markdown: {
+    mermaid: true,
+  },
+  themes: ['@docusaurus/theme-mermaid'],
 
   plugins: [
     ['./plugins/docusaurus-plugin-json-api', {
@@ -67,6 +72,9 @@ const config: Config = {
   themeConfig: {
     // Replace with your project's social card
     image: 'img/claudebench-social-card.jpg',
+    mermaid: {
+      theme: {light: 'default', dark: 'dark'},
+    },
     navbar: {
       title: 'ClaudeBench',
       logo: {

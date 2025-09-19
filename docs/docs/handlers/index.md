@@ -65,26 +65,27 @@ Adds circuit breaker and retry logic:
 ## Handler Categories
 
 ### Task Handlers
-- [task.create](./task/create.md) - Create tasks
-- [task.update](./task/update.md) - Update tasks
-- [task.complete](./task/complete.md) - Complete tasks
-- [task.claim](./task/claim.md) - Claim tasks
-- [task.list](./task/list.md) - List tasks
+- [task.create](../api/task/create) - Create tasks
+- [task.update](../api/task/update) - Update tasks
+- [task.complete](../api/task/complete) - Complete tasks
+- [task.claim](../api/task/claim) - Claim tasks
+- [task.list](../api/task/list) - List tasks
 
 ### System Handlers
-- [system.health](./system/health.md) - Health checks
-- [system.metrics](./system/metrics.md) - Metrics collection
-- [system.register](./system/register.md) - Instance registration
+- [system.health](../api/system/health) - Health checks
+- [system.metrics](../api/system/metrics) - Metrics collection
+- [system.register](../api/system/register) - Instance registration
 
 ### Swarm Handlers  
-- [swarm.decompose](./swarm/decompose.md) - Task decomposition
-- [swarm.assign](./swarm/assign.md) - Specialist assignment
-- [swarm.synthesize](./swarm/synthesize.md) - Result synthesis
+- [swarm.decompose](../api/swarm/decompose) - Task decomposition
+- [swarm.assign](../api/swarm/assign) - Specialist assignment
+- [swarm.synthesize](../api/swarm/synthesize) - Result synthesis
 
 ### Hook Handlers
-- [hook.pre_tool](./hook/pre_tool.md) - Pre-tool execution
-- [hook.post_tool](./hook/post_tool.md) - Post-tool execution
-- [hook.user_prompt](./hook/user_prompt.md) - User prompts
+*Note: Hook handlers are internal and not exposed via API*
+- hook.pre_tool - Pre-tool execution validation
+- hook.post_tool - Post-tool execution processing
+- hook.user_prompt - User prompt filtering
 
 ## Creating Custom Handlers
 

@@ -271,14 +271,14 @@ await client.call('system.flush', {
 
 After flushing, the system will be in a clean state:
 
-1. **Re-register instances** via [`system.register`](./register.md)
-2. **Recreate tasks** as needed via [`task.create`](../task/create.md)
+1. **Re-register instances** via [`system.register`](./register)
+2. **Recreate tasks** as needed via [`task.create`](../task/create)
 3. **Restart monitoring** and health checks
 4. **Verify system functionality** before resuming normal operations
 
 ## Related Methods
 
-- [`system.health`](./health.md) - Check system health before flush
-- [`system.get_state`](./get_state.md) - Verify clean state after flush  
-- [`system.register`](./register.md) - Re-register instances after flush
-- [`task.create`](../task/create.md) - Recreate tasks after flush
+- [`system.health`](./health) - Check system health before flush
+- [`system.get_state`](./get_state) - Verify clean state after flush  
+- [`system.register`](./register) - Re-register instances after flush
+- [`task.create`](../task/create) - Recreate tasks after flush

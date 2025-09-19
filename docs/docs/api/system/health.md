@@ -138,6 +138,6 @@ This method uses the `getSystemHealth` Lua script which atomically:
 
 ## Related Methods
 
-- [`system.check_health`](./check_health.md) - Check and handle instance failures
-- [`system.metrics`](./metrics.md) - Get detailed system metrics
-- [`system.get_state`](./get_state.md) - Get current system state
+- [`system.check_health`](./check_health) - Check and handle instance failures
+- [`system.metrics`](./metrics) - Get detailed system metrics
+- [`system.get_state`](./get_state) - Get current system state

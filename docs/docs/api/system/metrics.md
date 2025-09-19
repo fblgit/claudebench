@@ -294,6 +294,6 @@ hitRate = totalHits / (totalHits + totalMisses)
 
 ## Related Methods
 
-- [`system.health`](./health.md) - System health status
-- [`system.get_state`](./get_state.md) - Current system state
-- [`system.check_health`](./check_health.md) - Instance health monitoring
+- [`system.health`](./health) - System health status
+- [`system.get_state`](./get_state) - Current system state
+- [`system.check_health`](./check_health) - Instance health monitoring

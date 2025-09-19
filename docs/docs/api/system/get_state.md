@@ -227,7 +227,7 @@ System state queries are not cached due to:
 
 ## Related Methods
 
-- [`system.metrics`](./metrics.md) - Get numerical system metrics
-- [`system.health`](./health.md) - Check system health status
-- [`task.list`](../task/list.md) - Get detailed task information
-- [`system.check_health`](./check_health.md) - Monitor instance health
+- [`system.metrics`](./metrics) - Get numerical system metrics
+- [`system.health`](./health) - Check system health status
+- [`task.list`](../task/list) - Get detailed task information
+- [`system.check_health`](./check_health) - Monitor instance health

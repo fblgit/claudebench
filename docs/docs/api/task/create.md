@@ -107,7 +107,7 @@ When a task is successfully created, the following event is emitted:
 
 ## Related
 
-- [task.claim](./claim.md) - Claim a pending task
-- [task.update](./update.md) - Update task details
-- [task.complete](./complete.md) - Mark task as completed
-- [task.list](./list.md) - List tasks with filters
+- [task.claim](./claim) - Claim a pending task
+- [task.update](./update) - Update task details
+- [task.complete](./complete) - Mark task as completed
+- [task.list](./list) - List tasks with filters

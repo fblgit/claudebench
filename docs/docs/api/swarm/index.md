@@ -32,7 +32,7 @@ All swarm operations use ClaudeBench's event-driven architecture with Redis pub/
 
 ## Handler Reference
 
-### [swarm.decompose](./decompose.md)
+### [swarm.decompose](./decompose)
 **Decompose complex tasks into subtasks using LLM intelligence**
 
 - Breaks down complex tasks into manageable subtasks
@@ -42,7 +42,7 @@ All swarm operations use ClaudeBench's event-driven architecture with Redis pub/
 - **LLM Timeout**: 300 seconds
 - **Rate Limit**: 10 decompositions/minute
 
-### [swarm.context](./context.md)  
+### [swarm.context](./context)  
 **Generate specialized context for subtask execution**
 
 - Analyzes codebase and requirements
@@ -52,7 +52,7 @@ All swarm operations use ClaudeBench's event-driven architecture with Redis pub/
 - **LLM Timeout**: 300 seconds
 - **Rate Limit**: 50 contexts/minute
 
-### [swarm.assign](./assign.md)
+### [swarm.assign](./assign)
 **Assign subtasks to best available specialists**
 
 - Matches subtasks to specialist capabilities
@@ -62,7 +62,7 @@ All swarm operations use ClaudeBench's event-driven architecture with Redis pub/
 - **Timeout**: 5 seconds (fast assignment)
 - **Rate Limit**: 50 assignments/minute
 
-### [swarm.resolve](./resolve.md)
+### [swarm.resolve](./resolve)
 **Resolve conflicts between specialist solutions**
 
 - Analyzes conflicting approaches using LLM
@@ -72,7 +72,7 @@ All swarm operations use ClaudeBench's event-driven architecture with Redis pub/
 - **LLM Timeout**: 300 seconds
 - **Rate Limit**: 20 resolutions/minute
 
-### [swarm.synthesize](./synthesize.md)
+### [swarm.synthesize](./synthesize)
 **Synthesize completed subtasks into integrated solution**
 
 - Integrates work from multiple specialists
@@ -82,7 +82,7 @@ All swarm operations use ClaudeBench's event-driven architecture with Redis pub/
 - **LLM Timeout**: 300 seconds
 - **Rate Limit**: 10 syntheses/minute
 
-### [swarm.create_project](./create_project.md)
+### [swarm.create_project](./create_project)
 **Create new projects using swarm intelligence**
 
 - Queue-based asynchronous project creation
@@ -338,7 +338,7 @@ redis-cli HGETALL cb:metrics:llm:synthesis
 
 ## Related Documentation
 
-- [Task Management API](../task/index.md) - Core task operations
-- [System API](../system/index.md) - Health and registration
-- [Event Architecture](../../architecture/events.md) - Event system design
-- [Redis Operations](../../architecture/redis.md) - Redis usage patterns
+- [Task Management API](../task/index) - Core task operations
+- [System API](../system/index) - Health and registration
+- [Event Architecture](../../architecture/events) - Event system design
+- [Redis Operations](../../architecture/redis) - Redis usage patterns

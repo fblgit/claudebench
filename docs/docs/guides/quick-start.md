@@ -62,9 +62,9 @@ You'll see the task appear in the dashboard and events flow through the relay.
 
 ## Next Steps
 
-- **Create Handlers**: [Creating Handlers Guide](creating-handlers.md)
-- **MCP Integration**: [MCP Integration Guide](mcp-integration.md)
-- **Advanced Configuration**: [Configuration Guide](configuration.md)
+- **Create Handlers**: [Creating Handlers Guide](creating-handlers)
+- **MCP Integration**: [MCP Integration Guide](mcp-integration)
+- **Advanced Configuration**: [Configuration Guide](configuration)
 
 ## Troubleshooting
 
@@ -93,4 +93,4 @@ redis-server
 redis-cli ping
 ```
 
-For detailed troubleshooting, see the [Debugging Guide](debugging.md).
+For detailed troubleshooting, see the [Debugging Guide](debugging).

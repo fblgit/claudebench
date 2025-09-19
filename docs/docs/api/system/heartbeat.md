@@ -128,7 +128,7 @@ The heartbeat response includes leader status information:
 
 ## Prerequisites
 
-- Instance must be registered via [`system.register`](./register.md)
+- Instance must be registered via [`system.register`](./register)
 - Redis server must be available for atomic operations
 - Instance ID must match registration
 
@@ -146,14 +146,14 @@ The heartbeat response includes leader status information:
 
 ## Health Check Integration
 
-Heartbeats are monitored by [`system.check_health`](./check_health.md):
+Heartbeats are monitored by [`system.check_health`](./check_health):
 - Stale instances (no heartbeat) are marked as failed
 - Tasks are automatically reassigned to healthy instances
 - Failed instances are removed from the active pool
 
 ## Related Methods
 
-- [`system.register`](./register.md) - Initial instance registration
-- [`system.check_health`](./check_health.md) - Instance failure detection
-- [`system.unregister`](./unregister.md) - Clean instance shutdown
-- [`system.get_state`](./get_state.md) - View instance status
+- [`system.register`](./register) - Initial instance registration
+- [`system.check_health`](./check_health) - Instance failure detection
+- [`system.unregister`](./unregister) - Clean instance shutdown
+- [`system.get_state`](./get_state) - View instance status
