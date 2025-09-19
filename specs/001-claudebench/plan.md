@@ -29,7 +29,7 @@
 - Phase 3-4: Implementation execution (manual or via tools)
 
 ## Summary
-ClaudeBench is a Redis-first event-driven orchestration system that enables developers to customize their Claude Code AI coding sessions through lightweight event handlers, hooks, and workflows. The system follows a decorator pattern where a single handler definition auto-generates HTTP endpoints, MCP tools, and event subscriptions, dramatically reducing code complexity from 5000+ LOC to ~500 LOC while maintaining enterprise features like circuit breakers, rate limiting, and task orchestration.
+ClaudeBench is a Redis-first event-driven orchestration system that enables developers to customize their Claude Code AI coding sessions through lightweight event handlers, hooks, and workflows. The system follows a decorator pattern where a single handler definition auto-generates HTTP endpoints, MCP tools, and event subscriptions, dramatically reducing code complexity while maintaining enterprise features like circuit breakers, rate limiting, and task orchestration.
 
 ## Technical Context
 **Language/Version**: TypeScript/Bun 1.x  
@@ -40,7 +40,7 @@ ClaudeBench is a Redis-first event-driven orchestration system that enables deve
 **Project Type**: web (backend server + frontend dashboard)  
 **Performance Goals**: 1 event/3s typical, burst 3 events/10s, <50ms latency  
 **Constraints**: <100MB memory, localhost-only, single developer  
-**Scale/Scope**: ~500 LOC target, 15-20 handlers, 3-5 event domains
+**Scale/Scope**: 15-20 handlers, 3-5 event domains
 
 ## Constitution Check
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
@@ -96,15 +96,15 @@ specs/001-claudebench/
 # Option 2: Web application (ClaudeBench has backend server + web dashboard)
 apps/server/
 ├── src/
-│   ├── core/           # Event bus, decorators, registry (~150 LOC)
+│   ├── core/           # Event bus, decorators, registry
 │   │   ├── bus.ts      # Redis pub/sub wrapper
 │   │   ├── decorator.ts # @EventHandler decorator
 │   │   └── registry.ts  # Handler discovery
-│   ├── handlers/       # Event handlers (~300 LOC)
+│   ├── handlers/       # Event handlers
 │   │   ├── task/       # Task domain handlers
 │   │   ├── hook/       # Hook domain handlers
 │   │   └── system/     # System domain handlers
-│   ├── schemas/        # Zod validation schemas (~50 LOC)
+│   ├── schemas/        # Zod validation schemas
 │   └── mcp/           # MCP server setup
 └── tests/
     ├── contract/       # JSONRPC contract tests

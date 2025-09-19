@@ -37,8 +37,6 @@ bun check               # Run OxLint on all code
 
 ### ClaudeBench v2.0 Design (from CLAUDEBENCH.md)
 
-The system is designed to evolve from 5000+ LOC enterprise patterns to a 500 LOC Redis-first architecture:
-
 **Core Principles:**
 1. **Redis as Infrastructure**: Direct use of Redis primitives (pub/sub, streams, sorted sets)
 2. **Decorator Pattern**: Single handler generates HTTP, MCP, and event interfaces
@@ -52,12 +50,12 @@ The system is designed to evolve from 5000+ LOC enterprise patterns to a 500 LOC
 - Optional PostgreSQL persistence per handler
 - Zod runtime validation at boundaries
 
-**Target Structure (500 LOC):**
+**Target Structure**
 ```
 /src
-  /core (150 LOC)         # Redis bus, registry, server setup
-  /handlers (300 LOC)     # Business logic with decorator pattern
-  /schemas (50 LOC)       # Zod validation schemas
+  /core        # Redis bus, registry, server setup
+  /handlers    # Business logic with decorator pattern
+  /schemas     # Zod validation schemas
 ```
 
 ### Current Boilerplate Structure
