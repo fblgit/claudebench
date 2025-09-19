@@ -26,7 +26,8 @@
   ],
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "docs"
   ],
   "scripts": {
     "check": "oxlint",
@@ -38,6 +39,7 @@
     "dev:web": "turbo -F web dev",
     "dev:server": "turbo -F server dev",
     "dev:inference": "turbo -F inference dev",
+    "dev:docs": "turbo -F claudebench-docs dev",
     "db:push": "turbo -F server db:push",
     "db:studio": "turbo -F server db:studio",
     "db:generate": "turbo -F server db:generate",
