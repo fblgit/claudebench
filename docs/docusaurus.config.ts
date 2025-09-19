@@ -6,7 +6,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'ClaudeBench',
-  tagline: 'Redis-first event-driven benchmarking framework',
+  tagline: 'Redis-first event-driven AI workbench',
   favicon: 'img/favicon.ico',
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future

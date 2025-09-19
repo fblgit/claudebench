@@ -11,32 +11,35 @@ type FeatureItem = {
 
 const FeatureList: FeatureItem[] = [
   {
-    title: 'Easy to Use',
+    title: 'Redis-First Architecture',
     Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
     description: (
       <>
-        Docusaurus was designed from the ground up to be easily installed and
-        used to get your website up and running quickly.
+        Built on Redis for blazing-fast event processing, real-time pub/sub,
+        and distributed state management. Achieve sub-millisecond latency with
+        atomic Lua scripts and efficient data structures.
       </>
     ),
   },
   {
-    title: 'Focus on What Matters',
+    title: 'Event-Driven Design',
     Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
     description: (
       <>
-        Docusaurus lets you focus on your docs, and we&apos;ll do the chores. Go
-        ahead and move your docs into the <code>docs</code> directory.
+        Decorator pattern automatically generates HTTP, MCP, and WebSocket
+        interfaces from a single handler. Follow the <code>domain.action</code> naming
+        convention for clear, maintainable event flows.
       </>
     ),
   },
   {
-    title: 'Powered by React',
+    title: 'AI-Native Platform',
     Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
     description: (
       <>
-        Extend or customize your website layout by reusing React. Docusaurus can
-        be extended while reusing the same header and footer.
+        Seamless MCP (Model Context Protocol) integration for Claude and other AI models.
+        Built-in swarm intelligence for task decomposition, distributed processing,
+        and intelligent synthesis.
       </>
     ),
   },

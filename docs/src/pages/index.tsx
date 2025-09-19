@@ -20,8 +20,8 @@ function HomepageHeader() {
         <div className={styles.buttons}>
           <Link
             className="button button--secondary button--lg"
-            to="/docs/intro">
-            Docusaurus Tutorial - 5min ⏱️
+            to="/intro">
+            Get Started with ClaudeBench →
           </Link>
         </div>
       </div>
@@ -33,8 +33,8 @@ export default function Home(): ReactNode {
   const {siteConfig} = useDocusaurusContext();
   return (
     <Layout
-      title={`Hello from ${siteConfig.title}`}
-      description="Description will go into a meta tag in <head />">
+      title={`${siteConfig.title} - Redis-first AI Workbench`}
+      description="ClaudeBench is a high-performance event-driven AI workbench built on Redis, providing a development platform for Claude and AI agents with MCP integration and swarm intelligence for distributed task processing.">
       <HomepageHeader />
       <main>
         <HomepageFeatures />
