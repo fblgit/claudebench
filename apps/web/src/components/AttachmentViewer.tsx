@@ -187,8 +187,6 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 
 	// Render formatted view for git commit attachments
 	const renderGitCommitFormatted = (attachment: Attachment) => {
-		const [diffViewMode, setDiffViewMode] = useState<'line-by-line' | 'side-by-side'>('line-by-line');
-		
 		if (!attachment.value) return null;
 		
 		const data = typeof attachment.value === "string" 
