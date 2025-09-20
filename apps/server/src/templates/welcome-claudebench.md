@@ -260,12 +260,23 @@ await task.assign({
   instanceId: "worker-1" 
 });
 
-// 3. Work on task...
+// 3. Work on task and add attachments
+await task.create_attachment({
+  taskId: task.id,
+  key: "implementation-notes",
+  type: "markdown",
+  content: "## Progress\n- Completed step 1\n- Working on step 2"
+});
 
-// 4. Complete with results
+// 4. Complete with results + final attachment
 await task.complete({ 
   taskId: task.id,
   result: { status: "success", details: "..." }
+});
+
+// 5. View all attachments
+const attachments = await task.list_attachments({ 
+  taskId: task.id 
 });
 ```
 
