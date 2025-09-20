@@ -57,6 +57,7 @@ interface TaskCardProps {
 	onComplete?: (taskId: string) => void;
 	onAssign?: (taskId: string, instanceId: string) => void;
 	onDelete?: (taskId: string) => void;
+	onGenerateContext?: (taskId: string) => void;
 	onClick?: (task: Task) => void;
 	instances?: Array<{ id: string; roles: string[] }>;
 }
