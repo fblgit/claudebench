@@ -171,42 +171,38 @@ export function TaskWaterfall({ tasks, onTaskClick, className }: TaskWaterfallPr
 		const taskMap = new Map(tasks.map(t => [t.id, t]));
 		
 		sortedTasks.forEach(task => {
-			// Determine phase based on status and dependencies
-			let phase = "Phase 1: Initialization";
+			// Determine phase based on status and timing (recent tasks = early phases)
+			let phase = "Phase 4: Deployment";
 			
 			// Check if task has dependencies in metadata
 			const deps = task.metadata?.dependencies as string[] || [];
 			const blockedBy = task.metadata?.blockedBy as string[] || [];
 			
 			// Determine phase based on task characteristics
-			if (task.status === "completed") {
-				// Completed tasks - check when they were completed
-				const completedDate = parseISO(task.completedAt!);
-				const daysSinceStart = differenceInDays(completedDate, parseISO(sortedTasks[0].createdAt));
-				
-				if (daysSinceStart < 7) {
-					phase = "Phase 1: Initialization";
-				} else if (daysSinceStart < 14) {
-					phase = "Phase 2: Development";
-				} else if (daysSinceStart < 21) {
-					phase = "Phase 3: Testing";
-				} else {
-					phase = "Phase 4: Deployment";
-				}
-			} else if (task.status === "in_progress") {
-				// In progress tasks are current phase
-				phase = "Phase 2: Development";
-			} else if (task.status === "failed") {
-				// Failed tasks
+			if (task.status === "failed") {
+				// Failed tasks always in issues phase
 				phase = "Phase X: Issues";
-			} else {
+			} else if (task.status === "in_progress") {
+				// In progress tasks are in active development
+				phase = "Phase 1: Active Development";
+			} else if (task.status === "pending") {
 				// Pending tasks
 				if (blockedBy.length > 0) {
-					phase = "Phase 3: Testing";
-				} else if (deps.length > 0) {
-					phase = "Phase 2: Development";
+					phase = "Phase 2: Blocked/Waiting";
 				} else {
-					phase = "Phase 1: Initialization";
+					phase = "Phase 1: Active Development";
+				}
+			} else if (task.status === "completed") {
+				// Completed tasks - recent ones in testing, older in deployment
+				const completedDate = parseISO(task.completedAt!);
+				const daysSinceCompletion = differenceInDays(new Date(), completedDate);
+				
+				if (daysSinceCompletion < 2) {
+					phase = "Phase 3: Recently Completed";
+				} else if (daysSinceCompletion < 7) {
+					phase = "Phase 4: Deployed";
+				} else {
+					phase = "Phase 5: Archive";
 				}
 			}
 			
