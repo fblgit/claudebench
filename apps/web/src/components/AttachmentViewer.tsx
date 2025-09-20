@@ -314,14 +314,17 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 							</CardTitle>
 						</CardHeader>
 						<CardContent className="p-0">
-							<CodeViewer
-								value={data.diff}
-								language="diff"
-								height="400px"
-								minimap={false}
-								lineNumbers="off"
-								folding={false}
-								wordWrap="on"
+							<div 
+								className="diff2html-wrapper"
+								dangerouslySetInnerHTML={{ 
+									__html: diff2html(data.diff, {
+										drawFileList: false,
+										matching: 'lines',
+										outputFormat: 'line-by-line',
+										renderNothingWhenEmpty: false,
+										maxLines: 1000
+									})
+								}}
 							/>
 						</CardContent>
 					</Card>
