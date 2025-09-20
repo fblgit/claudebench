@@ -61,6 +61,7 @@ import { TaskCard } from "./TaskCard";
 import { TaskDetailModal } from "./TaskDetailModal";
 import { InstanceManager } from "./InstanceManager";
 import { RoleSelector } from "./RoleSelector";
+import { ContextGenerationDialog } from "./ContextGenerationDialog";
 import {
 	getEventClient,
 	useEventQuery,
