@@ -1,0 +1,121 @@
+/* Dark theme overrides for diff2html */
+.dark .diff2html-wrapper {
+  background: transparent;
+}
+
+.dark .d2h-wrapper {
+  background: transparent;
+}
+
+.dark .d2h-file-wrapper {
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.dark .d2h-file-header {
+  background: hsl(var(--muted));
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 0.75rem 1rem;
+}
+
+.dark .d2h-file-name-wrapper {
+  color: hsl(var(--foreground));
+}
+
+.dark .d2h-code-wrapper {
+  background: hsl(var(--background));
+}
+
+.dark .d2h-code-line {
+  background: transparent;
+}
+
+.dark .d2h-code-side-linenumber {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  border-right: 1px solid hsl(var(--border));
+}
+
+.dark .d2h-ins {
+  background: rgba(34, 197, 94, 0.15);
+  color: hsl(var(--foreground));
+}
+
+.dark .d2h-del {
+  background: rgba(239, 68, 68, 0.15);
+  color: hsl(var(--foreground));
+}
+
+.dark .d2h-code-side-line {
+  color: hsl(var(--foreground));
+}
+
+.dark .d2h-code-line-ctn {
+  background: transparent;
+}
+
+.dark .d2h-code-line.d2h-ins {
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.dark .d2h-code-line.d2h-del {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.dark .d2h-file-diff {
+  overflow: hidden;
+  border-radius: 0.5rem;
+}
+
+/* Light theme adjustments */
+.diff2html-wrapper {
+  font-size: 13px;
+}
+
+.d2h-file-wrapper {
+  margin-bottom: 1rem;
+}
+
+.d2h-file-wrapper:last-child {
+  margin-bottom: 0;
+}
+
+.d2h-code-wrapper {
+  border-radius: 0;
+}
+
+/* Remove file list styling since we're not using it */
+.d2h-file-list-wrapper {
+  display: none;
+}
+
+/* Improve readability */
+.d2h-code-line {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+/* Better hover states */
+.d2h-code-line:hover {
+  background: hsl(var(--muted) / 0.3);
+}
+
+/* Ensure proper scrolling */
+.diff2html-wrapper {
+  width: 100%;
+}
+
+.d2h-wrapper {
+  width: 100%;
+}
+
+.d2h-file-diff {
+  width: 100%;
+}
+
+/* Side-by-side specific styles */
+.d2h-code-side-line {
+  padding: 0 0.5rem;
+}
