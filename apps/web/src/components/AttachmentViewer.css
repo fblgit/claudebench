@@ -42,9 +42,11 @@
 
 .dark .d2h-code-side-linenumber,
 .dark .d2h-code-linenumber {
-  background: hsl(var(--muted)) !important;
+  background: hsl(var(--muted) / 0.4) !important;
   color: hsl(var(--muted-foreground)) !important;
-  border-right: 1px solid hsl(var(--border)) !important;
+  border-right: 1px solid hsl(var(--border) / 0.5) !important;
+  font-weight: 400;
+  opacity: 0.8;
 }
 
 /* Addition lines - Enhanced green for better visibility */
