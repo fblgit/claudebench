@@ -159,9 +159,9 @@ export function TaskWaterfall({ tasks, onTaskClick, className }: TaskWaterfallPr
 			return { waterfallData: [], phases: [], chartConfig: {} };
 		}
 
-		// Sort tasks by creation date to establish flow
+		// Sort tasks by creation date (newest first) to establish waterfall flow
 		const sortedTasks = [...tasks].sort((a, b) => 
-			new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+			new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
 		);
 
 		// Group tasks into phases based on status and timing
