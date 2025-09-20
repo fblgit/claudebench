@@ -483,7 +483,7 @@ Benefits of migration:
 
 ## References
 
-- [Task System Documentation](/api/tasks)
+- [Task System Documentation](/api/task)
 - [Git Integration](./git-integration)
 - [Session State Management](./session-state)
 - [Redis Architecture](./redis)
