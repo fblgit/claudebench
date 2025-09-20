@@ -69,6 +69,7 @@ export function TaskCard({
 	onComplete,
 	onAssign,
 	onDelete,
+	onGenerateContext,
 	onClick,
 	instances = [],
 }: TaskCardProps) {
