@@ -243,10 +243,13 @@ mcp__claudebench__docs__get({ id: "api/task/create" })
 4. **Explore resources**: Browse available MCP resources in the sidebar
 
 ### Useful Resources:
-- **Documentation**: `/docs/CLAUDEBENCH.md`
-- **MCP SDK Reference**: `/docs/MCP_SDK.md`
-- **Redis Scripts**: `/src/core/lua-scripts.ts`
-- **Event Handlers**: `/src/handlers/`
+- **Documentation Site**: Run `bun docs:dev` to browse at `http://localhost:3002`
+- **CLAUDE.md**: `/CLAUDE.md` - AI assistant instructions and codebase patterns
+- **MCP SDK Reference**: `/docs/MCP_SDK.md` - Complete MCP TypeScript SDK documentation
+- **Redis Lua Scripts**: `/apps/server/src/core/lua-scripts.ts` - Atomic operations
+- **Event Handlers**: `/apps/server/src/handlers/` - All domain handlers
+- **API Contracts**: `/specs/001-claudebench/contracts/` - OpenRPC specifications
+- **Web Dashboard**: `http://localhost:3001` - Visual task management interface
 
 ---
 *ClaudeBench v2.0 - Redis-First Event-Driven Architecture*
