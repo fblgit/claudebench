@@ -523,3 +523,8 @@ export const useCompleteTask = () =>
 	useEventMutation("task.complete", { 
 		invalidateQueries: [["system.get_state"], ["tasks"]] 
 	});
+
+export const useDeleteTask = () => 
+	useEventMutation("task.delete", { 
+		invalidateQueries: [["system.get_state"], ["tasks"], ["task.list"]] 
+	});
