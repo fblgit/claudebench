@@ -72,6 +72,7 @@ export function TaskDetailModal({
 	onOpenChange,
 	onUpdate,
 	onComplete,
+	onDelete,
 	onAssign,
 	instances = [],
 }: TaskDetailModalProps) {
