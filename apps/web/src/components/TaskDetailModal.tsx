@@ -199,6 +199,19 @@ export function TaskDetailModal({
 									Complete
 								</Button>
 							)}
+							{onDelete && (
+								<Button 
+									onClick={() => {
+										onDelete(task.id);
+										onOpenChange(false);
+									}} 
+									size="sm" 
+									variant="destructive"
+								>
+									<XCircle className="h-4 w-4 mr-2" />
+									Delete
+								</Button>
+							)}
 						</div>
 					</div>
 					{description && (
