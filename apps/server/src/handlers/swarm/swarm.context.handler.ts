@@ -215,27 +215,23 @@ export class SwarmContextHandler {
 		};
 		
 		// Store context as attachment
-		try {
-			await registry.executeHandler("task.create_attachment", {
-				taskId: input.parentTaskId,
-				key: `context_${input.subtaskId}`,
-				type: "json",
-				value: {
-					subtaskId: input.subtaskId,
-					specialist: input.specialist,
-					context: mappedContext,
-					prompt: prompt,
-					relatedWork: relatedWork,
-					generatedAt: new Date().toISOString(),
-					generatedBy: ctx.instanceId
-				}
-			}, ctx.metadata?.clientId);
-			
-			console.log(`[SwarmContext] Context stored as attachment for subtask ${input.subtaskId}`);
-		} catch (attachmentError) {
-			// Log but don't fail - context is already generated
-			console.warn(`[SwarmContext] Failed to create context attachment:`, attachmentError);
-		}
+		// Store context as attachment - must succeed for consistency
+		await registry.executeHandler("task.create_attachment", {
+			taskId: input.parentTaskId,
+			key: `context_${input.subtaskId}`,
+			type: "json",
+			value: {
+				subtaskId: input.subtaskId,
+				specialist: input.specialist,
+				context: mappedContext,
+				prompt: prompt,
+				relatedWork: relatedWork,
+				generatedAt: new Date().toISOString(),
+				generatedBy: ctx.instanceId
+			}
+		}, ctx.metadata?.clientId);
+		
+		console.log(`[SwarmContext] Context stored as attachment for subtask ${input.subtaskId}`);
 		
 		// Publish context generated event
 		await ctx.publish({
