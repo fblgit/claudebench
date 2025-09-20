@@ -31,6 +31,7 @@ import {
 	Tag,
 	Hash,
 	Paperclip,
+	Brain,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 
