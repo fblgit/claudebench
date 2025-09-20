@@ -57,12 +57,13 @@
 .dark .d2h-ins,
 .dark .d2h-ins.d2h-change,
 .dark .d2h-code-line.d2h-ins {
-  background: rgba(46, 160, 67, 0.20) !important;
+  background: rgba(46, 160, 67, 0.25) !important;
   color: hsl(var(--foreground)) !important;
+  border-left: 3px solid rgb(74, 222, 128) !important;
 }
 
 .dark .d2h-ins .d2h-code-line-ctn {
-  background: rgba(46, 160, 67, 0.08) !important;
+  background: transparent !important;
   color: hsl(var(--foreground)) !important;
 }
 
