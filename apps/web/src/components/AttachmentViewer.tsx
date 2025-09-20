@@ -8,7 +8,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { useTheme } from "@/hooks/use-theme";
 import {
 	FileJson,
 	FileText,
@@ -67,7 +66,6 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 	const [error, setError] = useState<string | null>(null);
 	const [copied, setCopied] = useState<string | null>(null);
 	const [selectedAttachment, setSelectedAttachment] = useState<Attachment | null>(null);
-	const { theme } = useTheme();
 
 	useEffect(() => {
 		fetchAttachments();
@@ -317,7 +315,7 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 							<CodeViewer
 								value={data.diff}
 								language="diff"
-								height="500px"
+								height="400px"
 								minimap={false}
 								lineNumbers="off"
 								folding={false}
