@@ -44,7 +44,7 @@ interface TaskTimelineProps {
 	className?: string;
 }
 
-export function TaskTimeline({ tasks, onTaskClick, className }: TaskTimelineProps) {
+function TaskTimelineComponent({ tasks, onTaskClick, className }: TaskTimelineProps) {
 	const [hoveredTask, setHoveredTask] = useState<string | null>(null);
 	const [hoveredSwimlane, setHoveredSwimlane] = useState<string | null>(null);
 	
