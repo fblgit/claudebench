@@ -45,30 +45,42 @@
   border-right: 1px solid hsl(var(--border)) !important;
 }
 
-/* Addition lines */
+/* Addition lines - Enhanced green for better visibility */
 .dark .d2h-ins,
 .dark .d2h-ins.d2h-change,
 .dark .d2h-code-line.d2h-ins {
-  background: rgba(34, 197, 94, 0.15) !important;
+  background: rgba(46, 160, 67, 0.20) !important;
   color: hsl(var(--foreground)) !important;
 }
 
 .dark .d2h-ins .d2h-code-line-ctn {
-  background: rgba(34, 197, 94, 0.05) !important;
+  background: rgba(46, 160, 67, 0.08) !important;
   color: hsl(var(--foreground)) !important;
 }
 
-/* Deletion lines */
+/* Addition text - brighter green */
+.dark .d2h-ins .d2h-code-line-prefix {
+  color: rgb(74, 222, 128) !important;
+  background: transparent !important;
+}
+
+/* Deletion lines - Enhanced red for better visibility */
 .dark .d2h-del,
 .dark .d2h-del.d2h-change,
 .dark .d2h-code-line.d2h-del {
-  background: rgba(239, 68, 68, 0.15) !important;
+  background: rgba(248, 81, 73, 0.20) !important;
   color: hsl(var(--foreground)) !important;
 }
 
 .dark .d2h-del .d2h-code-line-ctn {
-  background: rgba(239, 68, 68, 0.05) !important;
+  background: rgba(248, 81, 73, 0.08) !important;
   color: hsl(var(--foreground)) !important;
+}
+
+/* Deletion text - brighter red */
+.dark .d2h-del .d2h-code-line-prefix {
+  color: rgb(251, 146, 146) !important;
+  background: transparent !important;
 }
 
 /* Context lines */
