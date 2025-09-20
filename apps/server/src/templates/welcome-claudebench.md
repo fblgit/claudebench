@@ -190,7 +190,31 @@ mcp__claudebench__system__get_state
 mcp__claudebench__system__redis__keys
 ```
 
-### 10. Best Practices
+### 10. Documentation Access
+
+#### 📖 Docusaurus Documentation Site
+ClaudeBench includes comprehensive documentation available at:
+- **Local**: `http://localhost:3002` (run `bun docs:dev`)
+- **Categories**: API Reference, Architecture, Guides, What's New
+- **Total Pages**: 69+ documentation pages
+
+#### 🔍 MCP Documentation Tools
+Access documentation directly through MCP:
+```javascript
+// List all available documentation
+mcp__claudebench__docs__list({ category: "guides" })
+
+// Get specific documentation page
+mcp__claudebench__docs__get({ id: "api/task/create" })
+```
+
+#### 📂 Documentation Categories
+- **API** ({{ '{{' }} docsApiCount {{ '}}' }} pages) - Handler references, schemas, examples
+- **Architecture** ({{ '{{' }} docsArchCount {{ '}}' }} pages) - System design, patterns, Lua scripts
+- **Guides** ({{ '{{' }} docsGuidesCount {{ '}}' }} pages) - Tutorials, best practices, workflows
+- **General** ({{ '{{' }} docsGeneralCount {{ '}}' }} pages) - Overview, contributing, changelog
+
+### 11. Best Practices
 
 #### For Task Processing
 ✅ Register your instance before claiming tasks
