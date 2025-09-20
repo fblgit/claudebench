@@ -315,7 +315,11 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 						</CardHeader>
 						<CardContent className="p-0">
 							<div 
-								className="diff2html-wrapper"
+								className="diff2html-wrapper p-4 overflow-x-auto"
+								style={{
+									maxHeight: '600px',
+									overflowY: 'auto'
+								}}
 								dangerouslySetInnerHTML={{ 
 									__html: diff2html(data.diff, {
 										drawFileList: false,
