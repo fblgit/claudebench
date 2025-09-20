@@ -17,6 +17,7 @@ import {
 		title: "Delete Task",
 		metadata: {
 			examples: [{
+				description: "Delete a task by ID",
 				input: {
 					id: "t-123456",
 				},
