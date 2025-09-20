@@ -204,6 +204,7 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 	const createTaskMutation = useCreateTask();
 	const updateTaskMutation = useUpdateTask();
 	const completeTaskMutation = useCompleteTask();
+	const deleteTaskMutation = useDeleteTask();
 	const assignTaskMutation = useEventMutation("task.assign");
 
 	// WebSocket connection for real-time updates
