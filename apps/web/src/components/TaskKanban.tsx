@@ -769,6 +769,7 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 																onUpdate={handleTaskUpdate}
 																onComplete={handleTaskComplete}
 																onDelete={handleTaskDelete}
+																onGenerateContext={handleGenerateContext}
 																onAssign={handleTaskAssign}
 																onClick={handleTaskClick}
 																instances={instances}
