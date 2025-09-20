@@ -236,10 +236,36 @@ mcp__claudebench__docs__get({ id: "api/task/create" })
 ### 11. Best Practices
 
 #### For Task Processing
+✅ **ALWAYS declare tasks** - Create tasks for all work to maintain visibility
+✅ **ALWAYS claim before working** - Assign tasks to yourself before starting
 ✅ Register your instance before claiming tasks
 ✅ Use appropriate worker roles (frontend, backend, testing, docs)
-✅ Complete or reassign tasks you can't handle
+✅ Complete tasks with detailed result attachments
+✅ Reassign tasks you can't handle (don't leave them hanging)
 ✅ Monitor your instance health regularly
+
+#### Task Lifecycle Pattern
+```javascript
+// 1. Create task (declare work)
+const task = await task.create({ 
+  text: "Implement feature X",
+  priority: 80 
+});
+
+// 2. Claim task (assign to worker)
+await task.assign({ 
+  taskId: task.id, 
+  instanceId: "worker-1" 
+});
+
+// 3. Work on task...
+
+// 4. Complete with results
+await task.complete({ 
+  taskId: task.id,
+  result: { status: "success", details: "..." }
+});
+```
 
 #### For System Design
 ✅ Use events for loose coupling between components
