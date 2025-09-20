@@ -333,5 +333,5 @@ curl -X POST http://localhost:3000/rpc \
 ## Related Handlers
 
 - [`git.context.get`](./context_get.md) - Get task context for generating commit messages
-- [`task.create_attachment`](../task/create_attachment.md) - Create task attachments directly
+- [`task.create_attachment`](../task/attachments.md) - Create task attachments directly
 - [`task.list`](../task/list.md) - List tasks to find active work items
