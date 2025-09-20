@@ -493,17 +493,51 @@ const { attachments } = await list_attachments({
 }
 ```
 
+## Technical Details
+
+### ID Generation
+- **Format**: `ta-{timestamp}-{random}`
+- **Example**: `ta-1758375037166-4pvx3tc01mb`
+- **Components**:
+  - `ta-`: Fixed prefix for attachment IDs
+  - `{timestamp}`: Unix timestamp in milliseconds
+  - `{random}`: 10-character random string for uniqueness
+
+### Performance Characteristics
+- **Cache TTL**: 60 seconds for individual attachment reads
+- **Batch Cache**: 5-minute TTL for batch operations
+- **Redis Latency**: ~1ms for cached reads
+- **PostgreSQL Fallback**: ~10-20ms for cache misses
+- **Max Batch Size**: 100 attachments per request
+
+### Monitoring & Metrics
+
+Access metrics via Redis:
+```bash
+# Global attachment metrics
+redis-cli hgetall cb:metrics:attachments
+
+# Per-type usage
+redis-cli hgetall cb:metrics:attachments:type
+
+# Example output:
+# "created" "1523"
+# "cache_hits" "8924"
+# "cache_misses" "234"
+# "list_queries" "567"
+```
+
 ## API Reference
 
 ### Handlers
 
-- [task.create_attachment](./create_attachment) - Create or update an attachment
-- [task.list_attachments](./list_attachments) - List and filter attachments
-- [task.get_attachment](./get_attachment) - Retrieve specific attachment
-- [task.get_attachments_batch](./get_attachments_batch) - Batch retrieval of attachments
+- [task.create_attachment](./task/create_attachment) - Create or update an attachment
+- [task.list_attachments](./task/list_attachments) - List and filter attachments
+- [task.get_attachment](./task/get_attachment) - Retrieve specific attachment
+- [task.get_attachments_batch](./task/get_attachments_batch) - Batch retrieval of attachments
 
 ### Related
 
-- [task.create](./create) - Create a new task
-- [task.complete](./complete) - Complete a task with results
-- [git.auto_commit.notify](../git/auto_commit_notify) - Git commit tracking
+- [task.create](./task/create) - Create a new task
+- [task.complete](./task/complete) - Complete a task with results
+- [git.auto_commit.notify](./git/auto_commit_notify) - Git commit tracking
