@@ -56,6 +56,25 @@ All ClaudeBench handlers are exposed as MCP tools:
 ```
 **Current Queue**: {{ pendingTasks }} pending, {{ inProgressTasks }} in progress
 
+#### Task Attachments
+Tasks support rich attachments for context and results:
+```javascript
+// Attach data to tasks (key-value store)
+task.create_attachment({
+  "taskId": "t-123",
+  "key": "git-commit-abc123",  // Unique key
+  "type": "json",              // json, markdown, text, url, binary
+  "value": { /* data */ }       // Attachment content
+})
+```
+
+**Common Attachment Types**:
+- 📝 **Context** (`context_*`) - Generated AI execution context
+- 🔧 **Git Commits** (`git-commit-*`) - Auto-attached commit metadata
+- 📊 **Results** (`result`) - Task completion details
+- 🔗 **References** (`ref_*`) - Links to related resources
+- 📄 **Documentation** (`doc_*`) - Generated docs or specs
+
 #### Claiming Tasks
 Workers claim tasks from the queue:
 ```javascript
