@@ -802,7 +802,7 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 							<div className="flex items-start justify-between">
 								<div>
 									<CardTitle className="flex items-center gap-2">
-										{getTypeIcon(selectedAttachment.type)}
+										{getTypeIcon(selectedAttachment)}
 										{selectedAttachment.key}
 									</CardTitle>
 									<CardDescription className="mt-2">
@@ -820,7 +820,7 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 								</div>
 								<Badge 
 									variant="outline" 
-									className={cn("text-xs", getTypeColor(selectedAttachment.type))}
+									className={cn("text-xs", getTypeColor(selectedAttachment))}
 								>
 									{selectedAttachment.type}
 								</Badge>
