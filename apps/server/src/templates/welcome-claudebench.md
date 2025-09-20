@@ -80,7 +80,20 @@ task.create_attachment({
 
 **Example: Complete Task with Attachments**:
 ```javascript
-// During work: Add progress notes
+// JSON attachment: Use 'value' field
+await task.create_attachment({
+  taskId: "t-123",
+  key: "test-results",
+  type: "json",
+  value: {
+    passed: 15,
+    failed: 0,
+    coverage: "92%",
+    duration: "3.2s"
+  }
+});
+
+// Markdown attachment: Use 'content' field
 await task.create_attachment({
   taskId: "t-123",
   key: "implementation-notes",
