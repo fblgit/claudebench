@@ -97,29 +97,6 @@ export class StateProcessor {
 			labels: labels || [],
 		});
 
-		// Persist to PostgreSQL (default true, disable with PERSIST_HOOK_STATE=false)
-		if (this.prisma && process.env.PERSIST_HOOK_STATE !== "false") {
-			try {
-				await this.prisma.sessionEvent.create({
-					data: {
-						eventId,
-						sessionId,
-						instanceId,
-						eventType: `hook.${hookType}`,
-						eventData: {
-							params,
-							result,
-						} as any,
-						labels: labels || [],
-						timestamp: new Date(timestamp),
-					},
-				});
-				console.log(`[StateProcessor] Persisted event ${eventId} to PostgreSQL`);
-			} catch (error) {
-				console.error("[StateProcessor] Failed to persist to PostgreSQL:", error);
-			}
-		}
-
 		// Check if snapshot is needed based on script result
 		if (scriptResult.needsSnapshot) {
 			await this.createSnapshot(sessionId, "threshold");
