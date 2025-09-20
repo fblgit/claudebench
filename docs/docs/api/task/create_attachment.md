@@ -162,6 +162,10 @@ When an attachment is successfully created, an event is published:
 - Requires `mimeType` and optionally `size`
 - Used for referencing files, images, documents
 
+## Migration Notice
+
+⚠️ **Important**: As of PR #4, task data storage has migrated from `metadata.data` to this dedicated attachment system. See the [migration guide](./attachments#migration-from-metadata) for details.
+
 ## Notes
 
 ### Prerequisites
@@ -172,6 +176,7 @@ When an attachment is successfully created, an event is published:
 - Large attachments may impact performance
 - Binary attachments store only references, not actual data
 - PostgreSQL JSON fields can handle up to 1GB of data
+- Avoid using `metadata.data` (deprecated) - use attachments instead
 
 ### Storage
 - Primary storage in Redis for fast access
