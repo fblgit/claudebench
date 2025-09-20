@@ -517,6 +517,14 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 		}
 	};
 
+	const handleGenerateContext = (taskId: string) => {
+		const task = tasks.find(t => t.id === taskId);
+		if (task) {
+			setContextTask(task);
+			setContextDialogOpen(true);
+		}
+	};
+
 	// Handle task click
 	const handleTaskClick = (task: Task) => {
 		setSelectedTask(task);
