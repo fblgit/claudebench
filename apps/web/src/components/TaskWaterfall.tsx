@@ -216,11 +216,12 @@ export function TaskWaterfall({ tasks, onTaskClick, className }: TaskWaterfallPr
 		const data: WaterfallData[] = [];
 		let cumulativeDuration = 0;
 		const phaseOrder = [
-			"Phase 1: Initialization",
-			"Phase 2: Development", 
-			"Phase 3: Testing",
-			"Phase 4: Deployment",
-			"Phase X: Issues"
+			"Phase X: Issues",
+			"Phase 1: Active Development",
+			"Phase 2: Blocked/Waiting", 
+			"Phase 3: Recently Completed",
+			"Phase 4: Deployed",
+			"Phase 5: Archive"
 		];
 		
 		phaseOrder.forEach((phaseName) => {
