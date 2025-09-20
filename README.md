@@ -48,10 +48,11 @@ ClaudeBench is a Redis-first event-driven AI workbench that provides a powerful 
 - [x] RPC to Handler (access handlers via `/rpc` endpoint)
 - [x] Swarm Project Creation (Tasks and Subtasks with LLM Context & Prompt generation)
 - [x] Circuit Breaker, RateLimit, Timeout, Metrics (decorators EventHandler, Instrumented, Resilient)
-- [ ] Migrate task metadata to task attachments
-- [ ] Consolidate better Prisma schemas and persisted data quality
+- [x] Migrate task metadata to task attachments
+- [~] Consolidate better Prisma schemas and persisted data quality
 - [ ] MCP reconnect session-resume mechanism
-- [ ] ...
+- [ ] State session rehydration (persist hook events, labeling and processing, fetch optimised worker state MCP resource)
+- [ ]
 
 ### Prerequisites
 
