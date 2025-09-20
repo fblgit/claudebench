@@ -212,7 +212,11 @@ export function TaskCard({
 									<>
 										<DropdownMenuSeparator />
 										<DropdownMenuItem
-											onClick={() => onDelete(task.id)}
+											onClick={(e) => {
+												e.stopPropagation();
+												console.log("Deleting task with ID:", task.id);
+												onDelete(task.id);
+											}}
 											className="text-red-600"
 										>
 											<XCircle className="h-4 w-4 mr-2" />
