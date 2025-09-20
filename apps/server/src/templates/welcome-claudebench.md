@@ -5,6 +5,8 @@ ClaudeBench is an event-driven orchestration system that enables AI agents to co
 
 ## 🎯 Quick Start
 
+> **Important:** Always create and claim tasks before working! This ensures visibility and proper tracking of all work in the system.
+
 ### 1. Event Relay
 The event relay monitors all ClaudeBench events in real-time:
 ```bash
@@ -21,6 +23,12 @@ You have access to:
 - **Swarm Conflicts** (`swarm://conflicts`) - Active conflicts requiring resolution
 - **Decompositions List** (`swarm://decompositions`) - All task decompositions
 
+#### 📚 Documentation Resources
+- **API Documentation** (`docs://api`) - Complete API reference for all handlers
+- **Architecture Docs** (`docs://architecture`) - System design and patterns
+- **Guides** (`docs://guides`) - Step-by-step tutorials and best practices
+- **What's New** (`docs://whats-new`) - Latest features and updates
+
 #### 🔄 Resource Templates (Dynamic Data)
 - `swarm://decomposition/{taskId}` - Detailed task decomposition
 - `swarm://context/{subtaskId}` - Execution context for subtasks
@@ -34,6 +42,8 @@ All ClaudeBench handlers are exposed as MCP tools:
 - **swarm.decompose** - Break down complex tasks
 - **swarm.resolve** - Resolve conflicts between specialists
 - **system.register** - Register new instances
+- **docs.list** - Browse all available documentation
+- **docs.get** - Retrieve specific documentation pages
 
 ### 3. Task Management
 
@@ -47,6 +57,60 @@ All ClaudeBench handlers are exposed as MCP tools:
 }
 ```
 **Current Queue**: {{ pendingTasks }} pending, {{ inProgressTasks }} in progress
+
+#### Task Attachments (CRITICAL for Task Tracking)
+Tasks **MUST** include attachments for proper documentation and traceability:
+```javascript
+// Attach data to tasks (key-value store)
+task.create_attachment({
+  "taskId": "t-123",
+  "key": "git-commit-abc123",  // Unique key per task
+  "type": "json",              // json, markdown, text, url, binary
+  "value": { /* data */ }       // For JSON type
+  "content": "text content"     // For markdown/text types
+})
+```
+
+**Required Attachment Patterns**:
+- 📝 **Context** (`context_*`) - AI-generated execution context for complex tasks
+- 🔧 **Git Commits** (`git-commit-*`) - Automatically attached by git hooks
+- 📊 **Results** (`result`) - MUST be added when completing tasks
+- 📋 **Implementation Notes** (`implementation-notes`) - Progress and approach details
+- 🐛 **Error Details** (`error-details`) - Debugging info for failed tasks
+
+**Example: Complete Task with Attachments**:
+```javascript
+// JSON attachment: Use 'value' field
+await task.create_attachment({
+  taskId: "t-123",
+  key: "test-results",
+  type: "json",
+  value: {
+    passed: 15,
+    failed: 0,
+    coverage: "92%",
+    duration: "3.2s"
+  }
+});
+
+// Markdown attachment: Use 'content' field
+await task.create_attachment({
+  taskId: "t-123",
+  key: "implementation-notes",
+  type: "markdown",
+  content: "# Approach\n- Using React hooks\n- Added error boundaries"
+});
+
+// On completion: Result automatically attached
+await task.complete({
+  taskId: "t-123",
+  result: { 
+    status: "success",
+    filesModified: ["src/App.tsx"],
+    testsAdded: 3
+  }
+});
+```
 
 #### Claiming Tasks
 Workers claim tasks from the queue:
@@ -182,13 +246,74 @@ mcp__claudebench__system__get_state
 mcp__claudebench__system__redis__keys
 ```
 
-### 10. Best Practices
+### 10. Documentation Access
+
+#### 📖 Docusaurus Documentation Site
+ClaudeBench includes comprehensive documentation available at:
+- **Local**: `http://localhost:3002` (run `bun docs:dev`)
+- **Categories**: API Reference, Architecture, Guides, What's New
+- **Total Pages**: 69+ documentation pages
+
+#### 🔍 MCP Documentation Tools
+Access documentation directly through MCP:
+```javascript
+// List all available documentation
+mcp__claudebench__docs__list({ category: "guides" })
+
+// Get specific documentation page
+mcp__claudebench__docs__get({ id: "api/task/create" })
+```
+
+#### 📂 Documentation Categories
+- **API** ({{ '{{' }} docsApiCount {{ '}}' }} pages) - Handler references, schemas, examples
+- **Architecture** ({{ '{{' }} docsArchCount {{ '}}' }} pages) - System design, patterns, Lua scripts
+- **Guides** ({{ '{{' }} docsGuidesCount {{ '}}' }} pages) - Tutorials, best practices, workflows
+- **General** ({{ '{{' }} docsGeneralCount {{ '}}' }} pages) - Overview, contributing, changelog
+
+### 11. Best Practices
 
 #### For Task Processing
+✅ **ALWAYS declare tasks** - Create tasks for all work to maintain visibility
+✅ **ALWAYS claim before working** - Assign tasks to yourself before starting
 ✅ Register your instance before claiming tasks
 ✅ Use appropriate worker roles (frontend, backend, testing, docs)
-✅ Complete or reassign tasks you can't handle
+✅ Complete tasks with detailed result attachments
+✅ Reassign tasks you can't handle (don't leave them hanging)
 ✅ Monitor your instance health regularly
+
+#### Task Lifecycle Pattern
+```javascript
+// 1. Create task (declare work)
+const task = await task.create({ 
+  text: "Implement feature X",
+  priority: 80 
+});
+
+// 2. Claim task (assign to worker)
+await task.assign({ 
+  taskId: task.id, 
+  instanceId: "worker-1" 
+});
+
+// 3. Work on task and add attachments
+await task.create_attachment({
+  taskId: task.id,
+  key: "implementation-notes",
+  type: "markdown",
+  content: "## Progress\n- Completed step 1\n- Working on step 2"
+});
+
+// 4. Complete with results + final attachment
+await task.complete({ 
+  taskId: task.id,
+  result: { status: "success", details: "..." }
+});
+
+// 5. View all attachments
+const attachments = await task.list_attachments({ 
+  taskId: task.id 
+});
+```
 
 #### For System Design
 ✅ Use events for loose coupling between components
@@ -211,10 +336,13 @@ mcp__claudebench__system__redis__keys
 4. **Explore resources**: Browse available MCP resources in the sidebar
 
 ### Useful Resources:
-- **Documentation**: `/docs/CLAUDEBENCH.md`
-- **MCP SDK Reference**: `/docs/MCP_SDK.md`
-- **Redis Scripts**: `/src/core/lua-scripts.ts`
-- **Event Handlers**: `/src/handlers/`
+- **Documentation Site**: Run `bun docs:dev` to browse at `http://localhost:3002`
+- **CLAUDE.md**: `/CLAUDE.md` - AI assistant instructions and codebase patterns
+- **MCP SDK Reference**: `/docs/MCP_SDK.md` - Complete MCP TypeScript SDK documentation
+- **Redis Lua Scripts**: `/apps/server/src/core/lua-scripts.ts` - Atomic operations
+- **Event Handlers**: `/apps/server/src/handlers/` - All domain handlers
+- **API Contracts**: `/specs/001-claudebench/contracts/` - OpenRPC specifications
+- **Web Dashboard**: `http://localhost:3001` - Visual task management interface
 
 ---
 *ClaudeBench v2.0 - Redis-First Event-Driven Architecture*
