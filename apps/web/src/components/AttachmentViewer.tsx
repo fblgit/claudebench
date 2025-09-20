@@ -761,14 +761,14 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 										<div className="space-y-2">
 											<div className="flex items-center justify-between">
 												<div className="flex items-center gap-2">
-													{getTypeIcon(attachment.type)}
+													{getTypeIcon(attachment)}
 													<span className="font-medium text-sm truncate">
 														{attachment.key}
 													</span>
 												</div>
 												<Badge 
 													variant="outline" 
-													className={cn("text-xs", getTypeColor(attachment.type))}
+													className={cn("text-xs", getTypeColor(attachment))}
 												>
 													{attachment.type}
 												</Badge>
