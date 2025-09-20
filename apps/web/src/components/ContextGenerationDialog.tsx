@@ -76,14 +76,19 @@ export function ContextGenerationDialog({
 		setGeneratedContext(null);
 		
 		try {
-			// Create a subtask-like structure for context generation
-			const subtaskId = `st-${task.id}-${Date.now()}`;
-			const description = customDescription || task.text;
+			// Parse comma-separated values into arrays
+			const constraintsList = constraints ? constraints.split('\n').filter(c => c.trim()) : undefined;
+			const requirementsList = requirements ? requirements.split('\n').filter(r => r.trim()) : undefined;
+			const filesList = existingFiles ? existingFiles.split('\n').filter(f => f.trim()) : undefined;
 			
 			const result = await generateContextMutation.mutateAsync({
-				subtaskId,
+				taskId: task.id,
 				specialist,
-				parentTaskId: task.id,
+				customDescription: customDescription || undefined,
+				constraints: constraintsList,
+				requirements: requirementsList,
+				existingFiles: filesList,
+				additionalContext: additionalContext || undefined,
 			});
 			
 			setGeneratedContext(result);
