@@ -825,6 +825,24 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 				onAssign={handleTaskAssign}
 				instances={instances}
 			/>
+			
+			{/* Context Generation Dialog */}
+			<ContextGenerationDialog
+				task={contextTask}
+				open={contextDialogOpen}
+				onOpenChange={(open) => {
+					setContextDialogOpen(open);
+					if (!open) {
+						setContextTask(null);
+						// Refresh to show any attachments
+						refetchState();
+					}
+				}}
+				onSuccess={(context) => {
+					console.log("Context generated successfully:", context);
+					// Could show a toast notification here
+				}}
+			/>
 		</div>
 	);
 }
