@@ -52,6 +52,8 @@ ClaudeBench is a Redis-first event-driven AI workbench that provides a powerful 
 - [x] State session rehydration (persist hook events, labeling and processing, fetch optimised worker state MCP resource)
 - [x] Consolidate better Prisma schemas and persisted data quality
 - [x] AutoCommit for hooks write with context commit message
+- [x] Rich view of Attachments in the tasks (context and commit types)
+- [x] Task.context generation from Kanban
 - [ ] Improve processing and rehydration rich/efficient context
 - [ ] MCP reconnect session-resume mechanism (messy, low priority)
 

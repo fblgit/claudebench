@@ -14,7 +14,7 @@ Environment Variables:
     REDIS_URL: Redis connection URL (default: redis://localhost:6379/0)
     CLAUDE_INSTANCE_ID: Unique instance identifier (auto-generated if not set)
     CLAUDE_SESSION_ID: Session identifier
-    RELAY_ROLES: Comma-separated roles (default: "observer,relay")
+    RELAY_ROLES: Comma-separated roles
     HEARTBEAT_INTERVAL: Seconds between heartbeats (default: 15)
     EVENT_CHANNELS: Comma-separated channels to subscribe (default: "task.*,hook.*,system.*")
     DEBUG: Enable debug logging (default: false)
@@ -56,7 +56,7 @@ class ClaudeEventRelay:
             f"claude-relay-{int(time.time() * 1000) % 1000000}"
         )
         self.session_id = os.environ.get('CLAUDE_SESSION_ID', f'session-{int(time.time())}')
-        self.roles = os.environ.get('RELAY_ROLES', 'observer,relay').split(',')
+        self.roles = os.environ.get('RELAY_ROLES', 'general,backend,frontend,docs,tests,relay').split(',')
         
         # Timing configuration
         self.heartbeat_interval = int(os.environ.get('HEARTBEAT_INTERVAL', '15'))
