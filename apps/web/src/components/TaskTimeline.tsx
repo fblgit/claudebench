@@ -352,41 +352,78 @@ export function TaskTimeline({ tasks, onTaskClick, className }: TaskTimelineProp
 													))}
 												</div>
 											
-											{/* Task Bars */}
+											{/* Enhanced Task Bars with Animations */}
 											{assigneeTasks.map((task, taskIndex) => {
 												const position = getTaskPosition(task);
-												const yOffset = (taskIndex % 2) * 30; // Stagger overlapping tasks
+												const yOffset = (taskIndex % 3) * 25; // Better stacking with 3 levels
+												const isHovered = hoveredTask === task.id;
 												
 												return (
 													<Tooltip key={task.id}>
 														<TooltipTrigger asChild>
-															<div
+															<motion.div
 																className={cn(
-																	"absolute h-6 rounded-md cursor-pointer transition-all",
-																	"flex items-center gap-1 px-1 overflow-hidden",
-																	getStatusColor(task.status)
+																	"absolute rounded-lg cursor-pointer",
+																	"flex items-center gap-1 px-2 overflow-hidden",
+																	"border border-white/20",
+																	getStatusColor(task.status, isHovered)
 																)}
 																style={{
 																	...position,
-																	top: `${20 + yOffset}px`,
-																	minWidth: "60px",
-																	zIndex: taskIndex,
+																	top: `${16 + yOffset}px`,
+																	height: "28px",
+																	minWidth: "80px",
+																	zIndex: isHovered ? 30 : taskIndex + 10,
+																}}
+																initial={{ opacity: 0, scale: 0.8 }}
+																animate={{ 
+																	opacity: 1, 
+																	scale: isHovered ? 1.05 : 1,
+																}}
+																whileHover={{ 
+																	y: -2,
+																	transition: { duration: 0.2 }
+																}}
+																transition={{ 
+																	delay: taskIndex * 0.05,
+																	duration: 0.3
 																}}
 																onClick={() => onTaskClick?.(task)}
+																onMouseEnter={() => setHoveredTask(task.id)}
+																onMouseLeave={() => setHoveredTask(null)}
 															>
-																{getStatusIcon(task.status)}
-																<span className="text-xs text-white truncate">
-																	{task.text}
-																</span>
-																{/* Priority indicator */}
+																{/* Priority gradient overlay */}
 																<div 
 																	className={cn(
-																		"absolute top-0 right-0 w-1 h-full",
+																		"absolute inset-0 opacity-30",
+																		"bg-gradient-to-r",
 																		getPriorityColor(task.priority)
 																	)} 
-																	style={{ opacity: 0.6 }}
 																/>
-															</div>
+																
+																{/* Content */}
+																<div className="relative flex items-center gap-1 z-10">
+																	{getStatusIcon(task.status)}
+																	<span className="text-xs text-white font-medium truncate">
+																		{task.text}
+																	</span>
+																</div>
+																
+																{/* Attachment indicator */}
+																{task.attachmentCount && task.attachmentCount > 0 && (
+																	<motion.div 
+																		className="absolute top-1 right-1"
+																		initial={{ scale: 0 }}
+																		animate={{ scale: 1 }}
+																		transition={{ delay: 0.2 }}
+																	>
+																		<Badge className="h-4 px-1 bg-white/20 text-white text-[10px] border-0">
+																			<Paperclip className="h-2 w-2" />
+																			{task.attachmentCount}
+																		</Badge>
+																	</motion.div>
+																)}
+															</motion.div>
 														</TooltipTrigger>
 														<TooltipContent side="top" className="max-w-xs">
 															<div className="space-y-2">
