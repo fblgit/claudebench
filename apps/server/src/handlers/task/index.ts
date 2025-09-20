@@ -10,3 +10,4 @@ export * from "./task.list.handler";   // NEW list/query handler
 export * from "./task.create_attachment.handler";
 export * from "./task.list_attachments.handler";
 export * from "./task.get_attachment.handler";
+export * from "./task.get_attachments_batch.handler";

@@ -198,7 +198,7 @@ export class TaskCreateAttachmentHandler {
 				}
 			} catch (error) {
 				console.error("Failed to persist attachment to PostgreSQL", { error, input });
-				// Continue - Redis storage succeeded
+				throw new Error(`Failed to persist attachment: ${error instanceof Error ? error.message : 'Unknown error'}`);
 			}
 		}
 		

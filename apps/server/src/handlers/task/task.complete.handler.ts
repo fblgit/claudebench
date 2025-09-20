@@ -135,19 +135,14 @@ export class TaskCompleteHandler {
 				
 				// Store the result as an attachment
 				if (parsedResult !== null && parsedResult !== undefined) {
-					try {
-						await registry.executeHandler("task.create_attachment", {
-							taskId: taskId,
-							key: "result",
-							type: "json",
-							value: parsedResult
-						}, ctx.metadata?.clientId);
-						
-						console.log(`Task ${taskId} result stored as attachment. Size: ${resultSize} bytes`);
-					} catch (attachmentError) {
-						// Log but don't fail - result is already stored
-						console.warn(`Failed to create result attachment:`, attachmentError);
-					}
+					await registry.executeHandler("task.create_attachment", {
+						taskId: taskId,
+						key: "result",
+						type: "json",
+						value: parsedResult
+					}, ctx.metadata?.clientId);
+					
+					console.log(`Task ${taskId} result stored as attachment. Size: ${resultSize} bytes`);
 				}
 				
 				console.log(`Task ${taskId} completed and persisted. Result size: ${resultSize} bytes`);
