@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { format, parseISO, formatDistanceToNow } from "date-fns";
 import { html as diff2html } from "diff2html";
 import "diff2html/bundles/css/diff2html.min.css";
+import "./AttachmentViewer.css";
 import { CodeViewer } from "./CodeEditor";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
