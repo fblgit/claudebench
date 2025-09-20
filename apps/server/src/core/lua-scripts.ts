@@ -1487,3 +1487,337 @@ end
 
 return {0, 0, 0}  -- {not_ready, no_decomposition, 0}
 `;
+
+/**
+ * SESSION STATE MANAGEMENT LUA SCRIPTS
+ * Atomic operations for session state tracking and event processing
+ */
+
+/**
+ * Process hook event and update session state atomically
+ * Stores event, updates state, and manages context in one operation
+ */
+export const PROCESS_HOOK_EVENT = `
+local stream_key = KEYS[1]        -- cb:stream:session:{sessionId}
+local state_key = KEYS[2]         -- cb:session:state:{sessionId}
+local context_key = KEYS[3]       -- cb:session:context:{sessionId}
+local tools_key = KEYS[4]         -- cb:session:tools:{sessionId}
+local metrics_key = KEYS[5]       -- cb:metrics:session:{sessionId}
+
+local event_id = ARGV[1]
+local event_type = ARGV[2]
+local session_id = ARGV[3]
+local instance_id = ARGV[4]
+local timestamp = ARGV[5]
+local params_json = ARGV[6]
+local result_json = ARGV[7]
+local labels_json = ARGV[8]
+
+-- Store event in stream
+local stream_entry = redis.call('xadd', stream_key, '*',
+  'eventId', event_id,
+  'eventType', event_type,
+  'sessionId', session_id,
+  'instanceId', instance_id,
+  'timestamp', timestamp,
+  'params', params_json,
+  'result', result_json,
+  'labels', labels_json
+)
+
+-- Set stream expiry (7 days)
+redis.call('expire', stream_key, 604800)
+
+-- Update session state
+local event_count = redis.call('hincrby', state_key, 'eventCount', 1)
+redis.call('hset', state_key,
+  'lastEventId', event_id,
+  'lastActivity', timestamp,
+  'instanceId', instance_id
+)
+redis.call('expire', state_key, 604800)
+
+-- Parse params for context updates
+local params = cjson.decode(params_json)
+
+-- Update condensed context based on hook type
+if event_type == 'hook.pre_tool' or event_type == 'hook.post_tool' then
+  if params.tool then
+    -- Track tool usage
+    redis.call('lpush', tools_key, params.tool)
+    redis.call('ltrim', tools_key, 0, 9)  -- Keep last 10
+    redis.call('expire', tools_key, 604800)
+  end
+elseif event_type == 'hook.user_prompt' then
+  if params.prompt then
+    redis.call('hset', context_key,
+      'lastPrompt', params.prompt,
+      'lastPromptTime', timestamp
+    )
+  end
+elseif event_type == 'hook.todo_write' then
+  if params.todos then
+    redis.call('hset', context_key,
+      'activeTodos', params_json,  -- Store the full todos JSON
+      'lastTodoUpdate', timestamp
+    )
+  end
+end
+
+-- Set context expiry
+redis.call('expire', context_key, 604800)
+
+-- Update metrics
+redis.call('hincrby', metrics_key, event_type, 1)
+redis.call('hincrby', metrics_key, 'total', 1)
+redis.call('expire', metrics_key, 86400)
+
+-- Check if snapshot needed (every 100 events)
+local needs_snapshot = (event_count % 100) == 0
+
+return {stream_entry, event_count, needs_snapshot and 1 or 0}
+`;
+
+/**
+ * Build condensed context from session events
+ * Aggregates session data for quick retrieval
+ */
+export const BUILD_SESSION_CONTEXT = `
+local stream_key = KEYS[1]        -- cb:stream:session:{sessionId}
+local context_key = KEYS[2]       -- cb:session:context:{sessionId}
+local tools_key = KEYS[3]         -- cb:session:tools:{sessionId}
+local tasks_key = KEYS[4]         -- cb:session:tasks:{sessionId}
+
+local session_id = ARGV[1]
+local limit = tonumber(ARGV[2] or '100')
+
+-- Get recent events from stream
+local events = redis.call('xrevrange', stream_key, '+', '-', 'COUNT', limit)
+
+local context = {
+  lastTasks = {},
+  lastTools = {},
+  lastPrompt = nil,
+  activeTodos = {},
+  eventCounts = {},
+  instanceId = nil
+}
+
+-- Process events to build context
+for _, entry in ipairs(events) do
+  local event = {}
+  -- Parse entry fields (they come as flat array)
+  for i = 1, #entry[2], 2 do
+    event[entry[2][i]] = entry[2][i + 1]
+  end
+  
+  -- Update event counts
+  local event_type = event.eventType
+  if not context.eventCounts[event_type] then
+    context.eventCounts[event_type] = 0
+  end
+  context.eventCounts[event_type] = context.eventCounts[event_type] + 1
+  
+  -- Capture instanceId
+  if event.instanceId and not context.instanceId then
+    context.instanceId = event.instanceId
+  end
+  
+  -- Process specific event types
+  if event.params then
+    local params = cjson.decode(event.params)
+    
+    if event_type == 'hook.user_prompt' and params.prompt then
+      context.lastPrompt = params.prompt
+    end
+    
+    if (event_type == 'hook.pre_tool' or event_type == 'hook.post_tool') and params.tool then
+      -- Add tool to list if not already there
+      local found = false
+      for _, tool in ipairs(context.lastTools) do
+        if tool == params.tool then
+          found = true
+          break
+        end
+      end
+      if not found then
+        table.insert(context.lastTools, params.tool)
+        if #context.lastTools > 10 then
+          table.remove(context.lastTools, 1)
+        end
+      end
+    end
+    
+    if event_type == 'hook.todo_write' and params.todos then
+      context.activeTodos = params.todos
+    end
+  end
+end
+
+-- Get recent tools from list
+local tools = redis.call('lrange', tools_key, 0, 9)
+if #tools > 0 then
+  context.lastTools = tools
+end
+
+-- Get recent tasks
+local task_ids = redis.call('lrange', tasks_key, 0, 4)
+for _, task_id in ipairs(task_ids) do
+  local task_key = 'cb:task:' .. task_id
+  local task_data = redis.call('hgetall', task_key)
+  if #task_data > 0 then
+    local task = {}
+    for i = 1, #task_data, 2 do
+      task[task_data[i]] = task_data[i + 1]
+    end
+    table.insert(context.lastTasks, {
+      id = task.id or task_id,
+      text = task.text or '',
+      status = task.status or 'unknown'
+    })
+  end
+end
+
+-- Get stored context data
+local stored_context = redis.call('hgetall', context_key)
+if #stored_context > 0 then
+  for i = 1, #stored_context, 2 do
+    local field = stored_context[i]
+    local value = stored_context[i + 1]
+    
+    if field == 'lastPrompt' and not context.lastPrompt then
+      context.lastPrompt = value
+    elseif field == 'activeTodos' then
+      -- Try to parse todos
+      local ok, todos = pcall(cjson.decode, value)
+      if ok then
+        context.activeTodos = todos
+      end
+    end
+  end
+end
+
+return cjson.encode(context)
+`;
+
+/**
+ * Create session snapshot atomically
+ * Captures current state and stores for recovery
+ */
+export const CREATE_SESSION_SNAPSHOT = `
+local stream_key = KEYS[1]        -- cb:stream:session:{sessionId}
+local snapshot_key = KEYS[2]      -- cb:snapshot:{sessionId}:{snapshotId}
+local state_key = KEYS[3]         -- cb:session:state:{sessionId}
+
+local session_id = ARGV[1]
+local snapshot_id = ARGV[2]
+local reason = ARGV[3]
+local timestamp = ARGV[4]
+
+-- Get all events from stream
+local events = redis.call('xrange', stream_key, '-', '+')
+
+if #events == 0 then
+  return {0, 'No events to snapshot'}
+end
+
+-- Get session state
+local state = redis.call('hgetall', state_key)
+local state_obj = {}
+for i = 1, #state, 2 do
+  state_obj[state[i]] = state[i + 1]
+end
+
+-- Build context from events (reuse logic)
+local context = {
+  lastTasks = {},
+  lastTools = {},
+  eventCounts = {},
+  instanceId = state_obj.instanceId or 'unknown'
+}
+
+local first_timestamp = nil
+local last_timestamp = nil
+
+-- Process events
+for _, entry in ipairs(events) do
+  local event = {}
+  for i = 1, #entry[2], 2 do
+    event[entry[2][i]] = entry[2][i + 1]
+  end
+  
+  -- Track timestamps
+  if not first_timestamp then
+    first_timestamp = event.timestamp
+  end
+  last_timestamp = event.timestamp
+  
+  -- Count event types
+  local event_type = event.eventType
+  context.eventCounts[event_type] = (context.eventCounts[event_type] or 0) + 1
+end
+
+-- Store snapshot
+redis.call('hset', snapshot_key,
+  'snapshotId', snapshot_id,
+  'sessionId', session_id,
+  'reason', reason,
+  'eventCount', tostring(#events),
+  'timestamp', timestamp,
+  'context', cjson.encode(context),
+  'fromTime', first_timestamp or timestamp,
+  'toTime', last_timestamp or timestamp
+)
+
+-- Set expiry (30 days)
+redis.call('expire', snapshot_key, 2592000)
+
+-- Mark snapshot created in state
+redis.call('hset', state_key, 'lastSnapshot', snapshot_id)
+
+return {1, snapshot_id, #events}
+`;
+
+/**
+ * Update session metrics atomically
+ * Tracks event counts and timing metrics
+ */
+export const UPDATE_SESSION_METRICS = `
+local metrics_key = KEYS[1]       -- cb:metrics:session:{sessionId}
+local global_metrics = KEYS[2]    -- cb:metrics:global:hooks
+
+local session_id = ARGV[1]
+local hook_type = ARGV[2]
+local timestamp = ARGV[3]
+
+-- Update session-specific metrics
+local event_count = redis.call('hincrby', metrics_key, hook_type, 1)
+local total_count = redis.call('hincrby', metrics_key, 'total', 1)
+
+-- Track timing
+local first_event = redis.call('hget', metrics_key, 'firstEventTime')
+if not first_event then
+  redis.call('hset', metrics_key, 'firstEventTime', timestamp)
+end
+redis.call('hset', metrics_key, 'lastEventTime', timestamp)
+
+-- Calculate events per minute
+local start_time = tonumber(first_event or timestamp)
+local current_time = tonumber(timestamp)
+local elapsed_seconds = (current_time - start_time) / 1000  -- Convert ms to seconds
+
+if elapsed_seconds > 0 then
+  local events_per_minute = (total_count / elapsed_seconds) * 60
+  redis.call('hset', metrics_key, 'eventsPerMinute', tostring(events_per_minute))
+end
+
+-- Update global metrics
+redis.call('hincrby', global_metrics, hook_type, 1)
+redis.call('hincrby', global_metrics, 'total', 1)
+
+-- Set expiries
+redis.call('expire', metrics_key, 86400)  -- 24 hours
+redis.call('expire', global_metrics, 604800)  -- 7 days
+
+return {event_count, total_count}
+`;
