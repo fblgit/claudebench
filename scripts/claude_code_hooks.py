@@ -503,6 +503,12 @@ class ClaudeBenchHookBridge:
         if tool_name not in CODE_CHANGING_TOOLS:
             return None
         
+        # Check current branch - disable autocommit on main/master
+        branch = self.get_current_branch()
+        if branch.lower() in ['main', 'master']:
+            self.debug_print(f"Autocommit disabled on protected branch: {branch}")
+            return None
+        
         # Check for changes
         has_changes, changed_files = self.check_for_changes()
         if not has_changes:
