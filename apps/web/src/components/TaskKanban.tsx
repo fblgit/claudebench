@@ -68,6 +68,7 @@ import {
 	useUpdateTask,
 	useCompleteTask,
 	useDeleteTask,
+	useGenerateContext,
 	useEventMutation,
 } from "@/services/event-client";
 import { format } from "date-fns";
