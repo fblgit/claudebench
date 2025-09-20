@@ -66,6 +66,7 @@
     "@git-diff-view/react": "^0.0.32",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "diff2html": "^3.4.52",
     "fetch-to-node": "^2.1.0",
     "ts-prune": "^0.10.3"
   },
