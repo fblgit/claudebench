@@ -178,6 +178,26 @@
   background: hsl(var(--muted) / 0.3);
 }
 
+.dark .d2h-code-line:hover {
+  background: hsl(var(--muted) / 0.2) !important;
+}
+
+/* Plus and minus symbols */
+.dark .d2h-code-line-prefix {
+  font-weight: 600;
+  user-select: none;
+}
+
+.dark .d2h-ins .d2h-code-line-prefix::before {
+  content: "+";
+  color: rgb(74, 222, 128) !important;
+}
+
+.dark .d2h-del .d2h-code-line-prefix::before {
+  content: "-";
+  color: rgb(251, 146, 146) !important;
+}
+
 /* Ensure proper scrolling */
 .diff2html-wrapper {
   width: 100%;
