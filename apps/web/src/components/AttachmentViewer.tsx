@@ -69,6 +69,7 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 	const [error, setError] = useState<string | null>(null);
 	const [copied, setCopied] = useState<string | null>(null);
 	const [selectedAttachment, setSelectedAttachment] = useState<Attachment | null>(null);
+	const [diffViewMode, setDiffViewMode] = useState<'line-by-line' | 'side-by-side'>('line-by-line');
 
 	useEffect(() => {
 		fetchAttachments();
