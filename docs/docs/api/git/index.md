@@ -170,6 +170,6 @@ Git handlers participate in the event system:
 
 ## Related Documentation
 
-- [Task System](../task/index.md) - Understanding task management
-- [Session State](../system/index.md) - Session context and state management
-- [Event System](../../architecture/events.md) - Event-driven architecture
+- [Task System](../task/) - Understanding task management
+- [System API](../system/) - System operations and state management
+- [Architecture Overview](../../architecture/) - Event-driven architecture
