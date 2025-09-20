@@ -56,12 +56,18 @@ import {
 	ListTodo,
 	Zap,
 	Paperclip,
+	GitBranch,
+	BarChart3,
+	Activity,
 } from "lucide-react";
 import { TaskCard } from "./TaskCard";
 import { TaskDetailModal } from "./TaskDetailModal";
 import { InstanceManager } from "./InstanceManager";
 import { RoleSelector } from "./RoleSelector";
 import { ContextGenerationDialog } from "./ContextGenerationDialog";
+import { TaskTimeline } from "./TaskTimeline";
+import { TaskGantt } from "./TaskGantt";
+import { TaskWaterfall } from "./TaskWaterfall";
 import {
 	getEventClient,
 	useEventQuery,
@@ -568,7 +574,19 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 					<TabsList>
 						<TabsTrigger value="kanban">
 							<LayoutGrid className="h-4 w-4 mr-2" />
-							Kanban Board
+							Kanban
+						</TabsTrigger>
+						<TabsTrigger value="timeline">
+							<Activity className="h-4 w-4 mr-2" />
+							Timeline
+						</TabsTrigger>
+						<TabsTrigger value="gantt">
+							<BarChart3 className="h-4 w-4 mr-2" />
+							Gantt
+						</TabsTrigger>
+						<TabsTrigger value="waterfall">
+							<GitBranch className="h-4 w-4 mr-2" />
+							Waterfall
 						</TabsTrigger>
 						<TabsTrigger value="instances">
 							<User className="h-4 w-4 mr-2" />
@@ -798,6 +816,30 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 							)}
 						</DragOverlay>
 					</DndContext>
+				</TabsContent>
+
+				<TabsContent value="timeline" className="flex-1 min-h-0">
+					<TaskTimeline
+						tasks={filteredTasks}
+						onTaskClick={handleTaskClick}
+						className="h-full"
+					/>
+				</TabsContent>
+
+				<TabsContent value="gantt" className="flex-1 min-h-0">
+					<TaskGantt
+						tasks={filteredTasks}
+						onTaskClick={handleTaskClick}
+						className="h-full"
+					/>
+				</TabsContent>
+
+				<TabsContent value="waterfall" className="flex-1 min-h-0">
+					<TaskWaterfall
+						tasks={filteredTasks}
+						onTaskClick={handleTaskClick}
+						className="h-full"
+					/>
 				</TabsContent>
 
 				<TabsContent value="instances" className="flex-1 min-h-0">
