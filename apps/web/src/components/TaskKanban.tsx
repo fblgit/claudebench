@@ -115,6 +115,8 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 	const [instances, setInstances] = useState<Instance[]>([]);
 	const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 	const [detailModalOpen, setDetailModalOpen] = useState(false);
+	const [contextTask, setContextTask] = useState<Task | null>(null);
+	const [contextDialogOpen, setContextDialogOpen] = useState(false);
 	const [columns, setColumns] = useState<Column[]>([
 		{
 			id: "pending",
