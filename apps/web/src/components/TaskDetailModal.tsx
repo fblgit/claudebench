@@ -61,6 +61,7 @@ interface TaskDetailModalProps {
 	onOpenChange: (open: boolean) => void;
 	onUpdate?: (taskId: string, updates: any) => void;
 	onComplete?: (taskId: string) => void;
+	onDelete?: (taskId: string) => void;
 	onAssign?: (taskId: string, instanceId: string) => void;
 	instances?: Array<{ id: string; roles: string[]; status?: string; health?: string }>;
 }
