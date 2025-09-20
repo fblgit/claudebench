@@ -490,6 +490,15 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 		}
 	};
 
+	const handleTaskDelete = async (taskId: string) => {
+		try {
+			await deleteTaskMutation.mutateAsync({ id: taskId });
+			await refetchState();
+		} catch (error) {
+			console.error("Failed to delete task:", error);
+		}
+	};
+
 	const handleTaskAssign = async (taskId: string, instanceId: string) => {
 		try {
 			await assignTaskMutation.mutateAsync({
