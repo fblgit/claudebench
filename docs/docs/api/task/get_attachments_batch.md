@@ -348,7 +348,7 @@ const { attachments } = await get_attachments_batch({
 
 ## Related
 
-- [Task Attachments Overview](./attachments) - Comprehensive attachment system documentation
+- [Attachments System Overview](../attachments) - Comprehensive attachment system documentation
 - [task.create_attachment](./create_attachment) - Create or update attachments
 - [task.get_attachment](./get_attachment) - Retrieve single attachment
 - [task.list_attachments](./list_attachments) - List and filter attachments
