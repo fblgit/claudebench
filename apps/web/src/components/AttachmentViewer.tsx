@@ -313,16 +313,17 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 								Diff
 							</CardTitle>
 						</CardHeader>
-						<CardContent className="p-0">
-							<CodeViewer
-								value={data.diff}
-								language="diff"
-								height="400px"
-								minimap={false}
-								lineNumbers="off"
-								folding={false}
-								wordWrap="on"
-							/>
+						<CardContent className="p-0 overflow-hidden">
+							<div className="max-h-[600px] overflow-auto">
+								<DiffView
+									diff={data.diff}
+									diffMode={DiffModeEnum.Split}
+									diffViewHighlight={true}
+									diffViewTheme="light"
+									diffViewWrap={true}
+									diffViewFontSize={13}
+								/>
+							</div>
 						</CardContent>
 					</Card>
 				)}
