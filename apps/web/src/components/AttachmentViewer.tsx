@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, formatDistanceToNow } from "date-fns";
 import { CodeViewer } from "./CodeEditor";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 import {
 	FileJson,
 	FileText,
@@ -20,6 +22,21 @@ import {
 	User,
 	Database,
 	Paperclip,
+	GitCommit,
+	GitBranch,
+	FileCode,
+	Plus,
+	Minus,
+	FileDiff,
+	Target,
+	BookOpen,
+	CheckSquare,
+	AlertCircle,
+	Sparkles,
+	Eye,
+	Code,
+	Clock,
+	Package,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -105,8 +122,16 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 		}
 	};
 
-	const getTypeIcon = (type: string) => {
-		switch (type) {
+	const getTypeIcon = (attachment: Attachment) => {
+		// Check for special attachment types by key pattern
+		if (attachment.key.startsWith("git-commit-") || attachment.key.startsWith("git_commit_")) {
+			return <GitCommit className="h-4 w-4" />;
+		}
+		if (attachment.key.startsWith("context_")) {
+			return <Sparkles className="h-4 w-4" />;
+		}
+		
+		switch (attachment.type) {
 			case "json":
 				return <FileJson className="h-4 w-4" />;
 			case "markdown":
@@ -121,8 +146,16 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 		}
 	};
 
-	const getTypeColor = (type: string) => {
-		switch (type) {
+	const getTypeColor = (attachment: Attachment) => {
+		// Check for special attachment types by key pattern
+		if (attachment.key.startsWith("git-commit-") || attachment.key.startsWith("git_commit_")) {
+			return "bg-amber-500/10 text-amber-600 border-amber-500/20";
+		}
+		if (attachment.key.startsWith("context_")) {
+			return "bg-violet-500/10 text-violet-600 border-violet-500/20";
+		}
+		
+		switch (attachment.type) {
 			case "json":
 				return "bg-blue-500/10 text-blue-600 border-blue-500/20";
 			case "markdown":
@@ -148,7 +181,431 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 		}
 	};
 
+	// Render formatted view for git commit attachments
+	const renderGitCommitFormatted = (attachment: Attachment) => {
+		if (!attachment.value) return null;
+		
+		const data = typeof attachment.value === "string" 
+			? JSON.parse(attachment.value) 
+			: attachment.value;
+		
+		return (
+			<div className="space-y-4">
+				{/* Commit Header */}
+				<Card>
+					<CardHeader className="pb-3">
+						<CardTitle className="text-sm font-medium flex items-center gap-2">
+							<GitCommit className="h-4 w-4" />
+							Commit Information
+						</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-3">
+						<div className="grid grid-cols-2 gap-4">
+							<div>
+								<div className="text-xs text-muted-foreground mb-1">Commit Hash</div>
+								<code className="text-sm font-mono bg-muted px-2 py-1 rounded">
+									{data.commitHash}
+								</code>
+							</div>
+							<div>
+								<div className="text-xs text-muted-foreground mb-1">Branch</div>
+								<div className="flex items-center gap-1">
+									<GitBranch className="h-3 w-3" />
+									<code className="text-sm font-mono bg-muted px-2 py-1 rounded">
+										{data.branch}
+									</code>
+								</div>
+							</div>
+						</div>
+						
+						{data.timestamp && (
+							<div>
+								<div className="text-xs text-muted-foreground mb-1">Committed</div>
+								<div className="text-sm flex items-center gap-2">
+									<Clock className="h-3 w-3" />
+									{format(new Date(data.timestamp), "PPp")}
+									<span className="text-muted-foreground">
+										({formatDistanceToNow(new Date(data.timestamp), { addSuffix: true })})
+									</span>
+								</div>
+							</div>
+						)}
+
+						{data.toolUsed && (
+							<div>
+								<div className="text-xs text-muted-foreground mb-1">Tool Used</div>
+								<Badge variant="secondary">
+									<Package className="h-3 w-3 mr-1" />
+									{data.toolUsed}
+								</Badge>
+							</div>
+						)}
+					</CardContent>
+				</Card>
+
+				{/* Files Changed */}
+				{data.files && data.files.length > 0 && (
+					<Card>
+						<CardHeader className="pb-3">
+							<CardTitle className="text-sm font-medium flex items-center gap-2">
+								<FileCode className="h-4 w-4" />
+								Files Changed ({data.files.length})
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<div className="space-y-2">
+								{data.files.map((file: string, idx: number) => (
+									<div key={idx} className="flex items-center gap-2">
+										<FileCode className="h-3 w-3 text-muted-foreground" />
+										<code className="text-sm font-mono">{file}</code>
+									</div>
+								))}
+							</div>
+						</CardContent>
+					</Card>
+				)}
+
+				{/* Stats */}
+				{data.stats && (
+					<Card>
+						<CardHeader className="pb-3">
+							<CardTitle className="text-sm font-medium flex items-center gap-2">
+								<FileDiff className="h-4 w-4" />
+								Change Statistics
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<div className="flex gap-6">
+								<div className="flex items-center gap-2">
+									<Plus className="h-4 w-4 text-green-500" />
+									<span className="text-sm">
+										<span className="font-mono font-semibold text-green-600">+{data.stats.additions}</span>
+										<span className="text-muted-foreground ml-1">additions</span>
+									</span>
+								</div>
+								<div className="flex items-center gap-2">
+									<Minus className="h-4 w-4 text-red-500" />
+									<span className="text-sm">
+										<span className="font-mono font-semibold text-red-600">-{data.stats.deletions}</span>
+										<span className="text-muted-foreground ml-1">deletions</span>
+									</span>
+								</div>
+								<div className="flex items-center gap-2">
+									<FileCode className="h-4 w-4 text-blue-500" />
+									<span className="text-sm">
+										<span className="font-mono font-semibold text-blue-600">{data.stats.filesChanged}</span>
+										<span className="text-muted-foreground ml-1">files</span>
+									</span>
+								</div>
+							</div>
+						</CardContent>
+					</Card>
+				)}
+
+				{/* Diff */}
+				{data.diff && (
+					<Card>
+						<CardHeader className="pb-3">
+							<CardTitle className="text-sm font-medium flex items-center gap-2">
+								<FileDiff className="h-4 w-4" />
+								Diff
+							</CardTitle>
+						</CardHeader>
+						<CardContent className="p-0">
+							<CodeViewer
+								value={data.diff}
+								language="diff"
+								height="400px"
+								minimap={false}
+								lineNumbers="off"
+								folding={false}
+								wordWrap="on"
+							/>
+						</CardContent>
+					</Card>
+				)}
+
+				{/* Commit Message */}
+				{data.commitMessage && (
+					<Card>
+						<CardHeader className="pb-3">
+							<CardTitle className="text-sm font-medium">Commit Message Details</CardTitle>
+						</CardHeader>
+						<CardContent className="p-0">
+							<CodeViewer
+								value={typeof data.commitMessage === "string" 
+									? data.commitMessage 
+									: JSON.stringify(data.commitMessage, null, 2)}
+								language="json"
+								height="200px"
+								minimap={false}
+								lineNumbers="off"
+								folding={true}
+								wordWrap="on"
+							/>
+						</CardContent>
+					</Card>
+				)}
+			</div>
+		);
+	};
+
+	// Render formatted view for context attachments
+	const renderContextFormatted = (attachment: Attachment) => {
+		if (!attachment.value) return null;
+		
+		const data = typeof attachment.value === "string" 
+			? JSON.parse(attachment.value) 
+			: attachment.value;
+		
+		const context = data.context || data;
+		
+		return (
+			<div className="space-y-4">
+				{/* Context Header */}
+				<Card>
+					<CardHeader className="pb-3">
+						<CardTitle className="text-sm font-medium flex items-center gap-2">
+							<Sparkles className="h-4 w-4" />
+							Context Information
+						</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-3">
+						{context.taskId && (
+							<div>
+								<div className="text-xs text-muted-foreground mb-1">Task ID</div>
+								<code className="text-sm font-mono bg-muted px-2 py-1 rounded">
+									{context.taskId}
+								</code>
+							</div>
+						)}
+						
+						{data.specialist && (
+							<div>
+								<div className="text-xs text-muted-foreground mb-1">Specialist</div>
+								<Badge variant="secondary">
+									<User className="h-3 w-3 mr-1" />
+									{data.specialist}
+								</Badge>
+							</div>
+						)}
+
+						{data.generatedAt && (
+							<div>
+								<div className="text-xs text-muted-foreground mb-1">Generated</div>
+								<div className="text-sm flex items-center gap-2">
+									<Clock className="h-3 w-3" />
+									{format(parseISO(data.generatedAt), "PPp")}
+									<span className="text-muted-foreground">
+										({formatDistanceToNow(parseISO(data.generatedAt), { addSuffix: true })})
+									</span>
+								</div>
+							</div>
+						)}
+
+						{data.generatedBy && (
+							<div>
+								<div className="text-xs text-muted-foreground mb-1">Generated By</div>
+								<div className="text-sm flex items-center gap-1">
+									<User className="h-3 w-3" />
+									{data.generatedBy}
+								</div>
+							</div>
+						)}
+					</CardContent>
+				</Card>
+
+				{/* Description and Scope */}
+				{(context.description || context.scope) && (
+					<Card>
+						<CardHeader className="pb-3">
+							<CardTitle className="text-sm font-medium flex items-center gap-2">
+								<BookOpen className="h-4 w-4" />
+								Overview
+							</CardTitle>
+						</CardHeader>
+						<CardContent className="space-y-3">
+							{context.description && (
+								<div>
+									<div className="text-xs text-muted-foreground mb-1">Description</div>
+									<p className="text-sm leading-relaxed">{context.description}</p>
+								</div>
+							)}
+							{context.scope && (
+								<div>
+									<div className="text-xs text-muted-foreground mb-1">Scope</div>
+									<p className="text-sm leading-relaxed text-muted-foreground">{context.scope}</p>
+								</div>
+							)}
+						</CardContent>
+					</Card>
+				)}
+
+				{/* Constraints */}
+				{context.constraints && context.constraints.length > 0 && (
+					<Card>
+						<CardHeader className="pb-3">
+							<CardTitle className="text-sm font-medium flex items-center gap-2">
+								<AlertCircle className="h-4 w-4" />
+								Constraints ({context.constraints.length})
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<ul className="space-y-2">
+								{context.constraints.map((constraint: string, idx: number) => (
+									<li key={idx} className="flex items-start gap-2">
+										<div className="h-1.5 w-1.5 rounded-full bg-amber-500 mt-1.5 flex-shrink-0" />
+										<span className="text-sm">{constraint}</span>
+									</li>
+								))}
+							</ul>
+						</CardContent>
+					</Card>
+				)}
+
+				{/* Requirements */}
+				{context.requirements && context.requirements.length > 0 && (
+					<Card>
+						<CardHeader className="pb-3">
+							<CardTitle className="text-sm font-medium flex items-center gap-2">
+								<Target className="h-4 w-4" />
+								Requirements ({context.requirements.length})
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<ul className="space-y-2">
+								{context.requirements.map((req: string, idx: number) => (
+									<li key={idx} className="flex items-start gap-2">
+										<div className="h-1.5 w-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
+										<span className="text-sm">{req}</span>
+									</li>
+								))}
+							</ul>
+						</CardContent>
+					</Card>
+				)}
+
+				{/* Architecture Constraints */}
+				{context.architectureConstraints && context.architectureConstraints.length > 0 && (
+					<Card>
+						<CardHeader className="pb-3">
+							<CardTitle className="text-sm font-medium flex items-center gap-2">
+								<Package className="h-4 w-4" />
+								Architecture Constraints ({context.architectureConstraints.length})
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<ul className="space-y-2">
+								{context.architectureConstraints.map((constraint: string, idx: number) => (
+									<li key={idx} className="flex items-start gap-2">
+										<div className="h-1.5 w-1.5 rounded-full bg-purple-500 mt-1.5 flex-shrink-0" />
+										<span className="text-sm">{constraint}</span>
+									</li>
+								))}
+							</ul>
+						</CardContent>
+					</Card>
+				)}
+
+				{/* Mandatory Readings */}
+				{context.mandatoryReadings && context.mandatoryReadings.length > 0 && (
+					<Card>
+						<CardHeader className="pb-3">
+							<CardTitle className="text-sm font-medium flex items-center gap-2">
+								<BookOpen className="h-4 w-4" />
+								Mandatory Readings ({context.mandatoryReadings.length})
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<div className="space-y-3">
+								{context.mandatoryReadings.map((reading: any, idx: number) => (
+									<div key={idx} className="border-l-2 border-muted pl-3">
+										<div className="text-sm font-medium">{reading.path}</div>
+										{reading.reason && (
+											<div className="text-xs text-muted-foreground mt-1">
+												{reading.reason}
+											</div>
+										)}
+									</div>
+								))}
+							</div>
+						</CardContent>
+					</Card>
+				)}
+
+				{/* Success Criteria */}
+				{context.successCriteria && context.successCriteria.length > 0 && (
+					<Card>
+						<CardHeader className="pb-3">
+							<CardTitle className="text-sm font-medium flex items-center gap-2">
+								<CheckSquare className="h-4 w-4" />
+								Success Criteria ({context.successCriteria.length})
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<ul className="space-y-2">
+								{context.successCriteria.map((criteria: string, idx: number) => (
+									<li key={idx} className="flex items-start gap-2">
+										<CheckCircle className="h-3.5 w-3.5 text-green-500 mt-0.5 flex-shrink-0" />
+										<span className="text-sm">{criteria}</span>
+									</li>
+								))}
+							</ul>
+						</CardContent>
+					</Card>
+				)}
+			</div>
+		);
+	};
+
 	const renderAttachmentContent = (attachment: Attachment) => {
+		// Check if this is a special attachment type that needs tabbed view
+		const isGitCommit = attachment.key.startsWith("git-commit-") || attachment.key.startsWith("git_commit_");
+		const isContext = attachment.key.startsWith("context_");
+		const isSpecialAttachment = isGitCommit || isContext;
+
+		// For special attachments (git commits and context), show tabbed view
+		if (isSpecialAttachment && attachment.type === "json" && attachment.value) {
+			return (
+				<Tabs defaultValue="formatted" className="w-full">
+					<TabsList className="grid w-full grid-cols-2">
+						<TabsTrigger value="formatted">
+							<Eye className="h-4 w-4 mr-2" />
+							Formatted
+						</TabsTrigger>
+						<TabsTrigger value="raw">
+							<Code className="h-4 w-4 mr-2" />
+							Raw JSON
+						</TabsTrigger>
+					</TabsList>
+					
+					<TabsContent value="formatted" className="mt-4">
+						<ScrollArea className="h-[600px] pr-4">
+							{isGitCommit && renderGitCommitFormatted(attachment)}
+							{isContext && renderContextFormatted(attachment)}
+						</ScrollArea>
+					</TabsContent>
+					
+					<TabsContent value="raw" className="mt-4">
+						<div className="border rounded-lg overflow-hidden">
+							<CodeViewer
+								value={typeof attachment.value === "string" 
+									? attachment.value 
+									: JSON.stringify(attachment.value, null, 2)}
+								language="json"
+								height="600px"
+								minimap={false}
+								lineNumbers="on"
+								folding={true}
+								wordWrap="on"
+							/>
+						</div>
+					</TabsContent>
+				</Tabs>
+			);
+		}
+
+		// URL attachments
 		if (attachment.type === "url" && attachment.url) {
 			return (
 				<div className="space-y-4">
@@ -178,6 +635,7 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 			);
 		}
 
+		// Regular JSON attachments
 		if (attachment.type === "json" && attachment.value) {
 			const jsonString = typeof attachment.value === "string" 
 				? attachment.value 
@@ -198,6 +656,7 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 			);
 		}
 
+		// Markdown or text attachments
 		if ((attachment.type === "markdown" || attachment.type === "text") && attachment.content) {
 			return (
 				<div className="border rounded-lg overflow-hidden">
@@ -214,6 +673,7 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 			);
 		}
 
+		// Binary attachments
 		if (attachment.type === "binary") {
 			return (
 				<div className="p-4 bg-muted/50 rounded-lg space-y-2">
@@ -301,14 +761,14 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 										<div className="space-y-2">
 											<div className="flex items-center justify-between">
 												<div className="flex items-center gap-2">
-													{getTypeIcon(attachment.type)}
+													{getTypeIcon(attachment)}
 													<span className="font-medium text-sm truncate">
 														{attachment.key}
 													</span>
 												</div>
 												<Badge 
 													variant="outline" 
-													className={cn("text-xs", getTypeColor(attachment.type))}
+													className={cn("text-xs", getTypeColor(attachment))}
 												>
 													{attachment.type}
 												</Badge>
@@ -342,7 +802,7 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 							<div className="flex items-start justify-between">
 								<div>
 									<CardTitle className="flex items-center gap-2">
-										{getTypeIcon(selectedAttachment.type)}
+										{getTypeIcon(selectedAttachment)}
 										{selectedAttachment.key}
 									</CardTitle>
 									<CardDescription className="mt-2">
@@ -360,7 +820,7 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 								</div>
 								<Badge 
 									variant="outline" 
-									className={cn("text-xs", getTypeColor(selectedAttachment.type))}
+									className={cn("text-xs", getTypeColor(selectedAttachment))}
 								>
 									{selectedAttachment.type}
 								</Badge>

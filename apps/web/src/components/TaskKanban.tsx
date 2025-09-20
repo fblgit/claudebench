@@ -61,12 +61,15 @@ import { TaskCard } from "./TaskCard";
 import { TaskDetailModal } from "./TaskDetailModal";
 import { InstanceManager } from "./InstanceManager";
 import { RoleSelector } from "./RoleSelector";
+import { ContextGenerationDialog } from "./ContextGenerationDialog";
 import {
 	getEventClient,
 	useEventQuery,
 	useCreateTask,
 	useUpdateTask,
 	useCompleteTask,
+	useDeleteTask,
+	useGenerateContext,
 	useEventMutation,
 } from "@/services/event-client";
 import { format } from "date-fns";
@@ -112,6 +115,8 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 	const [instances, setInstances] = useState<Instance[]>([]);
 	const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 	const [detailModalOpen, setDetailModalOpen] = useState(false);
+	const [contextTask, setContextTask] = useState<Task | null>(null);
+	const [contextDialogOpen, setContextDialogOpen] = useState(false);
 	const [columns, setColumns] = useState<Column[]>([
 		{
 			id: "pending",
@@ -203,7 +208,9 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 	const createTaskMutation = useCreateTask();
 	const updateTaskMutation = useUpdateTask();
 	const completeTaskMutation = useCompleteTask();
+	const deleteTaskMutation = useDeleteTask();
 	const assignTaskMutation = useEventMutation("task.assign");
+	const generateContextMutation = useGenerateContext();
 
 	// WebSocket connection for real-time updates
 	useEffect(() => {
@@ -488,6 +495,16 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 		}
 	};
 
+	const handleTaskDelete = async (taskId: string) => {
+		console.log("handleTaskDelete called with taskId:", taskId);
+		try {
+			await deleteTaskMutation.mutateAsync({ id: taskId });
+			await refetchState();
+		} catch (error) {
+			console.error("Failed to delete task:", error);
+		}
+	};
+
 	const handleTaskAssign = async (taskId: string, instanceId: string) => {
 		try {
 			await assignTaskMutation.mutateAsync({
@@ -497,6 +514,14 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 			await refetchState();
 		} catch (error) {
 			console.error("Failed to assign task:", error);
+		}
+	};
+
+	const handleGenerateContext = (taskId: string) => {
+		const task = tasks.find(t => t.id === taskId);
+		if (task) {
+			setContextTask(task);
+			setContextDialogOpen(true);
 		}
 	};
 
@@ -743,6 +768,8 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 																task={task}
 																onUpdate={handleTaskUpdate}
 																onComplete={handleTaskComplete}
+																onDelete={handleTaskDelete}
+																onGenerateContext={handleGenerateContext}
 																onAssign={handleTaskAssign}
 																onClick={handleTaskClick}
 																instances={instances}
@@ -794,8 +821,27 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 				}}
 				onUpdate={handleTaskUpdate}
 				onComplete={handleTaskComplete}
+				onDelete={handleTaskDelete}
 				onAssign={handleTaskAssign}
 				instances={instances}
+			/>
+			
+			{/* Context Generation Dialog */}
+			<ContextGenerationDialog
+				task={contextTask}
+				open={contextDialogOpen}
+				onOpenChange={(open) => {
+					setContextDialogOpen(open);
+					if (!open) {
+						setContextTask(null);
+						// Refresh to show any attachments
+						refetchState();
+					}
+				}}
+				onSuccess={(context) => {
+					console.log("Context generated successfully:", context);
+					// Could show a toast notification here
+				}}
 			/>
 		</div>
 	);

@@ -81,6 +81,17 @@ export class EventClient {
 	 */
 	async request<T = any>(method: string, params?: any): Promise<T> {
 		const id = ++this.requestId;
+		
+		// Use longer timeout for context generation and other long-running operations
+		const longRunningMethods = ['task.context', 'swarm.context', 'swarm.decompose', 'swarm.synthesize', 'swarm.resolve'];
+		const isLongRunning = longRunningMethods.includes(method);
+		const originalTimeout = this.config.timeout;
+		
+		if (isLongRunning) {
+			// Use 6 minutes timeout for long-running operations (360 seconds)
+			this.config.timeout = 360000;
+		}
+		
 		const request: JsonRpcRequest = {
 			jsonrpc: "2.0",
 			method,
@@ -95,42 +106,49 @@ export class EventClient {
 
 		let lastError: Error | undefined;
 		
-		for (let attempt = 0; attempt <= this.config.retries; attempt++) {
-			try {
-				const response = await this.sendRequest(request);
-				
-				if ("error" in response) {
-					throw new JsonRpcError(
-						response.error.message,
-						response.error.code,
-						response.error.data
-					);
-				}
-				
-				return response.result as T;
-			} catch (error) {
-				lastError = error as Error;
-				
-				// Don't retry on certain errors
-				if (error instanceof JsonRpcError) {
-					if (
-						error.code === JsonRpcErrorCodes.METHOD_NOT_FOUND ||
-						error.code === JsonRpcErrorCodes.INVALID_PARAMS ||
-						error.code === JsonRpcErrorCodes.UNAUTHORIZED ||
-						error.code === JsonRpcErrorCodes.HOOK_BLOCKED
-					) {
-						throw error;
+		try {
+			for (let attempt = 0; attempt <= this.config.retries; attempt++) {
+				try {
+					const response = await this.sendRequest(request);
+					
+					if ("error" in response) {
+						throw new JsonRpcError(
+							response.error.message,
+							response.error.code,
+							response.error.data
+						);
+					}
+					
+					return response.result as T;
+				} catch (error) {
+					lastError = error as Error;
+					
+					// Don't retry on certain errors
+					if (error instanceof JsonRpcError) {
+						if (
+							error.code === JsonRpcErrorCodes.METHOD_NOT_FOUND ||
+							error.code === JsonRpcErrorCodes.INVALID_PARAMS ||
+							error.code === JsonRpcErrorCodes.UNAUTHORIZED ||
+							error.code === JsonRpcErrorCodes.HOOK_BLOCKED
+						) {
+							throw error;
+						}
+					}
+					
+					// Wait before retry (exponential backoff)
+					if (attempt < this.config.retries) {
+						await this.sleep(Math.pow(2, attempt) * 1000);
 					}
 				}
-				
-				// Wait before retry (exponential backoff)
-				if (attempt < this.config.retries) {
-					await this.sleep(Math.pow(2, attempt) * 1000);
-				}
+			}
+			
+			throw lastError;
+		} finally {
+			// Restore original timeout
+			if (isLongRunning) {
+				this.config.timeout = originalTimeout;
 			}
 		}
-		
-		throw lastError;
 	}
 
 	/**
@@ -522,4 +540,14 @@ export const useUpdateTask = () =>
 export const useCompleteTask = () => 
 	useEventMutation("task.complete", { 
 		invalidateQueries: [["system.get_state"], ["tasks"]] 
+	});
+
+export const useDeleteTask = () => 
+	useEventMutation("task.delete", { 
+		invalidateQueries: [["system.get_state"], ["tasks"], ["task.list"]] 
+	});
+
+export const useGenerateContext = () =>
+	useEventMutation("task.context", {
+		invalidateQueries: [["tasks"], ["task.list"]]
 	});

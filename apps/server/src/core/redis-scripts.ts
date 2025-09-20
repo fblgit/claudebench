@@ -790,6 +790,37 @@ export class RedisScriptExecutor {
 			totalCount: result[1],
 		};
 	}
+
+	/**
+	 * Delete task atomically from Redis
+	 */
+	async deleteTask(
+		taskId: string
+	): Promise<{
+		deleted: boolean;
+		error?: string;
+	}> {
+		const result = await this.redis.stream.eval(
+			scripts.DELETE_TASK,
+			3,
+			redisKey("task", taskId),
+			redisKey("queue", "tasks", "pending"),
+			redisKey("metrics", "task.delete"),
+			taskId,
+			Date.now().toString()
+		) as [number, string];
+		
+		if (result[0] === 0) {
+			return {
+				deleted: false,
+				error: result[1],
+			};
+		}
+		
+		return {
+			deleted: true,
+		};
+	}
 }
 
 export const redisScripts = new RedisScriptExecutor();

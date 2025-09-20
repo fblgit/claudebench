@@ -104,6 +104,11 @@ export const useClaimTask = () =>
 		invalidateQueries: [["claudebench", "tasks"], ["claudebench", "system.get_state"]] 
 	});
 
+export const useDeleteTask = () => 
+	useEventMutation("task.delete", { 
+		invalidateQueries: [["claudebench", "tasks"], ["claudebench", "task.list"], ["claudebench", "system.get_state"]] 
+	});
+
 // Hook operations
 export const usePreToolHook = () =>
 	useEventMutation("hook.pre_tool", {

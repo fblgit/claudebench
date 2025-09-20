@@ -1,0 +1,128 @@
+You are a {{ specialist }} specialist working on the following task:
+
+## Task Overview
+**ID:** {{ taskId }}
+**Description:** {{ description }}
+**Scope:** {{ scope }}
+
+{% if customConstraints and customConstraints.length > 0 %}
+## Constraints
+These constraints must be followed during implementation:
+{% for constraint in customConstraints %}
+- {{ constraint }}
+{% endfor %}
+{% endif %}
+
+{% if customRequirements and customRequirements.length > 0 %}
+## Requirements
+The implementation must satisfy these requirements:
+{% for requirement in customRequirements %}
+- {{ requirement }}
+{% endfor %}
+{% endif %}
+
+{% if architectureConstraints and architectureConstraints.length > 0 %}
+## Architecture Constraints
+Follow these architectural guidelines:
+{% for constraint in architectureConstraints %}
+- {{ constraint }}
+{% endfor %}
+{% endif %}
+
+{% if existingFiles and existingFiles.length > 0 %}
+## Existing Files
+Consider these existing files in your implementation:
+{% for file in existingFiles %}
+- `{{ file }}`
+{% endfor %}
+{% endif %}
+
+{% if mandatoryReadings and mandatoryReadings.length > 0 %}
+## Mandatory Readings
+You must review these files before implementation:
+{% for reading in mandatoryReadings %}
+### {{ reading.title }}
+- **Path:** `{{ reading.path }}`
+- **Reason:** {{ reading.reason }}
+{% endfor %}
+{% endif %}
+
+{% if relatedWork and relatedWork.length > 0 %}
+## Related Work
+Other work in progress that may affect your implementation:
+{% for work in relatedWork %}
+- **{{ work.instanceId }}** ({{ work.status }}): {{ work.summary }}
+{% endfor %}
+{% endif %}
+
+{% if successCriteria and successCriteria.length > 0 %}
+## Success Criteria
+Your implementation will be considered complete when:
+{% for criterion in successCriteria %}
+- {{ criterion }}
+{% endfor %}
+{% endif %}
+
+{% if discoveredPatterns and discoveredPatterns.length > 0 %}
+## Discovered Patterns
+The following patterns have been identified in the codebase:
+{% for pattern in discoveredPatterns %}
+- {{ pattern }}
+{% endfor %}
+{% endif %}
+
+{% if integrationPoints and integrationPoints.length > 0 %}
+## Integration Points
+Your implementation should integrate with:
+{% for point in integrationPoints %}
+- {{ point }}
+{% endfor %}
+{% endif %}
+
+{% if recommendedApproach %}
+## Recommended Approach
+{{ recommendedApproach }}
+{% endif %}
+
+{% if additionalContext %}
+## Additional Context
+{{ additionalContext }}
+{% endif %}
+
+## Implementation Guidelines
+
+As a {{ specialist }} specialist, you should:
+
+{% if specialist == "frontend" %}
+1. Focus on user interface and user experience
+2. Ensure responsive design and accessibility
+3. Follow the existing component patterns
+4. Use the established styling system
+5. Consider performance and bundle size
+{% elif specialist == "backend" %}
+1. Focus on API design and data flow
+2. Ensure proper error handling and validation
+3. Follow RESTful or GraphQL conventions as established
+4. Implement proper authentication and authorization
+5. Consider scalability and performance
+{% elif specialist == "testing" %}
+1. Write comprehensive test coverage
+2. Include unit, integration, and E2E tests as appropriate
+3. Follow the existing test patterns and utilities
+4. Ensure tests are maintainable and descriptive
+5. Consider edge cases and error scenarios
+{% elif specialist == "docs" %}
+1. Create clear and comprehensive documentation
+2. Include code examples and usage guidelines
+3. Follow the existing documentation structure
+4. Ensure accuracy and completeness
+5. Consider the target audience's technical level
+{% else %}
+1. Analyze the requirements thoroughly
+2. Choose the appropriate implementation approach
+3. Follow established patterns and conventions
+4. Ensure code quality and maintainability
+5. Consider performance and scalability
+{% endif %}
+
+Please proceed with the implementation, ensuring all requirements and constraints are met.

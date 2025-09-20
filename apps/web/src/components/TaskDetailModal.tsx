@@ -61,6 +61,7 @@ interface TaskDetailModalProps {
 	onOpenChange: (open: boolean) => void;
 	onUpdate?: (taskId: string, updates: any) => void;
 	onComplete?: (taskId: string) => void;
+	onDelete?: (taskId: string) => void;
 	onAssign?: (taskId: string, instanceId: string) => void;
 	instances?: Array<{ id: string; roles: string[]; status?: string; health?: string }>;
 }
@@ -71,6 +72,7 @@ export function TaskDetailModal({
 	onOpenChange,
 	onUpdate,
 	onComplete,
+	onDelete,
 	onAssign,
 	instances = [],
 }: TaskDetailModalProps) {
@@ -195,6 +197,19 @@ export function TaskDetailModal({
 								<Button onClick={() => onComplete(task.id)} size="sm" variant="default">
 									<CheckCircle className="h-4 w-4 mr-2" />
 									Complete
+								</Button>
+							)}
+							{onDelete && (
+								<Button 
+									onClick={() => {
+										onDelete(task.id);
+										onOpenChange(false);
+									}} 
+									size="sm" 
+									variant="destructive"
+								>
+									<XCircle className="h-4 w-4 mr-2" />
+									Delete
 								</Button>
 							)}
 						</div>

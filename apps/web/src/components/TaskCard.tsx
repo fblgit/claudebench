@@ -31,6 +31,7 @@ import {
 	Tag,
 	Hash,
 	Paperclip,
+	Brain,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -56,6 +57,7 @@ interface TaskCardProps {
 	onComplete?: (taskId: string) => void;
 	onAssign?: (taskId: string, instanceId: string) => void;
 	onDelete?: (taskId: string) => void;
+	onGenerateContext?: (taskId: string) => void;
 	onClick?: (task: Task) => void;
 	instances?: Array<{ id: string; roles: string[] }>;
 }
@@ -67,6 +69,7 @@ export function TaskCard({
 	onComplete,
 	onAssign,
 	onDelete,
+	onGenerateContext,
 	onClick,
 	instances = [],
 }: TaskCardProps) {
@@ -190,6 +193,17 @@ export function TaskCard({
 										Mark Complete
 									</DropdownMenuItem>
 								)}
+								{onGenerateContext && (
+									<DropdownMenuItem 
+										onClick={(e) => {
+											e.stopPropagation();
+											onGenerateContext(task.id);
+										}}
+									>
+										<Brain className="h-4 w-4 mr-2" />
+										Generate Context
+									</DropdownMenuItem>
+								)}
 								{instances.length > 0 && onAssign && (
 									<>
 										<DropdownMenuSeparator />
@@ -212,7 +226,11 @@ export function TaskCard({
 									<>
 										<DropdownMenuSeparator />
 										<DropdownMenuItem
-											onClick={() => onDelete(task.id)}
+											onClick={(e) => {
+												e.stopPropagation();
+												console.log("Deleting task with ID:", task.id);
+												onDelete(task.id);
+											}}
 											className="text-red-600"
 										>
 											<XCircle className="h-4 w-4 mr-2" />
