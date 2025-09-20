@@ -383,8 +383,64 @@ export function ContextGenerationDialog({
 									placeholder="Provide additional context or modify the task description..."
 									value={customDescription}
 									onChange={(e) => setCustomDescription(e.target.value)}
-									rows={3}
+									rows={2}
 								/>
+							</div>
+							
+							<div className="grid grid-cols-2 gap-4">
+								<div className="space-y-2">
+									<Label htmlFor="constraints">
+										Constraints (Optional, one per line)
+									</Label>
+									<Textarea
+										id="constraints"
+										placeholder="Use React hooks&#10;Follow atomic design&#10;Max 100 lines per file"
+										value={constraints}
+										onChange={(e) => setConstraints(e.target.value)}
+										rows={3}
+									/>
+								</div>
+								
+								<div className="space-y-2">
+									<Label htmlFor="requirements">
+										Requirements (Optional, one per line)
+									</Label>
+									<Textarea
+										id="requirements"
+										placeholder="Dark mode support&#10;Responsive design&#10;Accessibility compliant"
+										value={requirements}
+										onChange={(e) => setRequirements(e.target.value)}
+										rows={3}
+									/>
+								</div>
+							</div>
+							
+							<div className="grid grid-cols-2 gap-4">
+								<div className="space-y-2">
+									<Label htmlFor="existingFiles">
+										Existing Files (Optional, one per line)
+									</Label>
+									<Textarea
+										id="existingFiles"
+										placeholder="src/components/Button.tsx&#10;src/styles/theme.ts&#10;src/utils/helpers.ts"
+										value={existingFiles}
+										onChange={(e) => setExistingFiles(e.target.value)}
+										rows={3}
+									/>
+								</div>
+								
+								<div className="space-y-2">
+									<Label htmlFor="additionalContext">
+										Additional Context (Optional)
+									</Label>
+									<Textarea
+										id="additionalContext"
+										placeholder="Any other relevant information..."
+										value={additionalContext}
+										onChange={(e) => setAdditionalContext(e.target.value)}
+										rows={3}
+									/>
+								</div>
 							</div>
 							
 							{error && (
