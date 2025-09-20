@@ -122,8 +122,16 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 		}
 	};
 
-	const getTypeIcon = (type: string) => {
-		switch (type) {
+	const getTypeIcon = (attachment: Attachment) => {
+		// Check for special attachment types by key pattern
+		if (attachment.key.startsWith("git-commit-") || attachment.key.startsWith("git_commit_")) {
+			return <GitCommit className="h-4 w-4" />;
+		}
+		if (attachment.key.startsWith("context_")) {
+			return <Sparkles className="h-4 w-4" />;
+		}
+		
+		switch (attachment.type) {
 			case "json":
 				return <FileJson className="h-4 w-4" />;
 			case "markdown":
