@@ -528,3 +528,8 @@ export const useDeleteTask = () =>
 	useEventMutation("task.delete", { 
 		invalidateQueries: [["system.get_state"], ["tasks"], ["task.list"]] 
 	});
+
+export const useGenerateContext = () =>
+	useEventMutation("swarm.context", {
+		invalidateQueries: [["tasks"], ["task.list"]]
+	});
