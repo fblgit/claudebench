@@ -37,7 +37,8 @@ import sys
 import time
 import urllib.request
 import urllib.error
-from typing import Dict, Any, Optional, Tuple
+import subprocess
+from typing import Dict, Any, Optional, Tuple, List
 
 
 class ClaudeBenchHookBridge:
@@ -402,6 +403,214 @@ class ClaudeBenchHookBridge:
             self.debug_print(f"Unexpected Error: {e}")
             return {'error': f'Unexpected error: {str(e)}'}, 1
     
+    def run_git_command(self, args: List[str]) -> Tuple[bool, str]:
+        """
+        Run a git command and return success status and output
+        
+        Returns: (success, output)
+        """
+        try:
+            result = subprocess.run(
+                ['git'] + args,
+                capture_output=True,
+                text=True,
+                cwd=self.project_dir,
+                timeout=5
+            )
+            return result.returncode == 0, result.stdout.strip()
+        except subprocess.TimeoutExpired:
+            self.debug_print(f"Git command timed out: {args}")
+            return False, "Command timed out"
+        except Exception as e:
+            self.debug_print(f"Git command failed: {e}")
+            return False, str(e)
+    
+    def check_for_changes(self) -> Tuple[bool, List[str]]:
+        """
+        Check if there are any git changes
+        
+        Returns: (has_changes, list_of_changed_files)
+        """
+        # Check git status
+        success, output = self.run_git_command(['status', '--porcelain'])
+        if not success:
+            return False, []
+        
+        if not output:
+            return False, []
+        
+        # Parse changed files
+        changed_files = []
+        for line in output.split('\n'):
+            if line.strip():
+                # Status format: "XY filename" where X is staged, Y is unstaged
+                parts = line.strip().split(None, 1)
+                if len(parts) >= 2:
+                    changed_files.append(parts[1])
+        
+        return len(changed_files) > 0, changed_files
+    
+    def get_git_diff(self) -> str:
+        """Get git diff for all changes"""
+        success, diff = self.run_git_command(['diff', 'HEAD'])
+        return diff if success else ""
+    
+    def get_git_stats(self) -> Dict[str, int]:
+        """Get statistics about changes"""
+        success, output = self.run_git_command(['diff', '--stat', 'HEAD'])
+        if not success:
+            return {'additions': 0, 'deletions': 0, 'filesChanged': 0}
+        
+        # Parse the last line for stats (e.g., "3 files changed, 10 insertions(+), 2 deletions(-)")
+        lines = output.split('\n')
+        if lines:
+            last_line = lines[-1].strip()
+            stats = {'additions': 0, 'deletions': 0, 'filesChanged': 0}
+            
+            # Extract numbers
+            import re
+            files_match = re.search(r'(\d+) file', last_line)
+            if files_match:
+                stats['filesChanged'] = int(files_match.group(1))
+            
+            insertions_match = re.search(r'(\d+) insertion', last_line)
+            if insertions_match:
+                stats['additions'] = int(insertions_match.group(1))
+            
+            deletions_match = re.search(r'(\d+) deletion', last_line)
+            if deletions_match:
+                stats['deletions'] = int(deletions_match.group(1))
+            
+            return stats
+        
+        return {'additions': 0, 'deletions': 0, 'filesChanged': 0}
+    
+    def get_current_branch(self) -> str:
+        """Get current git branch"""
+        success, branch = self.run_git_command(['rev-parse', '--abbrev-ref', 'HEAD'])
+        return branch if success else "unknown"
+    
+    def handle_git_auto_commit(self, tool_name: str) -> Optional[str]:
+        """
+        Handle git auto-commit for code-changing tools
+        
+        Returns: commit hash if committed, None otherwise
+        """
+        # Only process for code-changing tools
+        CODE_CHANGING_TOOLS = ['Edit', 'Write', 'MultiEdit', 'NotebookEdit', 
+                               'file.write', 'file.edit', 'file.multiedit']
+        
+        if tool_name not in CODE_CHANGING_TOOLS:
+            return None
+        
+        # Check for changes
+        has_changes, changed_files = self.check_for_changes()
+        if not has_changes:
+            self.debug_print(f"No git changes after {tool_name}")
+            return None
+        
+        self.debug_print(f"Git changes detected after {tool_name}: {changed_files}")
+        
+        # Get task context from ClaudeBench
+        context_response, _ = self.make_jsonrpc_request('git.context.get', {
+            'instanceId': self.instance_id,
+            'sessionId': self.session_id,
+        })
+        
+        task_context = {
+            'tasks': [],
+            'recentTools': [],
+            'currentTodos': [],
+            'lastPrompt': None
+        }
+        
+        if context_response and 'result' in context_response:
+            task_context = context_response['result']
+        
+        # Build commit message
+        commit_data = {
+            'tool': tool_name,
+            'files': changed_files,
+            'tasks': [{'id': t['id'], 'text': t['text']} for t in task_context.get('tasks', [])],
+            'todos': [{'content': t['content'], 'status': t['status']} for t in task_context.get('currentTodos', [])],
+            'sessionId': self.session_id,
+            'instanceId': self.instance_id,
+            'timestamp': int(time.time() * 1000),
+        }
+        
+        if task_context.get('lastPrompt'):
+            commit_data['prompt'] = task_context['lastPrompt'][:200]  # Truncate long prompts
+        
+        commit_message = json.dumps(commit_data, indent=2)
+        
+        # Stage all changes
+        success, _ = self.run_git_command(['add', '-A'])
+        if not success:
+            self.debug_print("Failed to stage changes")
+            return None
+        
+        # Get diff and stats before committing
+        diff = self.get_git_diff()
+        stats = self.get_git_stats()
+        branch = self.get_current_branch()
+        
+        # Create commit
+        success, output = self.run_git_command(['commit', '-m', commit_message])
+        if not success:
+            self.debug_print(f"Failed to commit: {output}")
+            return None
+        
+        # Extract commit hash from output
+        commit_hash = None
+        for line in output.split('\n'):
+            if line.strip().startswith('['):
+                # Format: "[branch hash] message"
+                parts = line.split()
+                if len(parts) >= 2:
+                    commit_hash = parts[1].rstrip(']')
+                    break
+        
+        if not commit_hash:
+            # Try to get the latest commit hash
+            success, hash_output = self.run_git_command(['rev-parse', 'HEAD'])
+            if success:
+                commit_hash = hash_output.strip()
+        
+        if commit_hash:
+            self.debug_print(f"Auto-committed: {commit_hash[:7]}")
+            
+            # Notify ClaudeBench about the commit
+            task_ids = [t['id'] for t in task_context.get('tasks', [])]
+            
+            self.make_jsonrpc_request('git.auto_commit.notify', {
+                'instanceId': self.instance_id,
+                'sessionId': self.session_id,
+                'commitHash': commit_hash,
+                'branch': branch,
+                'files': changed_files,
+                'diff': diff[:10000],  # Limit diff size
+                'stats': stats,
+                'taskContext': {
+                    'taskIds': task_ids,
+                    'toolUsed': tool_name,
+                    'timestamp': int(time.time() * 1000),
+                },
+                'commitMessage': commit_message,
+            })
+            
+            # Output git info for the user to see
+            print(json.dumps({
+                'git_auto_commit': {
+                    'hash': commit_hash[:7],
+                    'branch': branch,
+                    'files': len(changed_files),
+                    'tasks': len(task_ids),
+                    'message': 'Changes auto-committed with task context'
+                }
+            }))
+        
+        return commit_hash
+    
     def process_hook(self, input_data: str) -> int:
         """
         Process a hook event from Claude Code
@@ -418,6 +627,11 @@ class ClaudeBenchHookBridge:
             
             # Make JSONRPC request
             response, exit_code = self.make_jsonrpc_request(method, params)
+            
+            # Handle git auto-commit for PostToolUse events
+            if method == 'hook.post_tool':
+                tool_name = params.get('tool', '')
+                self.handle_git_auto_commit(tool_name)
             
             return exit_code
             

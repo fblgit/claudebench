@@ -15,6 +15,17 @@ export interface HookResult {
 	modified?: any;
 }
 
+export interface HookStateEvent {
+	eventId: string;
+	hookType: string;
+	sessionId: string;
+	instanceId: string;
+	params: any;
+	result: HookResult;
+	timestamp: number;
+	labels?: string[];
+}
+
 export class HookManager {
 	private redis = getRedis();
 	private cacheTimeout = 60; // 60 seconds cache

@@ -15,6 +15,7 @@ import { connectRedis, disconnectRedis } from "./core/redis";
 import { metrics } from "./core/metrics";
 import { instanceManager } from "./core/instance-manager";
 import { jobScheduler } from "./core/jobs";
+import { stateProcessor } from "./core/state-processor";
 
 // Import transport handlers
 import { handleJsonRpcRequest, handleJsonRpcBatch } from "./transports/http";
@@ -95,6 +96,10 @@ async function initialize() {
 		// Initialize event bus
 		console.log("🚌 Initializing event bus...");
 		await eventBus.initialize();
+		
+		// Initialize state processor for session tracking
+		console.log("🔄 Initializing state processor...");
+		await stateProcessor.initialize();
 		
 		// Initialize metrics collection
 		console.log("📊 Initializing metrics collector...");
