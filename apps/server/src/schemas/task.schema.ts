@@ -264,3 +264,43 @@ export const taskDeleteOutput = z.object({
 
 export type TaskDeleteInput = z.infer<typeof taskDeleteInput>;
 export type TaskDeleteOutput = z.infer<typeof taskDeleteOutput>;
+
+// task.context
+export const taskContextInput = z.object({
+	taskId: z.string().min(1),
+	specialist: z.enum(["frontend", "backend", "testing", "docs", "general"]),
+	customDescription: z.string().optional(),
+	constraints: z.array(z.string()).optional(),
+	requirements: z.array(z.string()).optional(),
+	existingFiles: z.array(z.string()).optional(),
+	additionalContext: z.string().optional(),
+	metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const taskContextOutput = z.object({
+	taskId: z.string(),
+	context: z.object({
+		taskId: z.string(),
+		description: z.string(),
+		scope: z.string(),
+		mandatoryReadings: z.array(z.object({
+			title: z.string(),
+			path: z.string(),
+			reason: z.string()
+		})),
+		architectureConstraints: z.array(z.string()),
+		relatedWork: z.array(z.object({
+			instanceId: z.string(),
+			status: z.string(),
+			summary: z.string()
+		})),
+		successCriteria: z.array(z.string()),
+		discoveredPatterns: z.array(z.string()).optional(),
+		integrationPoints: z.array(z.string()).optional(),
+		recommendedApproach: z.string().optional()
+	}),
+	prompt: z.string()
+});
+
+export type TaskContextInput = z.infer<typeof taskContextInput>;
+export type TaskContextOutput = z.infer<typeof taskContextOutput>;
