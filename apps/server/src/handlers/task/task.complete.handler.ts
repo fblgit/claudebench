@@ -1,6 +1,6 @@
 import { EventHandler, Instrumented, Resilient } from "@/core/decorator";
 import type { EventContext } from "@/core/context";
-import { taskCompleteInput, taskCompleteOutput } from "@/schemas/task.schema";
+import { taskCompleteInput, taskCompleteOutput, TaskStatus } from "@/schemas/task.schema";
 import type { TaskCompleteInput, TaskCompleteOutput } from "@/schemas/task.schema";
 import { redisScripts } from "@/core/redis-scripts";
 import { redisKey } from "@/core/redis";
@@ -121,9 +121,9 @@ export class TaskCompleteHandler {
 				await ctx.prisma.task.update({
 					where: { id: taskId },
 					data: {
-						status: result.status as any,
+						status: result.status as "completed" | "failed",
 						completedAt: new Date(completedAt),
-						result: parsedResult as any,
+						result: parsedResult as any || undefined,
 						metadata: {
 							...(taskData.metadata ? JSON.parse(taskData.metadata) : {}),
 							duration,
@@ -160,7 +160,7 @@ export class TaskCompleteHandler {
 					await ctx.prisma.task.update({
 						where: { id: taskId },
 						data: {
-							status: result.status as any,
+							status: result.status as "completed" | "failed",
 							completedAt: new Date(completedAt),
 							error: `Failed to store result: ${error instanceof Error ? error.message : String(error)}`,
 							metadata: {

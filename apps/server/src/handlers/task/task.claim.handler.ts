@@ -67,37 +67,38 @@ export class TaskClaimHandler {
 			},
 		});
 		
-		// Fetch attachments using the list_attachments handler
+		// Fetch attachments using batch operation to avoid N+1 queries
 		let attachments: Record<string, any> = {};
 		try {
+			// First list available attachments
 			const attachmentList = await registry.executeHandler("task.list_attachments", {
 				taskId: task.id,
 				limit: 100 // Get all attachments (reasonable limit)
 			}, ctx.metadata?.clientId);
 			
 			if (attachmentList && attachmentList.attachments && attachmentList.attachments.length > 0) {
-				// Fetch each attachment's data using get_attachment handler
-				for (const attachment of attachmentList.attachments) {
-					try {
-						const attachmentData = await registry.executeHandler("task.get_attachment", {
-							taskId: task.id,
-							key: attachment.key
-						}, ctx.metadata?.clientId);
-						
+				// Fetch all attachments in a single batch operation
+				const batchResult = await registry.executeHandler("task.get_attachments_batch", {
+					requests: attachmentList.attachments.map((a: { key: string }) => ({
+						taskId: task.id,
+						key: a.key
+					}))
+				}, ctx.metadata?.clientId);
+				
+				if (batchResult && batchResult.attachments) {
+					// Transform batch result into record format
+					for (const attachment of batchResult.attachments) {
 						attachments[attachment.key] = {
-							type: attachmentData.type,
-							value: attachmentData.value,
-							createdAt: attachmentData.createdAt
+							type: attachment.type,
+							value: attachment.value,
+							createdAt: attachment.createdAt
 						};
-					} catch (getError) {
-						// Log individual attachment fetch failures
-						console.warn(`[TaskClaim] Failed to fetch attachment '${attachment.key}' for task ${task.id}:`, getError);
 					}
 				}
 			}
 		} catch (error) {
-			// Log but don't fail the claim if attachments can't be listed
-			console.warn(`[TaskClaim] Failed to list attachments for task ${task.id}:`, error);
+			// Log but don't fail the claim if attachments can't be fetched
+			console.warn(`[TaskClaim] Failed to fetch attachments for task ${task.id}:`, error);
 		}
 		
 		// Get result from attachments

@@ -4,8 +4,10 @@ import {
 	taskGetAttachmentInput, 
 	taskGetAttachmentOutput,
 	type TaskGetAttachmentInput,
-	type TaskGetAttachmentOutput 
-} from "@/schemas/task-attachment.schema";
+	type TaskGetAttachmentOutput,
+	AttachmentType
+} from "@/schemas/task.schema";
+import { z } from "zod";
 
 @EventHandler({
 	event: "task.get_attachment",
@@ -68,7 +70,7 @@ export class TaskGetAttachmentHandler {
 				id: redisData.id,
 				taskId: redisData.taskId,
 				key: redisData.key,
-				type: redisData.type as any,
+				type: redisData.type as z.infer<typeof AttachmentType>,
 				value: redisData.value ? JSON.parse(redisData.value) : undefined,
 				content: redisData.content || undefined,
 				url: redisData.url || undefined,
@@ -130,8 +132,8 @@ export class TaskGetAttachmentHandler {
 				id: dbAttachment.id,
 				taskId: dbAttachment.taskId,
 				key: dbAttachment.key,
-				type: dbAttachment.type as any,
-				value: dbAttachment.value as any || undefined,
+				type: dbAttachment.type as z.infer<typeof AttachmentType>,
+				value: dbAttachment.value || undefined,
 				content: dbAttachment.content || undefined,
 				url: dbAttachment.url || undefined,
 				size: dbAttachment.size || undefined,

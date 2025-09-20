@@ -5,7 +5,7 @@ import {
 	taskCreateAttachmentOutput,
 	type TaskCreateAttachmentInput,
 	type TaskCreateAttachmentOutput 
-} from "@/schemas/task-attachment.schema";
+} from "@/schemas/task.schema";
 
 @EventHandler({
 	event: "task.create_attachment",
