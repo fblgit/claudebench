@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, formatDistanceToNow } from "date-fns";
 import { CodeViewer } from "./CodeEditor";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 import {
 	FileJson,
 	FileText,
@@ -20,6 +22,21 @@ import {
 	User,
 	Database,
 	Paperclip,
+	GitCommit,
+	GitBranch,
+	FileCode,
+	Plus,
+	Minus,
+	FileDiff,
+	Target,
+	BookOpen,
+	CheckSquare,
+	AlertCircle,
+	Sparkles,
+	Eye,
+	Code,
+	Clock,
+	Package,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
