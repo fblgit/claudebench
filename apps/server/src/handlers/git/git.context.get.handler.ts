@@ -14,8 +14,8 @@ import { redisKey } from "@/core/redis";
 	mcp: {
 		title: "Get Git Context",
 		metadata: {
-			description: "Retrieve current task context for creating structured git commit messages",
 			examples: [{
+				description: "Get context for a worker with active tasks",
 				input: {
 					instanceId: "worker-1",
 					sessionId: "session-123",
@@ -59,9 +59,15 @@ export class GitContextGetHandler {
 		const tasks: GitContextGetOutput['tasks'] = [];
 		
 		// Query tasks by assignedTo field
-		const taskKeys = await ctx.redis.stream.keys(redisKey("task", "*"));
-		for (const taskKey of taskKeys.slice(0, limit)) {
-			const taskData = await ctx.redis.stream.hgetall(taskKey);
+		const allKeys = await ctx.redis.pub.keys(redisKey("task", "t-*"));
+		// Filter out attachment keys and other sub-keys
+		const taskKeys = allKeys.filter(key => !key.includes(":attachment"));
+		
+		let foundCount = 0;
+		for (const taskKey of taskKeys) {
+			if (foundCount >= limit) break;
+			
+			const taskData = await ctx.redis.pub.hgetall(taskKey);
 			if (taskData.assignedTo === instanceId && 
 				(taskData.status === "in_progress" || taskData.status === "pending")) {
 				tasks.push({
@@ -71,16 +77,17 @@ export class GitContextGetHandler {
 					priority: parseInt(taskData.priority || "50"),
 					assignedAt: taskData.updatedAt || taskData.createdAt,
 				});
+				foundCount++;
 			}
 		}
 		
 		// Get recent tools from session context
 		const toolsKey = redisKey("session", "tools", sessionId);
-		const recentTools = await ctx.redis.stream.lrange(toolsKey, 0, 9);
+		const recentTools = await ctx.redis.pub.lrange(toolsKey, 0, 9);
 		
 		// Get current todos from session context
 		const contextKey = redisKey("session", "context", sessionId);
-		const contextData = await ctx.redis.stream.hgetall(contextKey);
+		const contextData = await ctx.redis.pub.hgetall(contextKey);
 		
 		let currentTodos: GitContextGetOutput['currentTodos'] = [];
 		if (contextData.activeTodos) {
@@ -96,7 +103,7 @@ export class GitContextGetHandler {
 		
 		// Get session state for metadata
 		const stateKey = redisKey("session", "state", sessionId);
-		const stateData = await ctx.redis.stream.hgetall(stateKey);
+		const stateData = await ctx.redis.pub.hgetall(stateKey);
 		
 		// Build metadata
 		const metadata: GitContextGetOutput['metadata'] = {
@@ -109,10 +116,10 @@ export class GitContextGetHandler {
 		// Get tasks from session if no directly assigned tasks
 		if (tasks.length === 0) {
 			const sessionTasksKey = redisKey("session", "tasks", sessionId);
-			const sessionTaskIds = await ctx.redis.stream.lrange(sessionTasksKey, 0, limit - 1);
+			const sessionTaskIds = await ctx.redis.pub.lrange(sessionTasksKey, 0, limit - 1);
 			
 			for (const taskId of sessionTaskIds) {
-				const taskData = await ctx.redis.stream.hgetall(redisKey("task", taskId));
+				const taskData = await ctx.redis.pub.hgetall(redisKey("task", taskId));
 				if (taskData.id) {
 					tasks.push({
 						id: taskData.id,

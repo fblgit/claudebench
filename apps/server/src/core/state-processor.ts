@@ -8,6 +8,7 @@ export interface SessionContext {
 	lastPrompt?: string;
 	activeTodos: Array<{ content: string; status: string }>;
 	eventCounts: Record<string, number>;
+	instanceId?: string;
 }
 
 export class StateProcessor {
@@ -117,7 +118,7 @@ export class StateProcessor {
 						eventData: {
 							params,
 							result,
-						},
+						} as any,
 						labels: labels || [],
 						timestamp: new Date(timestamp),
 					},
@@ -269,7 +270,17 @@ export class StateProcessor {
 		console.log(`[StateProcessor] Creating snapshot ${snapshotId} for session ${sessionId}`);
 
 		// Get all events from stream
-		const events = await this.redis.pub.xrange(streamKey, "-", "+");
+		const rawEvents = await this.redis.pub.xrange(streamKey, "-", "+");
+		// Convert to proper format
+		const events: Array<[string, Record<string, string>]> = rawEvents.map(([id, fields]) => [
+			id,
+			fields.reduce((acc: Record<string, string>, val: string, idx: number, arr: string[]) => {
+				if (idx % 2 === 0 && arr[idx + 1] !== undefined) {
+					acc[val] = arr[idx + 1];
+				}
+				return acc;
+			}, {})
+		]);
 
 		// Build condensed context
 		const context = await this.buildCondensedContext(sessionId, events);
@@ -297,15 +308,15 @@ export class StateProcessor {
 						reason: reason as any,
 						eventCount: events.length,
 						size: JSON.stringify(context).length,
-						context,
+						context: context as any,
 						summary: {
 							eventCounts: context.eventCounts,
 							toolsUsed: context.lastTools.length,
 							todosActive: context.activeTodos.length,
 						},
 						eventIds: events.map(e => e[1].eventId || ""),
-						fromTime: new Date(parseInt(events[0]?.[1].timestamp || "0")),
-						toTime: new Date(parseInt(events[events.length - 1]?.[1].timestamp || "0")),
+						fromTime: events[0] ? new Date(parseInt(events[0][1].timestamp || "0")) : new Date(),
+						toTime: events.length > 0 ? new Date(parseInt(events[events.length - 1][1].timestamp || "0")) : new Date(),
 					},
 				});
 			} catch (error) {
@@ -326,11 +337,17 @@ export class StateProcessor {
 			lastPrompt: undefined,
 			activeTodos: [],
 			eventCounts: {},
+			instanceId: undefined,
 		};
 
 		// Process events to extract context
 		for (const [, event] of events) {
 			const eventType = event.eventType;
+			
+			// Capture instanceId
+			if (event.instanceId && !context.instanceId) {
+				context.instanceId = event.instanceId;
+			}
 			
 			// Count event types
 			context.eventCounts[eventType] = (context.eventCounts[eventType] || 0) + 1;
@@ -405,7 +422,17 @@ export class StateProcessor {
 
 		// If no snapshot, build from events
 		const streamKey = redisKey("stream", "session", sessionId);
-		const events = await this.redis.pub.xrange(streamKey, "-", "+", "COUNT", "100");
+		const rawEvents = await this.redis.pub.xrange(streamKey, "-", "+", "COUNT", "100");
+		// Convert to proper format
+		const events: Array<[string, Record<string, string>]> = rawEvents.map(([id, fields]) => [
+			id,
+			fields.reduce((acc: Record<string, string>, val: string, idx: number, arr: string[]) => {
+				if (idx % 2 === 0 && arr[idx + 1] !== undefined) {
+					acc[val] = arr[idx + 1];
+				}
+				return acc;
+			}, {})
+		]);
 		
 		if (events.length === 0) {
 			return null;

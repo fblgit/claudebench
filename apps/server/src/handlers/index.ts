@@ -15,3 +15,6 @@ export * from "./docs";
 
 // Session state handlers
 export * from "./session";
+
+// Git integration handlers
+export * from "./git";

@@ -15,8 +15,8 @@ import { registry } from "@/core/registry";
 	mcp: {
 		title: "Git Auto-Commit Notification",
 		metadata: {
-			description: "Record auto-commit events with task context and diff data",
 			examples: [{
+				description: "Notify about an auto-commit with task context",
 				input: {
 					instanceId: "worker-1",
 					sessionId: "session-123",

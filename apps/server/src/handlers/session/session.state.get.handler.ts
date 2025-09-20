@@ -17,6 +17,7 @@ import { stateProcessor } from "@/core/state-processor";
 		metadata: {
 			examples: [
 				{
+					description: "Get condensed session state",
 					input: {
 						sessionId: "session-123",
 						condensed: true,
@@ -95,10 +96,10 @@ export class SessionStateGetHandler {
 
 		// Get raw events from stream
 		const streamKey = redisKey("stream", "session", sessionId);
-		let events: Array<[string, Record<string, string>]>;
+		let rawEvents: Array<[string, string[]]>;
 
 		if (fromTimestamp && toTimestamp) {
-			events = await ctx.redis.stream.xrange(
+			rawEvents = await ctx.redis.stream.xrange(
 				streamKey,
 				fromTimestamp.toString(),
 				toTimestamp.toString(),
@@ -106,7 +107,7 @@ export class SessionStateGetHandler {
 				limit.toString()
 			);
 		} else {
-			events = await ctx.redis.stream.xrange(
+			rawEvents = await ctx.redis.stream.xrange(
 				streamKey,
 				"-",
 				"+",
@@ -114,6 +115,17 @@ export class SessionStateGetHandler {
 				limit.toString()
 			);
 		}
+
+		// Convert raw events to proper format
+		const events: Array<[string, Record<string, string>]> = rawEvents.map(([id, fields]) => [
+			id,
+			fields.reduce((acc: Record<string, string>, val: string, idx: number, arr: string[]) => {
+				if (idx % 2 === 0 && arr[idx + 1] !== undefined) {
+					acc[val] = arr[idx + 1];
+				}
+				return acc;
+			}, {})
+		])
 
 		// Filter by event types if specified
 		let filteredEvents = events;

@@ -16,6 +16,7 @@ import { stateProcessor } from "@/core/state-processor";
 		metadata: {
 			examples: [
 				{
+					description: "Create snapshot before compaction",
 					input: {
 						sessionId: "session-123",
 						instanceId: "worker-1",
@@ -96,7 +97,7 @@ export class SessionSnapshotCreateHandler {
 								eventCounts: context.eventCounts || {},
 								toolsUsed: context.lastTools?.length || 0,
 								todosActive: context.activeTodos?.length || 0,
-								metadata
+								metadata: metadata || {} as any
 							},
 							eventIds: [],
 							fromTime: new Date(timestamp - 3600000), // 1 hour before

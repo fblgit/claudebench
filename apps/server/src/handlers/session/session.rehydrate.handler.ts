@@ -17,6 +17,7 @@ import { stateProcessor } from "@/core/state-processor";
 		metadata: {
 			examples: [
 				{
+					description: "Rehydrate a session for worker",
 					input: {
 						sessionId: "session-123",
 						instanceId: "worker-1"
@@ -65,7 +66,7 @@ export class SessionRehydrateHandler {
 		});
 
 		// Get snapshot if specified
-		let snapshot = null;
+		let snapshot: { id: string; timestamp: number; eventCount: number; } | undefined = undefined;
 		if (snapshotId) {
 			const snapshotKey = redisKey("snapshot", sessionId, snapshotId);
 			const snapshotData = await ctx.redis.stream.hgetall(snapshotKey);
@@ -103,7 +104,7 @@ export class SessionRehydrateHandler {
 			return {
 				sessionId,
 				rehydrated: true,
-				snapshot,
+				snapshot: snapshot || undefined,
 				context: {
 					lastTasks: [],
 					lastTools: [],
@@ -125,7 +126,15 @@ export class SessionRehydrateHandler {
 			);
 
 			// Process new events into context
-			for (const [, event] of newEvents) {
+			for (const [, fields] of newEvents) {
+				// Convert fields array to object
+				const event: Record<string, string> = {};
+				for (let i = 0; i < fields.length; i += 2) {
+					if (fields[i] && fields[i + 1]) {
+						event[fields[i]] = fields[i + 1];
+					}
+				}
+				
 				if (event.params) {
 					try {
 						const params = JSON.parse(event.params);
