@@ -45,6 +45,9 @@ interface TaskTimelineProps {
 }
 
 export function TaskTimeline({ tasks, onTaskClick, className }: TaskTimelineProps) {
+	const [hoveredTask, setHoveredTask] = useState<string | null>(null);
+	const [hoveredSwimlane, setHoveredSwimlane] = useState<string | null>(null);
+	
 	// Calculate timeline boundaries and prepare data
 	const timelineData = useMemo(() => {
 		if (!tasks || tasks.length === 0) {
