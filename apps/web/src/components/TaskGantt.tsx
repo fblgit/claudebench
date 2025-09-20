@@ -67,33 +67,38 @@ const CustomTaskList: React.FC<{
 	};
 
 	return (
-		<div className="border-r">
-			<div className="sticky top-0 bg-background border-b px-4 py-2">
+		<div className="border-r bg-background">
+			<div className="sticky top-0 bg-background border-b px-3 py-2 z-10">
 				<div className="font-medium text-sm">Tasks</div>
 			</div>
 			<div>
-				{tasks.map((ganttTask) => {
+				{tasks.map((ganttTask, index) => {
 					const originalTask = originalTasks.get(ganttTask.id);
 					if (!originalTask) return null;
 
 					return (
 						<div
 							key={ganttTask.id}
-							className="flex items-center gap-2 px-4 py-2 border-b hover:bg-muted/50 cursor-pointer"
-							style={{ height: "50px" }}
+							className={cn(
+								"flex items-center gap-2 px-3 border-b hover:bg-muted/50 cursor-pointer",
+								index % 2 === 0 ? "bg-background" : "bg-muted/10"
+							)}
+							style={{ height: "46px" }}
 							onClick={() => onTaskClick?.(originalTask)}
 						>
 							{getStatusIcon(originalTask.status)}
 							<div className="flex-1 min-w-0">
-								<div className="text-sm font-medium truncate">{originalTask.text}</div>
+								<div className="text-xs font-medium truncate" title={originalTask.text}>
+									{originalTask.text.length > 25 
+										? originalTask.text.substring(0, 25) + "..." 
+										: originalTask.text}
+								</div>
 								<div className="text-xs text-muted-foreground">
-									{originalTask.assignedTo || "Unassigned"}
+									{originalTask.assignedTo || "Unassigned"} • {format(parseISO(originalTask.createdAt), 'MMM d')}
 								</div>
 							</div>
 							{originalTask.priority >= 80 && (
-								<Badge variant="destructive" className="text-xs">
-									<Flag className="h-3 w-3" />
-								</Badge>
+								<Flag className="h-3 w-3 text-red-500" />
 							)}
 						</div>
 					);
