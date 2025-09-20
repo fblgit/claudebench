@@ -4,6 +4,7 @@ import { swarmDecomposeInput, swarmDecomposeOutput } from "@/schemas/swarm.schem
 import type { SwarmDecomposeInput, SwarmDecomposeOutput } from "@/schemas/swarm.schema";
 import { redisScripts } from "@/core/redis-scripts";
 import { getSamplingService } from "@/core/sampling";
+import { registry } from "@/core/registry";
 
 @EventHandler({
 	event: "swarm.decompose",
@@ -159,6 +160,34 @@ export class SwarmDecomposeHandler {
 				// Continue with Redis storage which already succeeded
 			}
 		}
+		
+		// Store decomposition as attachment - must succeed for consistency
+		await registry.executeHandler("task.create_attachment", {
+			taskId: input.taskId,
+			key: "decomposition",
+			type: "json",
+			value: {
+				taskText: input.task,
+				strategy: decomposition.executionStrategy,
+				totalComplexity: decomposition.totalComplexity,
+				reasoning: decomposition.reasoning,
+				subtaskCount: result.subtaskCount,
+				subtasks: decomposition.subtasks.map(subtask => ({
+					id: subtask.id,
+					description: subtask.description,
+					specialist: subtask.specialist,
+					complexity: subtask.complexity,
+					estimatedMinutes: subtask.estimatedMinutes,
+					dependencies: subtask.dependencies,
+					context: subtask.context,
+					status: "pending"
+				})),
+				decomposedAt: new Date().toISOString(),
+				decomposedBy: ctx.instanceId
+			}
+		}, ctx.metadata?.clientId);
+		
+		console.log(`[SwarmDecompose] Decomposition stored as attachment for task ${input.taskId}`);
 		
 		// Trigger assignment for ready subtasks (those without dependencies)
 		for (const subtask of decomposition.subtasks) {

@@ -253,46 +253,30 @@ async function getOrCreateServer(sessionId: string): Promise<McpServer> {
 					throw new Error("Task ID required for decomposition resource");
 				}
 				
-				const decomposition = await prisma.swarmDecomposition.findUnique({
-					where: { taskId },
-					include: {
-						subtasks: {
-							include: {
-								assignment: true,
-								progress: true
+				// Get decomposition from attachment
+				let decompositionData = null;
+				try {
+					const attachment = await prisma.taskAttachment.findUnique({
+						where: {
+							taskId_key: {
+								taskId: taskId,
+								key: "decomposition"
 							}
 						}
+					});
+					
+					if (attachment?.value) {
+						decompositionData = attachment.value;
 					}
-				});
+				} catch (error) {
+					console.error(`[MCP Resource] Failed to fetch decomposition attachment:`, error);
+				}
 				
-				if (!decomposition) {
+				if (!decompositionData) {
 					throw new Error(`Decomposition not found for task: ${taskId}`);
 				}
 				
-				const content = {
-					taskId: decomposition.taskId,
-					taskText: decomposition.taskText,
-					strategy: decomposition.strategy,
-					totalComplexity: decomposition.totalComplexity,
-					reasoning: decomposition.reasoning,
-					progress: decomposition.progress,
-					subtaskCount: decomposition.subtaskCount,
-					subtasks: decomposition.subtasks.map(st => ({
-						id: st.id,
-						description: st.description,
-						specialist: st.specialist,
-						complexity: st.complexity,
-						estimatedMinutes: st.estimatedMinutes,
-						status: st.status,
-						dependencies: st.dependencies,
-						context: st.context,
-						assignedTo: st.assignedTo,
-						assignment: st.assignment,
-						progress: st.progress
-					})),
-					createdAt: decomposition.createdAt,
-					updatedAt: decomposition.updatedAt
-				};
+				const content = decompositionData;
 				
 				return {
 					contents: [{
@@ -340,6 +324,25 @@ async function getOrCreateServer(sessionId: string): Promise<McpServer> {
 					throw new Error(`Subtask not found: ${subtaskId}`);
 				}
 				
+				// Get context from attachment
+				let contextData = null;
+				try {
+					const attachment = await prisma.taskAttachment.findUnique({
+						where: {
+							taskId_key: {
+								taskId: subtask.parentId,
+								key: `context_${subtaskId}`
+							}
+						}
+					});
+					
+					if (attachment?.value) {
+						contextData = (attachment.value as any).context;
+					}
+				} catch (error) {
+					console.error(`[MCP Resource] Failed to fetch context attachment for subtask ${subtaskId}:`, error);
+				}
+				
 				// Get dependent subtasks
 				const dependentSubtasks = await prisma.swarmSubtask.findMany({
 					where: {
@@ -355,7 +358,7 @@ async function getOrCreateServer(sessionId: string): Promise<McpServer> {
 						complexity: subtask.complexity,
 						estimatedMinutes: subtask.estimatedMinutes,
 						status: subtask.status,
-						context: subtask.context,
+						context: contextData,
 						assignedTo: subtask.assignedTo,
 						createdAt: subtask.createdAt,
 						updatedAt: subtask.updatedAt
@@ -818,7 +821,39 @@ async function getOrCreateServer(sessionId: string): Promise<McpServer> {
 					};
 				}
 				
-				// Return full task details
+				// Fetch attachments for the task
+				let attachments: Record<string, any> = {};
+				let result = task.result;
+				
+				try {
+					const taskAttachments = await prisma.taskAttachment.findMany({
+						where: { taskId: task.id },
+						select: {
+							key: true,
+							type: true,
+							value: true,
+							createdAt: true
+						}
+					});
+					
+					for (const attachment of taskAttachments) {
+						attachments[attachment.key] = {
+							type: attachment.type,
+							value: attachment.value,
+							createdAt: attachment.createdAt
+						};
+						
+						// Prefer 'result' attachment over legacy field
+						if (attachment.key === 'result') {
+							result = attachment.value;
+						}
+					}
+				} catch (error) {
+					// Log but don't fail if attachments can't be fetched
+					console.warn(`[MCP Resource] Failed to fetch attachments for task ${taskId}:`, error);
+				}
+				
+				// Return full task details with attachments
 				const content = {
 					id: task.id,
 					text: task.text,
@@ -826,8 +861,12 @@ async function getOrCreateServer(sessionId: string): Promise<McpServer> {
 					priority: task.priority,
 					assignedTo: task.assignedTo,
 					metadata: task.metadata,
+					result: result, // Uses attachment if available, else legacy field
+					attachments: attachments, // Include all attachments
+					attachmentCount: Object.keys(attachments).length,
 					createdAt: task.createdAt,
 					updatedAt: task.updatedAt,
+					completedAt: task.completedAt,
 					// Add computed fields
 					age: `${Math.floor((Date.now() - task.createdAt.getTime()) / 1000 / 60)} minutes`,
 					isAssigned: task.assignedTo !== null,

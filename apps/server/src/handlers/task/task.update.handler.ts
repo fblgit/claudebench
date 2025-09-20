@@ -1,7 +1,8 @@
 import { EventHandler, Instrumented, Resilient } from "@/core/decorator";
 import type { EventContext } from "@/core/context";
-import { taskUpdateInput, taskUpdateOutput } from "@/schemas/task.schema";
+import { taskUpdateInput, taskUpdateOutput, TaskStatus } from "@/schemas/task.schema";
 import type { TaskUpdateInput, TaskUpdateOutput } from "@/schemas/task.schema";
+import { z } from "zod";
 import { redisScripts } from "@/core/redis-scripts";
 import { redisKey } from "@/core/redis";
 
@@ -60,7 +61,7 @@ export class TaskUpdateHandler {
 		const task = {
 			id: input.id,
 			text: updatedData.text as string,
-			status: updatedData.status as any,
+			status: updatedData.status as z.infer<typeof TaskStatus>,
 			priority: parseInt(updatedData.priority as string),
 			createdAt: updatedData.createdAt as string,
 			updatedAt: now,

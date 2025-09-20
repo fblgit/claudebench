@@ -4,6 +4,7 @@ import { swarmContextInput, swarmContextOutput } from "@/schemas/swarm.schema";
 import type { SwarmContextInput, SwarmContextOutput } from "@/schemas/swarm.schema";
 import { getSamplingService } from "@/core/sampling";
 import { getRedis } from "@/core/redis";
+import { registry } from "@/core/registry";
 import * as nunjucks from "nunjucks";
 import * as path from "path";
 import { fileURLToPath } from "url";
@@ -212,6 +213,25 @@ export class SwarmContextHandler {
 			integrationPoints: (specialistContext as any).integrationPoints,
 			recommendedApproach: (specialistContext as any).recommendedApproach
 		};
+		
+		// Store context as attachment
+		// Store context as attachment - must succeed for consistency
+		await registry.executeHandler("task.create_attachment", {
+			taskId: input.parentTaskId,
+			key: `context_${input.subtaskId}`,
+			type: "json",
+			value: {
+				subtaskId: input.subtaskId,
+				specialist: input.specialist,
+				context: mappedContext,
+				prompt: prompt,
+				relatedWork: relatedWork,
+				generatedAt: new Date().toISOString(),
+				generatedBy: ctx.instanceId
+			}
+		}, ctx.metadata?.clientId);
+		
+		console.log(`[SwarmContext] Context stored as attachment for subtask ${input.subtaskId}`);
 		
 		// Publish context generated event
 		await ctx.publish({

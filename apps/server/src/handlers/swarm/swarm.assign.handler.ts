@@ -81,13 +81,32 @@ export class SwarmAssignHandler {
 			});
 			
 			if (dbSubtask) {
+				// Get context from attachment
+				let context = null;
+				try {
+					const contextAttachment = await ctx.prisma.taskAttachment.findUnique({
+						where: {
+							taskId_key: {
+								taskId: dbSubtask.parentId,
+								key: `context_${input.subtaskId}`
+							}
+						}
+					});
+					
+					if (contextAttachment && contextAttachment.value) {
+						context = (contextAttachment.value as any).context;
+					}
+				} catch (error) {
+					console.error(`[SwarmAssign] Failed to fetch context attachment for subtask ${input.subtaskId}:`, error);
+				}
+				
 				subtask = {
 					id: dbSubtask.id,
 					description: dbSubtask.description,
 					specialist: dbSubtask.specialist,
 					complexity: dbSubtask.complexity,
 					dependencies: dbSubtask.dependencies,
-					context: dbSubtask.context as any
+					context: context
 				};
 			}
 		}

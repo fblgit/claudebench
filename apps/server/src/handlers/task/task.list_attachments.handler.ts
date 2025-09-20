@@ -4,8 +4,10 @@ import {
 	taskListAttachmentsInput, 
 	taskListAttachmentsOutput,
 	type TaskListAttachmentsInput,
-	type TaskListAttachmentsOutput 
-} from "@/schemas/task-attachment.schema";
+	type TaskListAttachmentsOutput,
+	type AttachmentType
+} from "@/schemas/task.schema";
+import { z } from "zod";
 
 @EventHandler({
 	event: "task.list_attachments",
@@ -59,7 +61,8 @@ export class TaskListAttachmentsHandler {
 		}
 	})
 	async handle(input: TaskListAttachmentsInput, ctx: EventContext): Promise<TaskListAttachmentsOutput> {
-		let attachments: any[] = [];
+		type AttachmentRecord = z.infer<typeof taskListAttachmentsOutput>["attachments"][0];
+		let attachments: AttachmentRecord[] = [];
 		let totalCount = 0;
 		
 		// Try Redis first
@@ -72,20 +75,30 @@ export class TaskListAttachmentsHandler {
 				const attachmentKey = `cb:task:${input.taskId}:attachment:${key}`;
 				const data = await ctx.redis.pub.hgetall(attachmentKey);
 				if (data && Object.keys(data).length > 0) {
-					return {
-						...data,
+					const attachment: AttachmentRecord = {
+						id: data.id,
+						taskId: data.taskId,
+						key: data.key,
+						type: data.type as z.infer<typeof AttachmentType>,
 						value: data.value ? JSON.parse(data.value) : undefined,
-						size: data.size ? parseInt(data.size) : undefined
+						content: data.content || undefined,
+						url: data.url || undefined,
+						size: data.size ? parseInt(data.size) : undefined,
+						mimeType: data.mimeType || undefined,
+						createdBy: data.createdBy || undefined,
+						createdAt: data.createdAt,
+						updatedAt: data.updatedAt
 					};
+					return attachment;
 				}
 				return null;
 			});
 			
-			const redisAttachments = (await Promise.all(attachmentPromises)).filter((a: any) => a !== null);
+			const redisAttachments = (await Promise.all(attachmentPromises)).filter((a): a is AttachmentRecord => a !== null);
 			
 			// Filter by type if specified
 			if (input.type) {
-				attachments = redisAttachments.filter((a: any) => a.type === input.type);
+				attachments = redisAttachments.filter((a) => a.type === input.type);
 			} else {
 				attachments = redisAttachments;
 			}
@@ -96,7 +109,7 @@ export class TaskListAttachmentsHandler {
 			attachments = attachments.slice(input.offset, input.offset + input.limit);
 		} else if (ctx.prisma) {
 			// Fallback to PostgreSQL
-			const where: any = { taskId: input.taskId };
+			const where: { taskId: string; type?: z.infer<typeof AttachmentType> } = { taskId: input.taskId };
 			if (input.type) {
 				where.type = input.type;
 			}
@@ -116,13 +129,13 @@ export class TaskListAttachmentsHandler {
 				id: a.id,
 				taskId: a.taskId,
 				key: a.key,
-				type: a.type,
-				value: a.value,
-				content: a.content,
-				url: a.url,
-				size: a.size,
-				mimeType: a.mimeType,
-				createdBy: a.createdBy,
+				type: a.type as z.infer<typeof AttachmentType>,
+				value: a.value || undefined,
+				content: a.content || undefined,
+				url: a.url || undefined,
+				size: a.size || undefined,
+				mimeType: a.mimeType || undefined,
+				createdBy: a.createdBy || undefined,
 				createdAt: a.createdAt.toISOString(),
 				updatedAt: a.updatedAt.toISOString()
 			}));

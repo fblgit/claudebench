@@ -4,6 +4,7 @@ import { taskClaimInput, taskClaimOutput } from "@/schemas/task.schema";
 import type { TaskClaimInput, TaskClaimOutput } from "@/schemas/task.schema";
 import { redisScripts } from "@/core/redis-scripts";
 import { redisKey } from "@/core/redis";
+import { registry } from "@/core/registry";
 
 @EventHandler({
 	event: "task.claim",
@@ -66,7 +67,47 @@ export class TaskClaimHandler {
 			},
 		});
 		
-		// Return complete task details including metadata
+		// Fetch attachments using batch operation to avoid N+1 queries
+		let attachments: Record<string, any> = {};
+		try {
+			// First list available attachments
+			const attachmentList = await registry.executeHandler("task.list_attachments", {
+				taskId: task.id,
+				limit: 100 // Get all attachments (reasonable limit)
+			}, ctx.metadata?.clientId);
+			
+			if (attachmentList && attachmentList.attachments && attachmentList.attachments.length > 0) {
+				// Fetch all attachments in a single batch operation
+				const batchResult = await registry.executeHandler("task.get_attachments_batch", {
+					requests: attachmentList.attachments.map((a: { key: string }) => ({
+						taskId: task.id,
+						key: a.key
+					}))
+				}, ctx.metadata?.clientId);
+				
+				if (batchResult && batchResult.attachments) {
+					// Transform batch result into record format
+					for (const attachment of batchResult.attachments) {
+						attachments[attachment.key] = {
+							type: attachment.type,
+							value: attachment.value,
+							createdAt: attachment.createdAt
+						};
+					}
+				}
+			}
+		} catch (error) {
+			// Log but don't fail the claim if attachments can't be fetched
+			console.warn(`[TaskClaim] Failed to fetch attachments for task ${task.id}:`, error);
+		}
+		
+		// Get result from attachments
+		let resultData = null;
+		if (attachments['result']) {
+			resultData = attachments['result'].value;
+		}
+		
+		// Return complete task details including metadata and attachments
 		return {
 			claimed: true,
 			taskId: result.taskId!,
@@ -77,11 +118,13 @@ export class TaskClaimHandler {
 				status: "in_progress" as const,
 				assignedTo: input.workerId,
 				metadata: task.metadata ? JSON.parse(task.metadata) : null,
-				result: task.result ? JSON.parse(task.result) : null,
+				result: resultData,
 				error: task.error || null,
 				createdAt: task.createdAt,
 				updatedAt: task.updatedAt || task.createdAt,
 				completedAt: task.completedAt || null,
+				attachments: attachments, // Include all attachment data
+				attachmentCount: Object.keys(attachments).length
 			},
 		};
 	}
