@@ -211,6 +211,6 @@ console.log("Time span:",
 
 ## Related Documentation
 
-- [Task Management](../task/) - Task creation and lifecycle
-- [System Operations](../system/) - Health checks and metrics
-- [Swarm Intelligence](../swarm/) - Complex task decomposition
+- [Task Management](../task/index) - Task creation and lifecycle
+- [System Operations](../system/index) - Health checks and metrics
+- [Swarm Intelligence](../swarm/index) - Complex task decomposition
