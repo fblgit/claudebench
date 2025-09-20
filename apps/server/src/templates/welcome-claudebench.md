@@ -21,6 +21,12 @@ You have access to:
 - **Swarm Conflicts** (`swarm://conflicts`) - Active conflicts requiring resolution
 - **Decompositions List** (`swarm://decompositions`) - All task decompositions
 
+#### 📚 Documentation Resources
+- **API Documentation** (`docs://api`) - Complete API reference for all handlers
+- **Architecture Docs** (`docs://architecture`) - System design and patterns
+- **Guides** (`docs://guides`) - Step-by-step tutorials and best practices
+- **What's New** (`docs://whats-new`) - Latest features and updates
+
 #### 🔄 Resource Templates (Dynamic Data)
 - `swarm://decomposition/{taskId}` - Detailed task decomposition
 - `swarm://context/{subtaskId}` - Execution context for subtasks
@@ -34,6 +40,8 @@ All ClaudeBench handlers are exposed as MCP tools:
 - **swarm.decompose** - Break down complex tasks
 - **swarm.resolve** - Resolve conflicts between specialists
 - **system.register** - Register new instances
+- **docs.list** - Browse all available documentation
+- **docs.get** - Retrieve specific documentation pages
 
 ### 3. Task Management
 
