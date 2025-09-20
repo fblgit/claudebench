@@ -63,6 +63,7 @@
     "relay:worker3": "bun scripts/relay.ts worker-3"
   },
   "dependencies": {
+    "@git-diff-view/react": "^0.0.32",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-tooltip": "^1.2.8",
     "fetch-to-node": "^2.1.0",

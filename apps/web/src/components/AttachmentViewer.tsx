@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { format, parseISO, formatDistanceToNow } from "date-fns";
 import { CodeViewer } from "./CodeEditor";
+import { DiffView, DiffModeEnum } from "@git-diff-view/react";
+import "@git-diff-view/react/styles/diff-view.css";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
