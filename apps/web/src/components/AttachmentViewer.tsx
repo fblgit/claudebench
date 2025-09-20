@@ -311,10 +311,30 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 				{data.diff && (
 					<Card>
 						<CardHeader className="pb-3">
-							<CardTitle className="text-sm font-medium flex items-center gap-2">
-								<FileDiff className="h-4 w-4" />
-								Diff
-							</CardTitle>
+							<div className="flex items-center justify-between">
+								<CardTitle className="text-sm font-medium flex items-center gap-2">
+									<FileDiff className="h-4 w-4" />
+									Diff
+								</CardTitle>
+								<div className="flex gap-1">
+									<Button
+										size="sm"
+										variant={diffViewMode === 'line-by-line' ? 'default' : 'outline'}
+										onClick={() => setDiffViewMode('line-by-line')}
+										className="h-7 text-xs"
+									>
+										Unified
+									</Button>
+									<Button
+										size="sm"
+										variant={diffViewMode === 'side-by-side' ? 'default' : 'outline'}
+										onClick={() => setDiffViewMode('side-by-side')}
+										className="h-7 text-xs"
+									>
+										Split
+									</Button>
+								</div>
+							</div>
 						</CardHeader>
 						<CardContent className="p-0">
 							<div 
@@ -327,7 +347,7 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 									__html: diff2html(data.diff, {
 										drawFileList: false,
 										matching: 'lines',
-										outputFormat: 'line-by-line',
+										outputFormat: diffViewMode,
 										renderNothingWhenEmpty: false,
 										maxLines: 1000
 									})
