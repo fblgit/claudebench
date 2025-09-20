@@ -1,0 +1,10 @@
+{
+  "label": "Session API",
+  "position": 5,
+  "link": {
+    "type": "generated-index",
+    "title": "Session API Reference",
+    "description": "Session state management and recovery operations",
+    "keywords": ["session", "api", "state", "recovery"]
+  }
+}
