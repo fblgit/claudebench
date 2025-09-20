@@ -117,40 +117,65 @@ export function TaskTimeline({ tasks, onTaskClick, className }: TaskTimelineProp
 		return labels;
 	}, [timelineData]);
 
-	// Get status icon
-	const getStatusIcon = (status: string) => {
+	// Get status icon with enhanced styling
+	const getStatusIcon = (status: string, size: "sm" | "md" = "sm") => {
+		const sizeClass = size === "sm" ? "h-3 w-3" : "h-4 w-4";
 		switch (status) {
 			case "completed":
-				return <CheckCircle2 className="h-3 w-3 text-green-500" />;
+				return <CheckCircle2 className={cn(sizeClass, "text-green-500 dark:text-green-400")} />;
 			case "failed":
-				return <XCircle className="h-3 w-3 text-red-500" />;
+				return <XCircle className={cn(sizeClass, "text-red-500 dark:text-red-400")} />;
 			case "in_progress":
-				return <PlayCircle className="h-3 w-3 text-blue-500" />;
+				return <PlayCircle className={cn(sizeClass, "text-blue-500 dark:text-blue-400 animate-pulse")} />;
 			default:
-				return <Clock className="h-3 w-3 text-gray-500" />;
+				return <Clock className={cn(sizeClass, "text-gray-500 dark:text-gray-400")} />;
 		}
 	};
 
-	// Get priority color
+	// Get priority color with gradient support
 	const getPriorityColor = (priority: number) => {
-		if (priority >= 80) return "bg-red-500";
-		if (priority >= 60) return "bg-orange-500";
-		if (priority >= 40) return "bg-yellow-500";
-		if (priority >= 20) return "bg-blue-500";
-		return "bg-gray-500";
+		if (priority >= 80) return "from-red-600 to-red-500";
+		if (priority >= 60) return "from-orange-600 to-orange-500";
+		if (priority >= 40) return "from-yellow-600 to-yellow-500";
+		if (priority >= 20) return "from-blue-600 to-blue-500";
+		return "from-gray-600 to-gray-500";
 	};
 
-	// Get status color for timeline bar
-	const getStatusColor = (status: string) => {
+	// Get status color for timeline bar with enhanced gradients
+	const getStatusColor = (status: string, isHovered: boolean = false) => {
+		const baseClasses = "transition-all duration-300 shadow-sm";
+		const hoverScale = isHovered ? "scale-105 shadow-lg z-20" : "";
+		
 		switch (status) {
 			case "completed":
-				return "bg-green-500 hover:bg-green-600";
+				return cn(
+					baseClasses,
+					"bg-gradient-to-r from-green-500 to-emerald-500",
+					"dark:from-green-600 dark:to-emerald-600",
+					hoverScale
+				);
 			case "failed":
-				return "bg-red-500 hover:bg-red-600";
+				return cn(
+					baseClasses,
+					"bg-gradient-to-r from-red-500 to-rose-500",
+					"dark:from-red-600 dark:to-rose-600",
+					hoverScale
+				);
 			case "in_progress":
-				return "bg-blue-500 hover:bg-blue-600";
+				return cn(
+					baseClasses,
+					"bg-gradient-to-r from-blue-500 to-indigo-500",
+					"dark:from-blue-600 dark:to-indigo-600",
+					"animate-pulse",
+					hoverScale
+				);
 			default:
-				return "bg-gray-400 hover:bg-gray-500";
+				return cn(
+					baseClasses,
+					"bg-gradient-to-r from-gray-400 to-gray-500",
+					"dark:from-gray-600 dark:to-gray-700",
+					hoverScale
+				);
 		}
 	};
 
