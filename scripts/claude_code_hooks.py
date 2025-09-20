@@ -558,7 +558,7 @@ class ClaudeBenchHookBridge:
         # Get diff and stats before committing
         diff = self.get_git_diff()
         stats = self.get_git_stats()
-        branch = self.get_current_branch()
+        # Branch already retrieved at the beginning of the method
         
         # Create commit
         success, output = self.run_git_command(['commit', '-m', commit_message])
