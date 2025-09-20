@@ -16,7 +16,7 @@
 }
 
 .dark .d2h-file-header {
-  background: hsl(var(--muted)) !important;
+  background: hsl(var(--muted) / 0.5) !important;
   border-bottom: 1px solid hsl(var(--border)) !important;
   padding: 0.75rem 1rem;
   color: hsl(var(--foreground)) !important;
@@ -24,10 +24,12 @@
 
 .dark .d2h-file-name-wrapper {
   color: hsl(var(--foreground)) !important;
+  font-weight: 500;
 }
 
 .dark .d2h-file-name {
-  color: hsl(var(--foreground)) !important;
+  color: hsl(var(--primary)) !important;
+  font-weight: 500;
 }
 
 .dark .d2h-code-wrapper {
