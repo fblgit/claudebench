@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Gantt, Task as GanttTask, ViewMode, GanttProps } from "gantt-task-react";
+import { Gantt, ViewMode } from "gantt-task-react";
+import type { Task as GanttTask, GanttProps } from "gantt-task-react";
 import "gantt-task-react/dist/index.css";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
