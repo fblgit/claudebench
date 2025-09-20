@@ -20,6 +20,7 @@ Attachments are designed to store supplementary data that relates to entities (c
 - **Redis-First Architecture**: Fast access with PostgreSQL persistence
 - **Automatic Indexing**: Efficient listing and filtering capabilities
 - **Git Integration**: Built-in support for commit context tracking
+- **Predictable IDs**: Attachment IDs follow pattern `ta-{timestamp}-{random}` for traceability
 
 ## Migration from Metadata
 
