@@ -81,6 +81,17 @@ export class EventClient {
 	 */
 	async request<T = any>(method: string, params?: any): Promise<T> {
 		const id = ++this.requestId;
+		
+		// Use longer timeout for context generation and other long-running operations
+		const longRunningMethods = ['task.context', 'swarm.context', 'swarm.decompose', 'swarm.synthesize', 'swarm.resolve'];
+		const isLongRunning = longRunningMethods.includes(method);
+		const originalTimeout = this.config.timeout;
+		
+		if (isLongRunning) {
+			// Use 6 minutes timeout for long-running operations (360 seconds)
+			this.config.timeout = 360000;
+		}
+		
 		const request: JsonRpcRequest = {
 			jsonrpc: "2.0",
 			method,
