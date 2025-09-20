@@ -13,8 +13,8 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Configure Nunjucks environment (reuse swarm templates for now)
-const templatesDir = path.join(__dirname, "..", "..", "templates", "swarm");
+// Configure Nunjucks environment for task templates
+const templatesDir = path.join(__dirname, "..", "..", "templates", "task");
 const nunjucksEnv = nunjucks.configure(templatesDir, {
 	autoescape: false, // Don't escape for LLM prompts
 	trimBlocks: true,
