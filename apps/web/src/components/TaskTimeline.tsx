@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -17,8 +17,12 @@ import {
 	User,
 	Flag,
 	Paperclip,
+	Sparkles,
+	Activity,
+	Timer,
 } from "lucide-react";
 import { format, parseISO, differenceInDays, startOfDay, endOfDay, isWithinInterval, addDays } from "date-fns";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 interface Task {
@@ -40,7 +44,10 @@ interface TaskTimelineProps {
 	className?: string;
 }
 
-export function TaskTimeline({ tasks, onTaskClick, className }: TaskTimelineProps) {
+function TaskTimelineComponent({ tasks, onTaskClick, className }: TaskTimelineProps) {
+	const [hoveredTask, setHoveredTask] = useState<string | null>(null);
+	const [hoveredSwimlane, setHoveredSwimlane] = useState<string | null>(null);
+	
 	// Calculate timeline boundaries and prepare data
 	const timelineData = useMemo(() => {
 		if (!tasks || tasks.length === 0) {
@@ -110,40 +117,65 @@ export function TaskTimeline({ tasks, onTaskClick, className }: TaskTimelineProp
 		return labels;
 	}, [timelineData]);
 
-	// Get status icon
-	const getStatusIcon = (status: string) => {
+	// Get status icon with enhanced styling
+	const getStatusIcon = (status: string, size: "sm" | "md" = "sm") => {
+		const sizeClass = size === "sm" ? "h-3 w-3" : "h-4 w-4";
 		switch (status) {
 			case "completed":
-				return <CheckCircle2 className="h-3 w-3 text-green-500" />;
+				return <CheckCircle2 className={cn(sizeClass, "text-green-500 dark:text-green-400")} />;
 			case "failed":
-				return <XCircle className="h-3 w-3 text-red-500" />;
+				return <XCircle className={cn(sizeClass, "text-red-500 dark:text-red-400")} />;
 			case "in_progress":
-				return <PlayCircle className="h-3 w-3 text-blue-500" />;
+				return <PlayCircle className={cn(sizeClass, "text-blue-500 dark:text-blue-400 animate-pulse")} />;
 			default:
-				return <Clock className="h-3 w-3 text-gray-500" />;
+				return <Clock className={cn(sizeClass, "text-gray-500 dark:text-gray-400")} />;
 		}
 	};
 
-	// Get priority color
+	// Get priority color with gradient support
 	const getPriorityColor = (priority: number) => {
-		if (priority >= 80) return "bg-red-500";
-		if (priority >= 60) return "bg-orange-500";
-		if (priority >= 40) return "bg-yellow-500";
-		if (priority >= 20) return "bg-blue-500";
-		return "bg-gray-500";
+		if (priority >= 80) return "from-red-600 to-red-500";
+		if (priority >= 60) return "from-orange-600 to-orange-500";
+		if (priority >= 40) return "from-yellow-600 to-yellow-500";
+		if (priority >= 20) return "from-blue-600 to-blue-500";
+		return "from-gray-600 to-gray-500";
 	};
 
-	// Get status color for timeline bar
-	const getStatusColor = (status: string) => {
+	// Get status color for timeline bar with enhanced gradients
+	const getStatusColor = (status: string, isHovered: boolean = false) => {
+		const baseClasses = "transition-all duration-300 shadow-sm";
+		const hoverScale = isHovered ? "scale-105 shadow-lg z-20" : "";
+		
 		switch (status) {
 			case "completed":
-				return "bg-green-500 hover:bg-green-600";
+				return cn(
+					baseClasses,
+					"bg-gradient-to-r from-green-500 to-emerald-500",
+					"dark:from-green-600 dark:to-emerald-600",
+					hoverScale
+				);
 			case "failed":
-				return "bg-red-500 hover:bg-red-600";
+				return cn(
+					baseClasses,
+					"bg-gradient-to-r from-red-500 to-rose-500",
+					"dark:from-red-600 dark:to-rose-600",
+					hoverScale
+				);
 			case "in_progress":
-				return "bg-blue-500 hover:bg-blue-600";
+				return cn(
+					baseClasses,
+					"bg-gradient-to-r from-blue-500 to-indigo-500",
+					"dark:from-blue-600 dark:to-indigo-600",
+					"animate-pulse",
+					hoverScale
+				);
 			default:
-				return "bg-gray-400 hover:bg-gray-500";
+				return cn(
+					baseClasses,
+					"bg-gradient-to-r from-gray-400 to-gray-500",
+					"dark:from-gray-600 dark:to-gray-700",
+					hoverScale
+				);
 		}
 	};
 
@@ -197,99 +229,201 @@ export function TaskTimeline({ tasks, onTaskClick, className }: TaskTimelineProp
 
 	return (
 		<TooltipProvider>
-			<Card className={cn("h-full flex flex-col", className)}>
-				<CardHeader className="pb-3">
-					<CardTitle className="text-sm flex items-center gap-2">
-						<Calendar className="h-4 w-4" />
-						Timeline View
-						<Badge variant="outline" className="ml-auto">
-							{tasks.length} tasks
-						</Badge>
-					</CardTitle>
-				</CardHeader>
-				<CardContent className="flex-1 p-0">
-					<ScrollArea className="h-full">
-						<div className="p-4 min-w-[800px]">
-							{/* Timeline Header with Dates */}
-							<div className="mb-4 relative h-12 border-b">
-								<div className="absolute inset-0 flex">
-									{dateLabels.map((dateInfo, index) => (
-										<div
-											key={index}
-											className="flex-1 text-center border-r last:border-r-0 px-1"
-											style={{ minWidth: `${100 / timelineData.days}%` }}
-										>
-											<div className="text-xs font-medium text-muted-foreground">
-												{dateInfo.dayLabel}
-											</div>
-											<div className="text-xs">
-												{dateInfo.label}
-											</div>
-										</div>
-									))}
-								</div>
-							</div>
+			<motion.div
+				initial={{ opacity: 0, y: 20 }}
+				animate={{ opacity: 1, y: 0 }}
+				transition={{ duration: 0.5 }}
+			>
+				<Card className={cn("h-full flex flex-col overflow-hidden backdrop-blur-sm bg-card/95", className)}>
+					<CardHeader className="pb-3 border-b bg-gradient-to-r from-primary/5 to-accent/5">
+						<CardTitle className="text-sm flex items-center gap-2">
+							<motion.div
+								animate={{ rotate: 360 }}
+								transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+							>
+								<Activity className="h-4 w-4 text-primary" />
+							</motion.div>
+							<span className="font-semibold">Timeline View</span>
+							<Sparkles className="h-3 w-3 text-yellow-500" />
+							<Badge 
+								variant="outline" 
+								className="ml-auto bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20"
+							>
+								<Timer className="h-3 w-3 mr-1" />
+								{tasks.length} tasks
+							</Badge>
+						</CardTitle>
+					</CardHeader>
+					<CardContent className="flex-1 p-0">
+						<ScrollArea className="h-full">
+							<div className="p-6 min-w-[900px]">
+								{/* Enhanced Timeline Header with Dates */}
+								<motion.div 
+									className="mb-6 relative h-16 rounded-lg bg-gradient-to-b from-muted/30 to-muted/10 border-b-2 border-border/50"
+									initial={{ scaleX: 0 }}
+									animate={{ scaleX: 1 }}
+									transition={{ duration: 0.7, ease: "easeOut" }}
+								>
+									<div className="absolute inset-0 flex items-center">
+										{dateLabels.map((dateInfo, index) => (
+											<motion.div
+												key={index}
+												className="flex-1 text-center border-r border-dashed border-muted-foreground/20 last:border-r-0 px-2 py-2"
+												style={{ minWidth: `${100 / timelineData.days}%` }}
+												initial={{ opacity: 0, y: -10 }}
+												animate={{ opacity: 1, y: 0 }}
+												transition={{ delay: index * 0.05, duration: 0.3 }}
+											>
+												<div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+													{dateInfo.dayLabel}
+												</div>
+												<div className="text-sm font-medium">
+													{dateInfo.label}
+												</div>
+											</motion.div>
+										))}
+									</div>
+								</motion.div>
 
-							{/* Swimlanes by Assignee */}
-							<div className="space-y-6">
-								{Array.from(tasksByAssignee.entries()).map(([assignee, assigneeTasks]) => (
-									<div key={assignee} className="space-y-2">
-										{/* Swimlane Header */}
-										<div className="flex items-center gap-2 mb-2">
-											<User className="h-4 w-4 text-muted-foreground" />
-											<span className="text-sm font-medium">{assignee}</span>
-											<Badge variant="outline" className="text-xs">
-												{assigneeTasks.length} tasks
-											</Badge>
-										</div>
-										
-										{/* Timeline Track */}
-										<div className="relative h-20 bg-muted/20 rounded-md border">
-											{/* Grid lines */}
-											<div className="absolute inset-0 flex">
-												{dateLabels.map((_, index) => (
-													<div
-														key={index}
-														className="flex-1 border-r border-dashed border-muted-foreground/20 last:border-r-0"
-													/>
-												))}
+							{/* Enhanced Swimlanes by Assignee */}
+							<div className="space-y-8">
+								<AnimatePresence mode="wait">
+									{Array.from(tasksByAssignee.entries()).map(([assignee, assigneeTasks], swimlaneIndex) => (
+										<motion.div
+											key={assignee}
+											className="space-y-3"
+											initial={{ opacity: 0, x: -50 }}
+											animate={{ opacity: 1, x: 0 }}
+											transition={{ delay: swimlaneIndex * 0.1, duration: 0.5 }}
+											onMouseEnter={() => setHoveredSwimlane(assignee)}
+											onMouseLeave={() => setHoveredSwimlane(null)}
+										>
+											{/* Enhanced Swimlane Header */}
+											<div className="flex items-center gap-3 mb-3">
+												<motion.div
+													className={cn(
+														"p-2 rounded-full",
+														"bg-gradient-to-br from-primary/20 to-accent/20",
+														"border border-primary/30",
+														hoveredSwimlane === assignee && "scale-110"
+													)}
+													whileHover={{ scale: 1.1 }}
+													transition={{ type: "spring", stiffness: 300 }}
+												>
+													<User className="h-4 w-4 text-primary" />
+												</motion.div>
+												<span className="text-sm font-semibold text-foreground">
+													{assignee}
+												</span>
+												<Badge 
+													variant="outline" 
+													className={cn(
+														"text-xs transition-all",
+														"bg-gradient-to-r from-primary/5 to-accent/5",
+														hoveredSwimlane === assignee && "scale-105 shadow-sm"
+													)}
+												>
+													<Activity className="h-3 w-3 mr-1" />
+													{assigneeTasks.length} {assigneeTasks.length === 1 ? "task" : "tasks"}
+												</Badge>
 											</div>
 											
-											{/* Task Bars */}
+											{/* Enhanced Timeline Track with Depth */}
+											<motion.div 
+												className={cn(
+													"relative h-24 rounded-lg transition-all duration-300",
+													"bg-gradient-to-b from-muted/10 to-muted/30",
+													"border border-border/50 shadow-sm",
+													hoveredSwimlane === assignee && "shadow-md border-primary/30 bg-gradient-to-b from-primary/5 to-accent/5"
+												)}
+												layout
+											>
+												{/* Enhanced Grid lines with depth */}
+												<div className="absolute inset-0 flex rounded-lg overflow-hidden">
+													{dateLabels.map((_, index) => (
+														<div
+															key={index}
+															className={cn(
+																"flex-1 border-r border-dashed",
+																"border-muted-foreground/10 last:border-r-0",
+																"hover:bg-muted/5 transition-colors"
+															)}
+														/>
+													))}
+												</div>
+											
+											{/* Enhanced Task Bars with Animations */}
 											{assigneeTasks.map((task, taskIndex) => {
 												const position = getTaskPosition(task);
-												const yOffset = (taskIndex % 2) * 30; // Stagger overlapping tasks
+												const yOffset = (taskIndex % 3) * 25; // Better stacking with 3 levels
+												const isHovered = hoveredTask === task.id;
 												
 												return (
 													<Tooltip key={task.id}>
 														<TooltipTrigger asChild>
-															<div
+															<motion.div
 																className={cn(
-																	"absolute h-6 rounded-md cursor-pointer transition-all",
-																	"flex items-center gap-1 px-1 overflow-hidden",
-																	getStatusColor(task.status)
+																	"absolute rounded-lg cursor-pointer",
+																	"flex items-center gap-1 px-2 overflow-hidden",
+																	"border border-white/20",
+																	getStatusColor(task.status, isHovered)
 																)}
 																style={{
 																	...position,
-																	top: `${20 + yOffset}px`,
-																	minWidth: "60px",
-																	zIndex: taskIndex,
+																	top: `${16 + yOffset}px`,
+																	height: "28px",
+																	minWidth: "80px",
+																	zIndex: isHovered ? 30 : taskIndex + 10,
+																}}
+																initial={{ opacity: 0, scale: 0.8 }}
+																animate={{ 
+																	opacity: 1, 
+																	scale: isHovered ? 1.05 : 1,
+																}}
+																whileHover={{ 
+																	y: -2,
+																	transition: { duration: 0.2 }
+																}}
+																transition={{ 
+																	delay: taskIndex * 0.05,
+																	duration: 0.3
 																}}
 																onClick={() => onTaskClick?.(task)}
+																onMouseEnter={() => setHoveredTask(task.id)}
+																onMouseLeave={() => setHoveredTask(null)}
 															>
-																{getStatusIcon(task.status)}
-																<span className="text-xs text-white truncate">
-																	{task.text}
-																</span>
-																{/* Priority indicator */}
+																{/* Priority gradient overlay */}
 																<div 
 																	className={cn(
-																		"absolute top-0 right-0 w-1 h-full",
+																		"absolute inset-0 opacity-30",
+																		"bg-gradient-to-r",
 																		getPriorityColor(task.priority)
 																	)} 
-																	style={{ opacity: 0.6 }}
 																/>
-															</div>
+																
+																{/* Content */}
+																<div className="relative flex items-center gap-1 z-10">
+																	{getStatusIcon(task.status)}
+																	<span className="text-xs text-white font-medium truncate">
+																		{task.text}
+																	</span>
+																</div>
+																
+																{/* Attachment indicator */}
+																{task.attachmentCount && task.attachmentCount > 0 && (
+																	<motion.div 
+																		className="absolute top-1 right-1"
+																		initial={{ scale: 0 }}
+																		animate={{ scale: 1 }}
+																		transition={{ delay: 0.2 }}
+																	>
+																		<Badge className="h-4 px-1 bg-white/20 text-white text-[10px] border-0">
+																			<Paperclip className="h-2 w-2" />
+																			{task.attachmentCount}
+																		</Badge>
+																	</motion.div>
+																)}
+															</motion.div>
 														</TooltipTrigger>
 														<TooltipContent side="top" className="max-w-xs">
 															<div className="space-y-2">
@@ -325,35 +459,66 @@ export function TaskTimeline({ tasks, onTaskClick, className }: TaskTimelineProp
 													</Tooltip>
 												);
 											})}
-										</div>
-									</div>
-								))}
+											</motion.div>
+										</motion.div>
+									))}
+								</AnimatePresence>
 							</div>
 
-							{/* Legend */}
-							<div className="mt-6 flex items-center justify-center gap-4 text-xs">
-								<div className="flex items-center gap-1">
-									<div className="w-3 h-3 bg-gray-400 rounded" />
-									<span>Pending</span>
+							{/* Enhanced Legend */}
+							<motion.div 
+								className="mt-8 p-4 rounded-lg bg-gradient-to-r from-muted/20 to-muted/10 border border-border/50"
+								initial={{ opacity: 0, y: 20 }}
+								animate={{ opacity: 1, y: 0 }}
+								transition={{ delay: 0.5 }}
+							>
+								<div className="flex items-center justify-center gap-6 text-xs">
+									<motion.div 
+										className="flex items-center gap-2"
+										whileHover={{ scale: 1.05 }}
+									>
+										<div className="w-4 h-4 rounded bg-gradient-to-r from-gray-400 to-gray-500 shadow-sm" />
+										<span className="font-medium">Pending</span>
+									</motion.div>
+									<motion.div 
+										className="flex items-center gap-2"
+										whileHover={{ scale: 1.05 }}
+									>
+										<div className="w-4 h-4 rounded bg-gradient-to-r from-blue-500 to-indigo-500 shadow-sm animate-pulse" />
+										<span className="font-medium">In Progress</span>
+									</motion.div>
+									<motion.div 
+										className="flex items-center gap-2"
+										whileHover={{ scale: 1.05 }}
+									>
+										<div className="w-4 h-4 rounded bg-gradient-to-r from-green-500 to-emerald-500 shadow-sm" />
+										<span className="font-medium">Completed</span>
+									</motion.div>
+									<motion.div 
+										className="flex items-center gap-2"
+										whileHover={{ scale: 1.05 }}
+									>
+										<div className="w-4 h-4 rounded bg-gradient-to-r from-red-500 to-rose-500 shadow-sm" />
+										<span className="font-medium">Failed</span>
+									</motion.div>
 								</div>
-								<div className="flex items-center gap-1">
-									<div className="w-3 h-3 bg-blue-500 rounded" />
-									<span>In Progress</span>
-								</div>
-								<div className="flex items-center gap-1">
-									<div className="w-3 h-3 bg-green-500 rounded" />
-									<span>Completed</span>
-								</div>
-								<div className="flex items-center gap-1">
-									<div className="w-3 h-3 bg-red-500 rounded" />
-									<span>Failed</span>
-								</div>
-							</div>
+							</motion.div>
 						</div>
 						<ScrollBar orientation="horizontal" />
 					</ScrollArea>
 				</CardContent>
 			</Card>
+			</motion.div>
 		</TooltipProvider>
 	);
 }
+
+// Export memoized component for performance optimization
+export const TaskTimeline = memo(TaskTimelineComponent, (prevProps, nextProps) => {
+	// Custom comparison: only re-render if tasks or className changed
+	return (
+		prevProps.tasks === nextProps.tasks &&
+		prevProps.className === nextProps.className &&
+		prevProps.onTaskClick === nextProps.onTaskClick
+	);
+});
