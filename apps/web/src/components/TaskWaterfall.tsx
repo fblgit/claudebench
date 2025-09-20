@@ -227,6 +227,11 @@ export function TaskWaterfall({ tasks, onTaskClick, className }: TaskWaterfallPr
 		phaseOrder.forEach((phaseName) => {
 			const phaseTasks = phaseGroups.get(phaseName) || [];
 			
+			// Sort tasks within phase by creation date (newest first)
+			phaseTasks.sort((a, b) => 
+				new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+			);
+			
 			phaseTasks.forEach(task => {
 				const startDate = parseISO(task.createdAt);
 				let endDate = new Date();
