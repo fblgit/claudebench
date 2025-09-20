@@ -491,6 +491,7 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 	};
 
 	const handleTaskDelete = async (taskId: string) => {
+		console.log("handleTaskDelete called with taskId:", taskId);
 		try {
 			await deleteTaskMutation.mutateAsync({ id: taskId });
 			await refetchState();
