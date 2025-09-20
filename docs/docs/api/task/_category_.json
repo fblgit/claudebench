@@ -1,0 +1,10 @@
+{
+  "label": "Task API",
+  "position": 1,
+  "link": {
+    "type": "generated-index",
+    "title": "Task API Reference",
+    "description": "Complete API reference for task management operations in ClaudeBench",
+    "keywords": ["task", "api", "claudebench"]
+  }
+}
