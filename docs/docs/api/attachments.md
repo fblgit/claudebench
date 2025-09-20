@@ -6,11 +6,11 @@ description: Universal key-value storage system for entity-related data
 
 # Attachments System
 
-The Task Attachment system provides a flexible key-value storage mechanism for associating various types of data with tasks. This system replaced the legacy `metadata.data` field, offering better type safety, improved query performance, and support for multiple attachment types.
+The Attachments system provides a flexible key-value storage mechanism for associating various types of data with entities in ClaudeBench. Currently implemented for tasks, this system replaced the legacy `metadata.data` field, offering better type safety, improved query performance, and support for multiple attachment types.
 
 ## Overview
 
-Task attachments are designed to store supplementary data that relates to tasks without cluttering the core task object. Each attachment is uniquely identified by a combination of task ID and key, allowing for efficient retrieval and management of task-related data.
+Attachments are designed to store supplementary data that relates to entities (currently tasks) without cluttering the core objects. Each attachment is uniquely identified by a combination of entity ID and key, allowing for efficient retrieval and management of related data.
 
 ### Key Features
 
