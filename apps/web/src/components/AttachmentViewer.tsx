@@ -318,8 +318,18 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 						<CardContent className="p-0 overflow-hidden">
 							<div className="max-h-[600px] overflow-auto">
 								<DiffView
-									diff={data.diff}
-									diffMode={DiffModeEnum.Split}
+									data={{
+										hunks: [data.diff],
+										oldFile: {
+											fileName: data.files?.[0] || "file",
+											content: ""
+										},
+										newFile: {
+											fileName: data.files?.[0] || "file",
+											content: ""
+										}
+									}}
+									diffMode={DiffModeEnum.Unified}
 									diffViewHighlight={true}
 									diffViewTheme={theme === "dark" ? "dark" : "light"}
 									diffViewWrap={true}
