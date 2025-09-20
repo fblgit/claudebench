@@ -106,42 +106,49 @@ export class EventClient {
 
 		let lastError: Error | undefined;
 		
-		for (let attempt = 0; attempt <= this.config.retries; attempt++) {
-			try {
-				const response = await this.sendRequest(request);
-				
-				if ("error" in response) {
-					throw new JsonRpcError(
-						response.error.message,
-						response.error.code,
-						response.error.data
-					);
-				}
-				
-				return response.result as T;
-			} catch (error) {
-				lastError = error as Error;
-				
-				// Don't retry on certain errors
-				if (error instanceof JsonRpcError) {
-					if (
-						error.code === JsonRpcErrorCodes.METHOD_NOT_FOUND ||
-						error.code === JsonRpcErrorCodes.INVALID_PARAMS ||
-						error.code === JsonRpcErrorCodes.UNAUTHORIZED ||
-						error.code === JsonRpcErrorCodes.HOOK_BLOCKED
-					) {
-						throw error;
+		try {
+			for (let attempt = 0; attempt <= this.config.retries; attempt++) {
+				try {
+					const response = await this.sendRequest(request);
+					
+					if ("error" in response) {
+						throw new JsonRpcError(
+							response.error.message,
+							response.error.code,
+							response.error.data
+						);
+					}
+					
+					return response.result as T;
+				} catch (error) {
+					lastError = error as Error;
+					
+					// Don't retry on certain errors
+					if (error instanceof JsonRpcError) {
+						if (
+							error.code === JsonRpcErrorCodes.METHOD_NOT_FOUND ||
+							error.code === JsonRpcErrorCodes.INVALID_PARAMS ||
+							error.code === JsonRpcErrorCodes.UNAUTHORIZED ||
+							error.code === JsonRpcErrorCodes.HOOK_BLOCKED
+						) {
+							throw error;
+						}
+					}
+					
+					// Wait before retry (exponential backoff)
+					if (attempt < this.config.retries) {
+						await this.sleep(Math.pow(2, attempt) * 1000);
 					}
 				}
-				
-				// Wait before retry (exponential backoff)
-				if (attempt < this.config.retries) {
-					await this.sleep(Math.pow(2, attempt) * 1000);
-				}
+			}
+			
+			throw lastError;
+		} finally {
+			// Restore original timeout
+			if (isLongRunning) {
+				this.config.timeout = originalTimeout;
 			}
 		}
-		
-		throw lastError;
 	}
 
 	/**
