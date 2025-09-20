@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import { format, parseISO, formatDistanceToNow } from "date-fns";
+import { html as diff2html } from "diff2html";
+import "diff2html/bundles/css/diff2html.min.css";
+import "./AttachmentViewer.css";
 import { CodeViewer } from "./CodeEditor";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -66,6 +69,7 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 	const [error, setError] = useState<string | null>(null);
 	const [copied, setCopied] = useState<string | null>(null);
 	const [selectedAttachment, setSelectedAttachment] = useState<Attachment | null>(null);
+	const [diffViewMode, setDiffViewMode] = useState<'line-by-line' | 'side-by-side'>('line-by-line');
 
 	useEffect(() => {
 		fetchAttachments();
@@ -191,7 +195,7 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 		
 		return (
 			<div className="space-y-4">
-				{/* Commit Header */}
+				{/* Commit Information - All in One Card */}
 				<Card>
 					<CardHeader className="pb-3">
 						<CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -199,7 +203,8 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 							Commit Information
 						</CardTitle>
 					</CardHeader>
-					<CardContent className="space-y-3">
+					<CardContent className="space-y-4">
+						{/* Basic Info Row */}
 						<div className="grid grid-cols-2 gap-4">
 							<div>
 								<div className="text-xs text-muted-foreground mb-1">Commit Hash</div>
@@ -218,108 +223,126 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 							</div>
 						</div>
 						
-						{data.timestamp && (
-							<div>
-								<div className="text-xs text-muted-foreground mb-1">Committed</div>
-								<div className="text-sm flex items-center gap-2">
-									<Clock className="h-3 w-3" />
-									{format(new Date(data.timestamp), "PPp")}
-									<span className="text-muted-foreground">
-										({formatDistanceToNow(new Date(data.timestamp), { addSuffix: true })})
-									</span>
+						{/* Timestamp and Tool Row */}
+						{(data.timestamp || data.toolUsed) && (
+							<div className="grid grid-cols-2 gap-4">
+								{data.timestamp && (
+									<div>
+										<div className="text-xs text-muted-foreground mb-1">Committed</div>
+										<div className="text-sm flex items-center gap-2">
+											<Clock className="h-3 w-3" />
+											{format(new Date(data.timestamp), "PPp")}
+											<span className="text-muted-foreground">
+												({formatDistanceToNow(new Date(data.timestamp), { addSuffix: true })})
+											</span>
+										</div>
+									</div>
+								)}
+								{data.toolUsed && (
+									<div>
+										<div className="text-xs text-muted-foreground mb-1">Tool Used</div>
+										<Badge variant="secondary">
+											<Package className="h-3 w-3 mr-1" />
+											{data.toolUsed}
+										</Badge>
+									</div>
+								)}
+							</div>
+						)}
+
+						{/* Files Changed Section */}
+						{data.files && data.files.length > 0 && (
+							<div className="border-t pt-3">
+								<div className="text-xs text-muted-foreground mb-2">
+									Files Changed ({data.files.length})
+								</div>
+								<div className="space-y-1 pl-2">
+									{data.files.map((file: string, idx: number) => (
+										<div key={idx} className="flex items-center gap-2">
+											<FileCode className="h-3 w-3 text-muted-foreground" />
+											<code className="text-sm font-mono">{file}</code>
+										</div>
+									))}
 								</div>
 							</div>
 						)}
 
-						{data.toolUsed && (
-							<div>
-								<div className="text-xs text-muted-foreground mb-1">Tool Used</div>
-								<Badge variant="secondary">
-									<Package className="h-3 w-3 mr-1" />
-									{data.toolUsed}
-								</Badge>
+						{/* Change Statistics */}
+						{data.stats && (
+							<div className="border-t pt-3">
+								<div className="text-xs text-muted-foreground mb-2">Change Statistics</div>
+								<div className="flex gap-4">
+									<div className="flex items-center gap-1">
+										<Plus className="h-3 w-3 text-green-500" />
+										<span className="text-sm">
+											<span className="font-mono font-semibold text-green-600">+{data.stats.additions}</span>
+											<span className="text-muted-foreground ml-1">additions</span>
+										</span>
+									</div>
+									<div className="flex items-center gap-1">
+										<Minus className="h-3 w-3 text-red-500" />
+										<span className="text-sm">
+											<span className="font-mono font-semibold text-red-600">-{data.stats.deletions}</span>
+											<span className="text-muted-foreground ml-1">deletions</span>
+										</span>
+									</div>
+									<div className="flex items-center gap-1">
+										<FileCode className="h-3 w-3 text-blue-500" />
+										<span className="text-sm">
+											<span className="font-mono font-semibold text-blue-600">{data.stats.filesChanged}</span>
+											<span className="text-muted-foreground ml-1">files</span>
+										</span>
+									</div>
+								</div>
 							</div>
 						)}
 					</CardContent>
 				</Card>
 
-				{/* Files Changed */}
-				{data.files && data.files.length > 0 && (
-					<Card>
-						<CardHeader className="pb-3">
-							<CardTitle className="text-sm font-medium flex items-center gap-2">
-								<FileCode className="h-4 w-4" />
-								Files Changed ({data.files.length})
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<div className="space-y-2">
-								{data.files.map((file: string, idx: number) => (
-									<div key={idx} className="flex items-center gap-2">
-										<FileCode className="h-3 w-3 text-muted-foreground" />
-										<code className="text-sm font-mono">{file}</code>
-									</div>
-								))}
-							</div>
-						</CardContent>
-					</Card>
-				)}
-
-				{/* Stats */}
-				{data.stats && (
-					<Card>
-						<CardHeader className="pb-3">
-							<CardTitle className="text-sm font-medium flex items-center gap-2">
-								<FileDiff className="h-4 w-4" />
-								Change Statistics
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<div className="flex gap-6">
-								<div className="flex items-center gap-2">
-									<Plus className="h-4 w-4 text-green-500" />
-									<span className="text-sm">
-										<span className="font-mono font-semibold text-green-600">+{data.stats.additions}</span>
-										<span className="text-muted-foreground ml-1">additions</span>
-									</span>
-								</div>
-								<div className="flex items-center gap-2">
-									<Minus className="h-4 w-4 text-red-500" />
-									<span className="text-sm">
-										<span className="font-mono font-semibold text-red-600">-{data.stats.deletions}</span>
-										<span className="text-muted-foreground ml-1">deletions</span>
-									</span>
-								</div>
-								<div className="flex items-center gap-2">
-									<FileCode className="h-4 w-4 text-blue-500" />
-									<span className="text-sm">
-										<span className="font-mono font-semibold text-blue-600">{data.stats.filesChanged}</span>
-										<span className="text-muted-foreground ml-1">files</span>
-									</span>
-								</div>
-							</div>
-						</CardContent>
-					</Card>
-				)}
-
 				{/* Diff */}
 				{data.diff && (
 					<Card>
 						<CardHeader className="pb-3">
-							<CardTitle className="text-sm font-medium flex items-center gap-2">
-								<FileDiff className="h-4 w-4" />
-								Diff
-							</CardTitle>
+							<div className="flex items-center justify-between">
+								<CardTitle className="text-sm font-medium flex items-center gap-2">
+									<FileDiff className="h-4 w-4" />
+									Diff
+								</CardTitle>
+								<div className="flex gap-1">
+									<Button
+										size="sm"
+										variant={diffViewMode === 'line-by-line' ? 'default' : 'outline'}
+										onClick={() => setDiffViewMode('line-by-line')}
+										className="h-7 text-xs"
+									>
+										Unified
+									</Button>
+									<Button
+										size="sm"
+										variant={diffViewMode === 'side-by-side' ? 'default' : 'outline'}
+										onClick={() => setDiffViewMode('side-by-side')}
+										className="h-7 text-xs"
+									>
+										Split
+									</Button>
+								</div>
+							</div>
 						</CardHeader>
 						<CardContent className="p-0">
-							<CodeViewer
-								value={data.diff}
-								language="diff"
-								height="400px"
-								minimap={false}
-								lineNumbers="off"
-								folding={false}
-								wordWrap="on"
+							<div 
+								className="diff2html-wrapper p-4 overflow-x-auto"
+								style={{
+									maxHeight: '600px',
+									overflowY: 'auto'
+								}}
+								dangerouslySetInnerHTML={{ 
+									__html: diff2html(data.diff, {
+										drawFileList: false,
+										matching: 'lines',
+										outputFormat: diffViewMode,
+										renderNothingWhenEmpty: false
+									})
+								}}
 							/>
 						</CardContent>
 					</Card>

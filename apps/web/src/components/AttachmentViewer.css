@@ -1,0 +1,223 @@
+/* Dark theme overrides for diff2html - using !important to override defaults */
+.dark .diff2html-wrapper {
+  background: transparent !important;
+}
+
+.dark .d2h-wrapper {
+  background: hsl(var(--card)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+}
+
+.dark .d2h-file-wrapper {
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: 0.375rem;
+  overflow: hidden;
+  background: hsl(var(--background)) !important;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1) !important;
+}
+
+.dark .d2h-file-header {
+  background: hsl(var(--muted)) !important;
+  border-bottom: 1px solid hsl(var(--border)) !important;
+  padding: 0.75rem 1rem;
+  color: hsl(var(--foreground)) !important;
+}
+
+.dark .d2h-file-name-wrapper {
+  color: hsl(var(--foreground)) !important;
+  font-weight: 500;
+}
+
+.dark .d2h-file-name {
+  color: hsl(var(--primary)) !important;
+  font-weight: 500;
+}
+
+.dark .d2h-code-wrapper {
+  background: hsl(var(--card) / 0.5) !important;
+  border-radius: 0 0 0.375rem 0.375rem;
+}
+
+.dark .d2h-code-line {
+  background: transparent !important;
+}
+
+.dark .d2h-code-side-linenumber,
+.dark .d2h-code-linenumber {
+  background: hsl(var(--muted) / 0.4) !important;
+  color: hsl(var(--muted-foreground)) !important;
+  border-right: 1px solid hsl(var(--border) / 0.5) !important;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+/* Addition lines - Enhanced green for better visibility */
+.dark .d2h-ins,
+.dark .d2h-ins.d2h-change,
+.dark .d2h-code-line.d2h-ins {
+  background: rgba(46, 160, 67, 0.25) !important;
+  color: hsl(var(--foreground)) !important;
+  border-left: 3px solid rgb(74, 222, 128) !important;
+}
+
+.dark .d2h-ins .d2h-code-line-ctn {
+  background: transparent !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Addition text - brighter green */
+.dark .d2h-ins .d2h-code-line-prefix {
+  color: rgb(74, 222, 128) !important;
+  background: transparent !important;
+}
+
+/* Deletion lines - Enhanced red for better visibility */
+.dark .d2h-del,
+.dark .d2h-del.d2h-change,
+.dark .d2h-code-line.d2h-del {
+  background: rgba(248, 81, 73, 0.25) !important;
+  color: hsl(var(--foreground)) !important;
+  border-left: 3px solid rgb(251, 146, 146) !important;
+}
+
+.dark .d2h-del .d2h-code-line-ctn {
+  background: transparent !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Deletion text - brighter red */
+.dark .d2h-del .d2h-code-line-prefix {
+  color: rgb(251, 146, 146) !important;
+  background: transparent !important;
+}
+
+/* Context lines */
+.dark .d2h-cntx {
+  background: transparent !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.dark .d2h-code-line-ctn {
+  background: transparent !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Side by side specific */
+.dark .d2h-code-side-line {
+  color: hsl(var(--foreground)) !important;
+}
+
+.dark td.d2h-code-side-linenumber {
+  background: hsl(var(--muted)) !important;
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.dark .d2h-code-side-emptyplaceholder,
+.dark .d2h-emptyplaceholder {
+  background: hsl(var(--muted) / 0.3) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+/* Info lines */
+.dark .d2h-info {
+  background: hsl(var(--muted)) !important;
+  color: hsl(var(--muted-foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+/* File diff borders */
+.dark .d2h-file-diff {
+  border-color: hsl(var(--border)) !important;
+}
+
+/* Table elements */
+.dark .d2h-diff-table {
+  background: transparent !important;
+}
+
+.dark .d2h-diff-tbody {
+  background: transparent !important;
+}
+
+.dark tr {
+  background: transparent !important;
+}
+
+.dark .d2h-file-diff {
+  overflow: hidden;
+  border-radius: 0.5rem;
+}
+
+/* Light theme adjustments */
+.diff2html-wrapper {
+  font-size: 13px;
+}
+
+.d2h-file-wrapper {
+  margin-bottom: 1rem;
+}
+
+.d2h-file-wrapper:last-child {
+  margin-bottom: 0;
+}
+
+.d2h-code-wrapper {
+  border-radius: 0;
+}
+
+/* Remove file list styling since we're not using it */
+.d2h-file-list-wrapper {
+  display: none;
+}
+
+/* Improve readability */
+.d2h-code-line {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+/* Better hover states */
+.d2h-code-line:hover {
+  background: hsl(var(--muted) / 0.3);
+}
+
+.dark .d2h-code-line:hover {
+  background: hsl(var(--muted) / 0.2) !important;
+}
+
+/* Plus and minus symbols */
+.dark .d2h-code-line-prefix {
+  font-weight: 600;
+  user-select: none;
+}
+
+.dark .d2h-ins .d2h-code-line-prefix::before {
+  content: "+";
+  color: rgb(74, 222, 128) !important;
+}
+
+.dark .d2h-del .d2h-code-line-prefix::before {
+  content: "-";
+  color: rgb(251, 146, 146) !important;
+}
+
+/* Ensure proper scrolling */
+.diff2html-wrapper {
+  width: 100%;
+}
+
+.d2h-wrapper {
+  width: 100%;
+}
+
+.d2h-file-diff {
+  width: 100%;
+}
+
+/* Side-by-side specific styles */
+.d2h-code-side-line {
+  padding: 0 0.5rem;
+}

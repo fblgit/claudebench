@@ -30,7 +30,6 @@ Practical guides for working with ClaudeBench.
 - [MCP Integration](./mcp-integration) - Integrate with Model Context Protocol
 - [Claude Code Hooks](./claude-hooks) - Setup Claude Code hooks
 - [WebSocket Events](./websocket-events) - Real-time event handling
-- [Git Diff View](./git-diff-view-integration) - Display git diffs with GitHub-style formatting
 
 ## Best Practices
 
