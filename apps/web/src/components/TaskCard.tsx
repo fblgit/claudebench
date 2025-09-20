@@ -193,6 +193,17 @@ export function TaskCard({
 										Mark Complete
 									</DropdownMenuItem>
 								)}
+								{onGenerateContext && (
+									<DropdownMenuItem 
+										onClick={(e) => {
+											e.stopPropagation();
+											onGenerateContext(task.id);
+										}}
+									>
+										<Brain className="h-4 w-4 mr-2" />
+										Generate Context
+									</DropdownMenuItem>
+								)}
 								{instances.length > 0 && onAssign && (
 									<>
 										<DropdownMenuSeparator />
