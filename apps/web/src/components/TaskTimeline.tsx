@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -17,8 +17,12 @@ import {
 	User,
 	Flag,
 	Paperclip,
+	Sparkles,
+	Activity,
+	Timer,
 } from "lucide-react";
 import { format, parseISO, differenceInDays, startOfDay, endOfDay, isWithinInterval, addDays } from "date-fns";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 interface Task {
