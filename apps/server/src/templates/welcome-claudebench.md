@@ -58,24 +58,46 @@ All ClaudeBench handlers are exposed as MCP tools:
 ```
 **Current Queue**: {{ pendingTasks }} pending, {{ inProgressTasks }} in progress
 
-#### Task Attachments
-Tasks support rich attachments for context and results:
+#### Task Attachments (CRITICAL for Task Tracking)
+Tasks **MUST** include attachments for proper documentation and traceability:
 ```javascript
 // Attach data to tasks (key-value store)
 task.create_attachment({
   "taskId": "t-123",
-  "key": "git-commit-abc123",  // Unique key
+  "key": "git-commit-abc123",  // Unique key per task
   "type": "json",              // json, markdown, text, url, binary
-  "value": { /* data */ }       // Attachment content
+  "value": { /* data */ }       // For JSON type
+  "content": "text content"     // For markdown/text types
 })
 ```
 
-**Common Attachment Types**:
-- 📝 **Context** (`context_*`) - Generated AI execution context
-- 🔧 **Git Commits** (`git-commit-*`) - Auto-attached commit metadata
-- 📊 **Results** (`result`) - Task completion details
-- 🔗 **References** (`ref_*`) - Links to related resources
-- 📄 **Documentation** (`doc_*`) - Generated docs or specs
+**Required Attachment Patterns**:
+- 📝 **Context** (`context_*`) - AI-generated execution context for complex tasks
+- 🔧 **Git Commits** (`git-commit-*`) - Automatically attached by git hooks
+- 📊 **Results** (`result`) - MUST be added when completing tasks
+- 📋 **Implementation Notes** (`implementation-notes`) - Progress and approach details
+- 🐛 **Error Details** (`error-details`) - Debugging info for failed tasks
+
+**Example: Complete Task with Attachments**:
+```javascript
+// During work: Add progress notes
+await task.create_attachment({
+  taskId: "t-123",
+  key: "implementation-notes",
+  type: "markdown",
+  content: "# Approach\n- Using React hooks\n- Added error boundaries"
+});
+
+// On completion: Result automatically attached
+await task.complete({
+  taskId: "t-123",
+  result: { 
+    status: "success",
+    filesModified: ["src/App.tsx"],
+    testsAdded: 3
+  }
+});
+```
 
 #### Claiming Tasks
 Workers claim tasks from the queue:
