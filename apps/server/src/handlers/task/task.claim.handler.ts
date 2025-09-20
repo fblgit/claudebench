@@ -100,6 +100,12 @@ export class TaskClaimHandler {
 			console.warn(`[TaskClaim] Failed to list attachments for task ${task.id}:`, error);
 		}
 		
+		// Get result from attachments
+		let resultData = null;
+		if (attachments['result']) {
+			resultData = attachments['result'].value;
+		}
+		
 		// Return complete task details including metadata and attachments
 		return {
 			claimed: true,
@@ -111,7 +117,7 @@ export class TaskClaimHandler {
 				status: "in_progress" as const,
 				assignedTo: input.workerId,
 				metadata: task.metadata ? JSON.parse(task.metadata) : null,
-				result: task.result ? JSON.parse(task.result) : null,
+				result: resultData,
 				error: task.error || null,
 				createdAt: task.createdAt,
 				updatedAt: task.updatedAt || task.createdAt,

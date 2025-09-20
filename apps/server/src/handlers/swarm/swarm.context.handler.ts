@@ -214,7 +214,7 @@ export class SwarmContextHandler {
 			recommendedApproach: (specialistContext as any).recommendedApproach
 		};
 		
-		// MIGRATION PHASE 1: Also store context as attachment
+		// Store context as attachment
 		try {
 			await registry.executeHandler("task.create_attachment", {
 				taskId: input.parentTaskId,
@@ -231,9 +231,9 @@ export class SwarmContextHandler {
 				}
 			}, ctx.metadata?.clientId);
 			
-			console.log(`[SwarmContext] Context ALSO stored as attachment (migration) for subtask ${input.subtaskId}`);
+			console.log(`[SwarmContext] Context stored as attachment for subtask ${input.subtaskId}`);
 		} catch (attachmentError) {
-			// Log but don't fail - context is already processed
+			// Log but don't fail - context is already generated
 			console.warn(`[SwarmContext] Failed to create context attachment:`, attachmentError);
 		}
 		

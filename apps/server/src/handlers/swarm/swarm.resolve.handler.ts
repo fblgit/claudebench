@@ -4,6 +4,7 @@ import { swarmResolveInput, swarmResolveOutput } from "@/schemas/swarm.schema";
 import type { SwarmResolveInput, SwarmResolveOutput } from "@/schemas/swarm.schema";
 import { getSamplingService } from "@/core/sampling";
 import { getRedis } from "@/core/redis";
+import { registry } from "@/core/registry";
 import nunjucks from "nunjucks";
 import { join } from "path";
 
@@ -147,6 +148,28 @@ export class SwarmResolveHandler {
 					}
 				});
 				
+				// Store resolution as attachment
+				try {
+					await registry.executeHandler("task.create_attachment", {
+						taskId: conflict.taskId,
+						key: `resolution_${input.conflictId}`,
+						type: "json",
+						value: {
+							conflictId: input.conflictId,
+							resolution: resolution,
+							solutions: input.solutions,
+							context: input.context,
+							resolvedAt: new Date().toISOString(),
+							resolvedBy: ctx.instanceId
+						}
+					}, ctx.metadata?.clientId);
+					
+					console.log(`[SwarmResolve] Resolution stored as attachment for conflict ${input.conflictId}`);
+				} catch (attachmentError) {
+					// Log but don't fail - resolution is already stored
+					console.warn(`[SwarmResolve] Failed to create resolution attachment:`, attachmentError);
+				}
+				
 				// Publish resolution event
 				await ctx.publish({
 					type: "swarm.resolved",
@@ -241,6 +264,33 @@ export class SwarmResolveHandler {
 				console.error(`[SwarmResolve] Failed to persist to PostgreSQL:`, error);
 				// Continue with Redis storage which already succeeded
 			}
+		}
+		
+		// Store resolution as attachment
+		try {
+			// Find the task ID for this conflict
+			const taskId = conflict.taskId || input.conflictId.split('-')[1]; // Extract from conflict ID if needed
+			
+			if (taskId) {
+				await registry.executeHandler("task.create_attachment", {
+					taskId: taskId,
+					key: `resolution_${input.conflictId}`,
+					type: "json",
+					value: {
+						conflictId: input.conflictId,
+						resolution: resolution,
+						solutions: input.solutions,
+						context: input.context,
+						resolvedAt: new Date().toISOString(),
+						resolvedBy: ctx.instanceId
+					}
+				}, ctx.metadata?.clientId);
+				
+				console.log(`[SwarmResolve] Resolution stored as attachment for conflict ${input.conflictId}`);
+			}
+		} catch (attachmentError) {
+			// Log but don't fail - resolution is already stored
+			console.warn(`[SwarmResolve] Failed to create resolution attachment:`, attachmentError);
 		}
 		
 		// Publish resolution event

@@ -161,7 +161,7 @@ export class SwarmDecomposeHandler {
 			}
 		}
 		
-		// MIGRATION PHASE 1: Also store decomposition as attachment
+		// Store decomposition as attachment
 		try {
 			await registry.executeHandler("task.create_attachment", {
 				taskId: input.taskId,
@@ -188,9 +188,9 @@ export class SwarmDecomposeHandler {
 				}
 			}, ctx.metadata?.clientId);
 			
-			console.log(`[SwarmDecompose] Decomposition ALSO stored as attachment (migration) for task ${input.taskId}`);
+			console.log(`[SwarmDecompose] Decomposition stored as attachment for task ${input.taskId}`);
 		} catch (attachmentError) {
-			// Log but don't fail - decomposition is already in Redis/PostgreSQL
+			// Log but don't fail - decomposition is already stored
 			console.warn(`[SwarmDecompose] Failed to create decomposition attachment:`, attachmentError);
 		}
 		

@@ -97,42 +97,25 @@ export class SwarmSynthesizeHandler {
 	async handle(input: SwarmSynthesizeInput, ctx: EventContext): Promise<SwarmSynthesizeOutput> {
 		const redis = getRedis();
 		
-		// Get decomposition data to understand the original task structure
+		// Get decomposition from attachment
 		let decomposition = null;
-		const decompositionKey = `cb:decomposition:${input.taskId}`;
-		const decompositionData = await redis.pub.hget(decompositionKey, "data");
 		
-		if (decompositionData) {
-			decomposition = JSON.parse(decompositionData);
-		} else if (ctx.prisma) {
-			// Try to fetch from database
-			const dbDecomposition = await ctx.prisma.swarmDecomposition.findUnique({
-				where: { id: input.taskId },
-				include: {
-					subtasks: {
-						include: {
-							progress: {
-								orderBy: { createdAt: "desc" },
-								take: 1
-							}
+		if (ctx.prisma) {
+			try {
+				const decompositionAttachment = await ctx.prisma.taskAttachment.findUnique({
+					where: {
+						taskId_key: {
+							taskId: input.taskId,
+							key: "decomposition"
 						}
 					}
+				});
+				
+				if (decompositionAttachment && decompositionAttachment.value) {
+					decomposition = decompositionAttachment.value;
 				}
-			});
-			
-			if (dbDecomposition) {
-				decomposition = {
-					taskId: dbDecomposition.taskId,
-					taskText: dbDecomposition.taskText,
-					strategy: dbDecomposition.strategy,
-					subtasks: dbDecomposition.subtasks.map(st => ({
-						id: st.id,
-						description: st.description,
-						specialist: st.specialist,
-						dependencies: st.dependencies,
-						status: st.status
-					}))
-				};
+			} catch (error) {
+				console.error(`[SwarmSynthesize] Failed to fetch decomposition attachment:`, error);
 			}
 		}
 		
@@ -216,7 +199,7 @@ export class SwarmSynthesizeHandler {
 			}
 		}
 		
-		// MIGRATION PHASE 1: Also store synthesis as attachment
+		// Store synthesis as attachment
 		try {
 			await registry.executeHandler("task.create_attachment", {
 				taskId: input.taskId,
@@ -233,7 +216,7 @@ export class SwarmSynthesizeHandler {
 				}
 			}, ctx.metadata?.clientId);
 			
-			console.log(`[SwarmSynthesize] Synthesis ALSO stored as attachment (migration) for task ${input.taskId}`);
+			console.log(`[SwarmSynthesize] Synthesis stored as attachment for task ${input.taskId}`);
 		} catch (attachmentError) {
 			// Log but don't fail - synthesis is already stored
 			console.warn(`[SwarmSynthesize] Failed to create synthesis attachment:`, attachmentError);

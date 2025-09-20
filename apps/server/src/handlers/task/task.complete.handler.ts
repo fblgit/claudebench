@@ -117,24 +117,23 @@ export class TaskCompleteHandler {
 				
 				const resultSize = parsedResult ? JSON.stringify(parsedResult).length : 0;
 				
-				// MIGRATION PHASE 1: Store result in BOTH places
-				// Store result directly in the result field for backward compatibility
+				// Store result in database
 				await ctx.prisma.task.update({
 					where: { id: taskId },
 					data: {
 						status: result.status as any,
 						completedAt: new Date(completedAt),
-						result: parsedResult as any, // Keep storing in result field for now
+						result: parsedResult as any,
 						metadata: {
 							...(taskData.metadata ? JSON.parse(taskData.metadata) : {}),
 							duration,
 							completedBy: input.workerId || taskData.assignedTo,
-							resultSize, // Track size for monitoring
+							resultSize,
 						},
 					},
 				});
 				
-				// ALSO store the result as an attachment using the handler
+				// Store the result as an attachment
 				if (parsedResult !== null && parsedResult !== undefined) {
 					try {
 						await registry.executeHandler("task.create_attachment", {
@@ -144,10 +143,10 @@ export class TaskCompleteHandler {
 							value: parsedResult
 						}, ctx.metadata?.clientId);
 						
-						console.log(`Task ${taskId} result ALSO stored as attachment (migration). Size: ${resultSize} bytes`);
+						console.log(`Task ${taskId} result stored as attachment. Size: ${resultSize} bytes`);
 					} catch (attachmentError) {
-						// Log but don't fail - result is already in the result field
-						console.warn(`Failed to create result attachment for migration:`, attachmentError);
+						// Log but don't fail - result is already stored
+						console.warn(`Failed to create result attachment:`, attachmentError);
 					}
 				}
 				
