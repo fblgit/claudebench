@@ -8,6 +8,8 @@ description: Get a specific task attachment by key
 
 Get a specific task attachment by its key. This method retrieves attachment data with automatic caching and fallback mechanisms.
 
+> 📚 **See Also**: [Attachments System Overview](../attachments) for comprehensive documentation on the attachment system, migration guide, and best practices.
+
 ## Request
 
 ### Method
@@ -185,9 +187,15 @@ Get a specific task attachment by its key. This method retrieves attachment data
 - Graceful handling of Redis/PostgreSQL connectivity issues
 - Circuit breaker protection for resilience
 
+## Migration Notice
+
+⚠️ **Important**: As of PR #4, task data storage has migrated from `metadata.data` to this dedicated attachment system. See the [migration guide](../attachments#migration-from-metadata) for transitioning from the legacy approach.
+
 ## Related
 
+- [Attachments System Overview](../attachments) - Comprehensive attachment system guide
 - [task.create_attachment](./create_attachment) - Create a new attachment
 - [task.list_attachments](./list_attachments) - List all attachments for a task
+- [task.get_attachments_batch](./get_attachments_batch) - Batch retrieval of attachments
 - [task.create](./create) - Create a new task
 - [task.update](./update) - Update task details

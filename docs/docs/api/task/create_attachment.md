@@ -8,6 +8,8 @@ description: Add data linked to a task, like a key-value store for tasks
 
 Add data linked to a task, functioning like a key-value store for tasks. This method allows you to attach various types of data including JSON objects, markdown documentation, text content, URLs, and binary references.
 
+> 📚 **See Also**: [Attachments System Overview](../attachments) for comprehensive documentation on the attachment system, migration guide, and best practices.
+
 ## Request
 
 ### Method
@@ -160,6 +162,10 @@ When an attachment is successfully created, an event is published:
 - Requires `mimeType` and optionally `size`
 - Used for referencing files, images, documents
 
+## Migration Notice
+
+⚠️ **Important**: As of PR #4, task data storage has migrated from `metadata.data` to this dedicated attachment system. See the [migration guide](../attachments#migration-from-metadata) for details.
+
 ## Notes
 
 ### Prerequisites
@@ -170,6 +176,7 @@ When an attachment is successfully created, an event is published:
 - Large attachments may impact performance
 - Binary attachments store only references, not actual data
 - PostgreSQL JSON fields can handle up to 1GB of data
+- Avoid using `metadata.data` (deprecated) - use attachments instead
 
 ### Storage
 - Primary storage in Redis for fast access
@@ -185,7 +192,9 @@ When an attachment is successfully created, an event is published:
 
 ## Related
 
+- [Attachments System Overview](../attachments) - Comprehensive attachment system guide
 - [task.get_attachment](./get_attachment) - Get specific attachment by key
 - [task.list_attachments](./list_attachments) - List all attachments for a task
+- [task.get_attachments_batch](./get_attachments_batch) - Batch retrieval of attachments
 - [task.create](./create) - Create a new task
 - [task.complete](./complete) - Mark task as completed

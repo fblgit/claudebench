@@ -1,0 +1,10 @@
+{
+  "label": "Swarm API",
+  "position": 3,
+  "link": {
+    "type": "generated-index",
+    "title": "Swarm API Reference",
+    "description": "Swarm intelligence and task orchestration operations",
+    "keywords": ["swarm", "api", "orchestration", "specialists"]
+  }
+}

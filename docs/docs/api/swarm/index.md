@@ -98,7 +98,7 @@ All swarm operations use ClaudeBench's event-driven architecture with Redis pub/
 
 ```mermaid
 graph TD
-    A[Task: "Add dark mode toggle"] --> B[swarm.decompose]
+    A[Task: Add dark mode toggle] --> B[swarm.decompose]
     B --> C[Frontend Subtask]
     B --> D[Backend Subtask]  
     B --> E[Testing Subtask]

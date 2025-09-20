@@ -1,0 +1,10 @@
+{
+  "label": "Git API",
+  "position": 4,
+  "link": {
+    "type": "generated-index",
+    "title": "Git API Reference",
+    "description": "Git integration and commit tracking operations",
+    "keywords": ["git", "api", "commits", "hooks"]
+  }
+}
