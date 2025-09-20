@@ -5,6 +5,8 @@ ClaudeBench is an event-driven orchestration system that enables AI agents to co
 
 ## 🎯 Quick Start
 
+> **Important:** Always create and claim tasks before working! This ensures visibility and proper tracking of all work in the system.
+
 ### 1. Event Relay
 The event relay monitors all ClaudeBench events in real-time:
 ```bash
