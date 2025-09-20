@@ -221,7 +221,7 @@ export function TaskGantt({ tasks, onTaskClick, className }: TaskGanttProps) {
 			} as GanttTask;
 		});
 
-		// Sort by start date
+		// Sort by start date (oldest first - traditional Gantt order)
 		ganttTasks.sort((a, b) => a.start.getTime() - b.start.getTime());
 
 		return { ganttTasks, taskMap };
