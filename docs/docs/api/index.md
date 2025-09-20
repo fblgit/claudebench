@@ -45,6 +45,11 @@ ClaudeBench organizes events into domains:
 - [system.metrics](./system/metrics) - Get metrics
 - [system.register](./system/register) - Register instance
 
+### Session Domain
+- [session.state.get](./session/state_get) - Retrieve session state and events
+- [session.rehydrate](./session/rehydrate) - Rehydrate session for work continuation
+- [session.snapshot.create](./session/snapshot_create) - Create recovery snapshots
+
 ### Swarm Domain
 - [swarm.decompose](./swarm/decompose) - Decompose complex tasks using LLM intelligence
 - [swarm.context](./swarm/context) - Generate specialized context for subtasks
