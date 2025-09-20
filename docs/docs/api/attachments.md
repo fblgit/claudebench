@@ -1,10 +1,10 @@
 ---
-sidebar_position: 6
-title: Task Attachments
-description: Key-value storage system for task-related data
+sidebar_position: 2
+title: Attachments System
+description: Universal key-value storage system for entity-related data
 ---
 
-# Task Attachments
+# Attachments System
 
 The Task Attachment system provides a flexible key-value storage mechanism for associating various types of data with tasks. This system replaced the legacy `metadata.data` field, offering better type safety, improved query performance, and support for multiple attachment types.
 
