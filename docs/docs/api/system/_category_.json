@@ -1,0 +1,10 @@
+{
+  "label": "System API",
+  "position": 2,
+  "link": {
+    "type": "generated-index",
+    "title": "System API Reference",
+    "description": "System management and monitoring operations",
+    "keywords": ["system", "api", "monitoring", "health"]
+  }
+}
