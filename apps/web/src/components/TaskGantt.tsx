@@ -336,29 +336,36 @@ export function TaskGantt({ tasks, onTaskClick, className }: TaskGanttProps) {
 					</div>
 				</CardHeader>
 				<CardContent className="flex-1 p-0 overflow-hidden">
-					<div className="h-full w-full">
+					<div className="h-full w-full overflow-auto">
 						<Gantt
 							tasks={ganttTasks}
 							viewMode={viewMode}
 							onClick={handleTaskClick}
-							listCellWidth={showTaskList ? "155px" : ""}
-							ganttHeight={Math.max(300, ganttTasks.length * 50)}
+							listCellWidth={showTaskList ? "200px" : ""}
+							ganttHeight={Math.max(400, ganttTasks.length * 46 + 50)}
+							rowHeight={46}
+							headerHeight={50}
 							columnWidth={
 								viewMode === ViewMode.Hour ? 60 :
-								viewMode === ViewMode.Day ? 65 :
-								viewMode === ViewMode.Week ? 250 :
-								350
+								viewMode === ViewMode.Day ? 70 :
+								viewMode === ViewMode.Week ? 280 :
+								400
 							}
-							todayColor="hsl(var(--primary) / 0.1)"
-							barFill={60}
-							barCornerRadius={3}
+							todayColor="rgba(59, 130, 246, 0.1)"
+							barFill={70}
+							barCornerRadius={2}
+							barProgressColor="#059669"
+							barProgressSelectedColor="#047857"
+							barBackgroundColor="#10b981"
+							barBackgroundSelectedColor="#059669"
 							arrowColor="hsl(var(--muted-foreground))"
+							arrowIndent={20}
 							fontFamily="inherit"
-							fontSize="12px"
+							fontSize="11px"
 							TooltipContent={TooltipContent}
 							TaskListHeader={() => showTaskList ? (
-								<div className="border-r">
-									<div className="sticky top-0 bg-background border-b px-4 py-3">
+								<div className="border-r bg-background">
+									<div className="sticky top-0 bg-background border-b px-3 py-2 z-10">
 										<div className="font-medium text-sm">Tasks</div>
 									</div>
 								</div>
