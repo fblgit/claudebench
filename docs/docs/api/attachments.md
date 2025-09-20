@@ -242,9 +242,30 @@ const gitCommits = attachments.filter(a => a.key.startsWith("git-commit-"));
 
 ```
 Key Structure:
-cb:task:{taskId}:attachment:{key}     # Individual attachment data
-cb:task:{taskId}:attachments          # Sorted set index of keys
+cb:task:{taskId}:attachment:{key}     # Individual attachment data (hash)
+cb:task:{taskId}:attachments          # Sorted set index of keys (score=timestamp)
+
+Metrics Keys:
+cb:metrics:attachments                # Global attachment metrics (hash)
+  - created: Total attachments created
+  - cache_hits: Successful cache retrievals  
+  - cache_misses: Cache misses requiring DB fetch
+  - list_queries: Total list operations
+
+cb:metrics:attachments:type           # Per-type usage counters (hash)
+  - json: Count of JSON attachments
+  - markdown: Count of Markdown attachments
+  - text: Count of Text attachments
+  - url: Count of URL attachments
+  - binary: Count of Binary references
 ```
+
+### Caching Strategy
+
+- **Read Cache TTL**: 60 seconds for individual attachments
+- **Batch Operations**: 5-minute cache for batch retrievals
+- **Cache Key**: Based on attachment key hash
+- **Invalidation**: Automatic on update/delete
 
 ### PostgreSQL Schema
 
