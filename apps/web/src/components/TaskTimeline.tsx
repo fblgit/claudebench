@@ -229,63 +229,128 @@ export function TaskTimeline({ tasks, onTaskClick, className }: TaskTimelineProp
 
 	return (
 		<TooltipProvider>
-			<Card className={cn("h-full flex flex-col", className)}>
-				<CardHeader className="pb-3">
-					<CardTitle className="text-sm flex items-center gap-2">
-						<Calendar className="h-4 w-4" />
-						Timeline View
-						<Badge variant="outline" className="ml-auto">
-							{tasks.length} tasks
-						</Badge>
-					</CardTitle>
-				</CardHeader>
-				<CardContent className="flex-1 p-0">
-					<ScrollArea className="h-full">
-						<div className="p-4 min-w-[800px]">
-							{/* Timeline Header with Dates */}
-							<div className="mb-4 relative h-12 border-b">
-								<div className="absolute inset-0 flex">
-									{dateLabels.map((dateInfo, index) => (
-										<div
-											key={index}
-											className="flex-1 text-center border-r last:border-r-0 px-1"
-											style={{ minWidth: `${100 / timelineData.days}%` }}
-										>
-											<div className="text-xs font-medium text-muted-foreground">
-												{dateInfo.dayLabel}
-											</div>
-											<div className="text-xs">
-												{dateInfo.label}
-											</div>
-										</div>
-									))}
-								</div>
-							</div>
+			<motion.div
+				initial={{ opacity: 0, y: 20 }}
+				animate={{ opacity: 1, y: 0 }}
+				transition={{ duration: 0.5 }}
+			>
+				<Card className={cn("h-full flex flex-col overflow-hidden backdrop-blur-sm bg-card/95", className)}>
+					<CardHeader className="pb-3 border-b bg-gradient-to-r from-primary/5 to-accent/5">
+						<CardTitle className="text-sm flex items-center gap-2">
+							<motion.div
+								animate={{ rotate: 360 }}
+								transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+							>
+								<Activity className="h-4 w-4 text-primary" />
+							</motion.div>
+							<span className="font-semibold">Timeline View</span>
+							<Sparkles className="h-3 w-3 text-yellow-500" />
+							<Badge 
+								variant="outline" 
+								className="ml-auto bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20"
+							>
+								<Timer className="h-3 w-3 mr-1" />
+								{tasks.length} tasks
+							</Badge>
+						</CardTitle>
+					</CardHeader>
+					<CardContent className="flex-1 p-0">
+						<ScrollArea className="h-full">
+							<div className="p-6 min-w-[900px]">
+								{/* Enhanced Timeline Header with Dates */}
+								<motion.div 
+									className="mb-6 relative h-16 rounded-lg bg-gradient-to-b from-muted/30 to-muted/10 border-b-2 border-border/50"
+									initial={{ scaleX: 0 }}
+									animate={{ scaleX: 1 }}
+									transition={{ duration: 0.7, ease: "easeOut" }}
+								>
+									<div className="absolute inset-0 flex items-center">
+										{dateLabels.map((dateInfo, index) => (
+											<motion.div
+												key={index}
+												className="flex-1 text-center border-r border-dashed border-muted-foreground/20 last:border-r-0 px-2 py-2"
+												style={{ minWidth: `${100 / timelineData.days}%` }}
+												initial={{ opacity: 0, y: -10 }}
+												animate={{ opacity: 1, y: 0 }}
+												transition={{ delay: index * 0.05, duration: 0.3 }}
+											>
+												<div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+													{dateInfo.dayLabel}
+												</div>
+												<div className="text-sm font-medium">
+													{dateInfo.label}
+												</div>
+											</motion.div>
+										))}
+									</div>
+								</motion.div>
 
-							{/* Swimlanes by Assignee */}
-							<div className="space-y-6">
-								{Array.from(tasksByAssignee.entries()).map(([assignee, assigneeTasks]) => (
-									<div key={assignee} className="space-y-2">
-										{/* Swimlane Header */}
-										<div className="flex items-center gap-2 mb-2">
-											<User className="h-4 w-4 text-muted-foreground" />
-											<span className="text-sm font-medium">{assignee}</span>
-											<Badge variant="outline" className="text-xs">
-												{assigneeTasks.length} tasks
-											</Badge>
-										</div>
-										
-										{/* Timeline Track */}
-										<div className="relative h-20 bg-muted/20 rounded-md border">
-											{/* Grid lines */}
-											<div className="absolute inset-0 flex">
-												{dateLabels.map((_, index) => (
-													<div
-														key={index}
-														className="flex-1 border-r border-dashed border-muted-foreground/20 last:border-r-0"
-													/>
-												))}
+							{/* Enhanced Swimlanes by Assignee */}
+							<div className="space-y-8">
+								<AnimatePresence mode="wait">
+									{Array.from(tasksByAssignee.entries()).map(([assignee, assigneeTasks], swimlaneIndex) => (
+										<motion.div
+											key={assignee}
+											className="space-y-3"
+											initial={{ opacity: 0, x: -50 }}
+											animate={{ opacity: 1, x: 0 }}
+											transition={{ delay: swimlaneIndex * 0.1, duration: 0.5 }}
+											onMouseEnter={() => setHoveredSwimlane(assignee)}
+											onMouseLeave={() => setHoveredSwimlane(null)}
+										>
+											{/* Enhanced Swimlane Header */}
+											<div className="flex items-center gap-3 mb-3">
+												<motion.div
+													className={cn(
+														"p-2 rounded-full",
+														"bg-gradient-to-br from-primary/20 to-accent/20",
+														"border border-primary/30",
+														hoveredSwimlane === assignee && "scale-110"
+													)}
+													whileHover={{ scale: 1.1 }}
+													transition={{ type: "spring", stiffness: 300 }}
+												>
+													<User className="h-4 w-4 text-primary" />
+												</motion.div>
+												<span className="text-sm font-semibold text-foreground">
+													{assignee}
+												</span>
+												<Badge 
+													variant="outline" 
+													className={cn(
+														"text-xs transition-all",
+														"bg-gradient-to-r from-primary/5 to-accent/5",
+														hoveredSwimlane === assignee && "scale-105 shadow-sm"
+													)}
+												>
+													<Activity className="h-3 w-3 mr-1" />
+													{assigneeTasks.length} {assigneeTasks.length === 1 ? "task" : "tasks"}
+												</Badge>
 											</div>
+											
+											{/* Enhanced Timeline Track with Depth */}
+											<motion.div 
+												className={cn(
+													"relative h-24 rounded-lg transition-all duration-300",
+													"bg-gradient-to-b from-muted/10 to-muted/30",
+													"border border-border/50 shadow-sm",
+													hoveredSwimlane === assignee && "shadow-md border-primary/30 bg-gradient-to-b from-primary/5 to-accent/5"
+												)}
+												layout
+											>
+												{/* Enhanced Grid lines with depth */}
+												<div className="absolute inset-0 flex rounded-lg overflow-hidden">
+													{dateLabels.map((_, index) => (
+														<div
+															key={index}
+															className={cn(
+																"flex-1 border-r border-dashed",
+																"border-muted-foreground/10 last:border-r-0",
+																"hover:bg-muted/5 transition-colors"
+															)}
+														/>
+													))}
+												</div>
 											
 											{/* Task Bars */}
 											{assigneeTasks.map((task, taskIndex) => {
@@ -357,9 +422,10 @@ export function TaskTimeline({ tasks, onTaskClick, className }: TaskTimelineProp
 													</Tooltip>
 												);
 											})}
-										</div>
-									</div>
-								))}
+											</motion.div>
+										</motion.div>
+									))}
+								</AnimatePresence>
 							</div>
 
 							{/* Legend */}
@@ -386,6 +452,7 @@ export function TaskTimeline({ tasks, onTaskClick, className }: TaskTimelineProp
 					</ScrollArea>
 				</CardContent>
 			</Card>
+			</motion.div>
 		</TooltipProvider>
 	);
 }
