@@ -50,6 +50,7 @@
     "db:down": "turbo -F server db:down",
     "db:backup": "bun scripts/db-backup.ts",
     "db:restore": "bun scripts/db-restore.ts",
+    "db:flush": "bun scripts/db-flush.ts",
     "test": "turbo test",
     "test:server": "turbo -F server test",
     "test:web": "turbo -F web test",
