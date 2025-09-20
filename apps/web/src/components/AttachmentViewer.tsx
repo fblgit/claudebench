@@ -347,8 +347,7 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 										drawFileList: false,
 										matching: 'lines',
 										outputFormat: diffViewMode,
-										renderNothingWhenEmpty: false,
-										maxLines: 1000
+										renderNothingWhenEmpty: false
 									})
 								}}
 							/>
