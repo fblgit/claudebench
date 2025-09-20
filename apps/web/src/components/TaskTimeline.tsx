@@ -465,25 +465,44 @@ export function TaskTimeline({ tasks, onTaskClick, className }: TaskTimelineProp
 								</AnimatePresence>
 							</div>
 
-							{/* Legend */}
-							<div className="mt-6 flex items-center justify-center gap-4 text-xs">
-								<div className="flex items-center gap-1">
-									<div className="w-3 h-3 bg-gray-400 rounded" />
-									<span>Pending</span>
+							{/* Enhanced Legend */}
+							<motion.div 
+								className="mt-8 p-4 rounded-lg bg-gradient-to-r from-muted/20 to-muted/10 border border-border/50"
+								initial={{ opacity: 0, y: 20 }}
+								animate={{ opacity: 1, y: 0 }}
+								transition={{ delay: 0.5 }}
+							>
+								<div className="flex items-center justify-center gap-6 text-xs">
+									<motion.div 
+										className="flex items-center gap-2"
+										whileHover={{ scale: 1.05 }}
+									>
+										<div className="w-4 h-4 rounded bg-gradient-to-r from-gray-400 to-gray-500 shadow-sm" />
+										<span className="font-medium">Pending</span>
+									</motion.div>
+									<motion.div 
+										className="flex items-center gap-2"
+										whileHover={{ scale: 1.05 }}
+									>
+										<div className="w-4 h-4 rounded bg-gradient-to-r from-blue-500 to-indigo-500 shadow-sm animate-pulse" />
+										<span className="font-medium">In Progress</span>
+									</motion.div>
+									<motion.div 
+										className="flex items-center gap-2"
+										whileHover={{ scale: 1.05 }}
+									>
+										<div className="w-4 h-4 rounded bg-gradient-to-r from-green-500 to-emerald-500 shadow-sm" />
+										<span className="font-medium">Completed</span>
+									</motion.div>
+									<motion.div 
+										className="flex items-center gap-2"
+										whileHover={{ scale: 1.05 }}
+									>
+										<div className="w-4 h-4 rounded bg-gradient-to-r from-red-500 to-rose-500 shadow-sm" />
+										<span className="font-medium">Failed</span>
+									</motion.div>
 								</div>
-								<div className="flex items-center gap-1">
-									<div className="w-3 h-3 bg-blue-500 rounded" />
-									<span>In Progress</span>
-								</div>
-								<div className="flex items-center gap-1">
-									<div className="w-3 h-3 bg-green-500 rounded" />
-									<span>Completed</span>
-								</div>
-								<div className="flex items-center gap-1">
-									<div className="w-3 h-3 bg-red-500 rounded" />
-									<span>Failed</span>
-								</div>
-							</div>
+							</motion.div>
 						</div>
 						<ScrollBar orientation="horizontal" />
 					</ScrollArea>
