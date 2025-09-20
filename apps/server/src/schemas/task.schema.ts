@@ -250,3 +250,17 @@ export const taskGetAttachmentsBatchOutput = z.object({
 
 export type TaskGetAttachmentsBatchInput = z.infer<typeof taskGetAttachmentsBatchInput>;
 export type TaskGetAttachmentsBatchOutput = z.infer<typeof taskGetAttachmentsBatchOutput>;
+
+// task.delete
+export const taskDeleteInput = z.object({
+	id: z.string().min(1),
+});
+
+export const taskDeleteOutput = z.object({
+	id: z.string(),
+	deleted: z.boolean(),
+	deletedAt: z.string().datetime(),
+});
+
+export type TaskDeleteInput = z.infer<typeof taskDeleteInput>;
+export type TaskDeleteOutput = z.infer<typeof taskDeleteOutput>;
