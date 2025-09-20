@@ -559,6 +559,53 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 	};
 
 	const renderAttachmentContent = (attachment: Attachment) => {
+		// Check if this is a special attachment type that needs tabbed view
+		const isGitCommit = attachment.key.startsWith("git-commit-") || attachment.key.startsWith("git_commit_");
+		const isContext = attachment.key.startsWith("context_");
+		const isSpecialAttachment = isGitCommit || isContext;
+
+		// For special attachments (git commits and context), show tabbed view
+		if (isSpecialAttachment && attachment.type === "json" && attachment.value) {
+			return (
+				<Tabs defaultValue="formatted" className="w-full">
+					<TabsList className="grid w-full grid-cols-2">
+						<TabsTrigger value="formatted">
+							<Eye className="h-4 w-4 mr-2" />
+							Formatted
+						</TabsTrigger>
+						<TabsTrigger value="raw">
+							<Code className="h-4 w-4 mr-2" />
+							Raw JSON
+						</TabsTrigger>
+					</TabsList>
+					
+					<TabsContent value="formatted" className="mt-4">
+						<ScrollArea className="h-[600px] pr-4">
+							{isGitCommit && renderGitCommitFormatted(attachment)}
+							{isContext && renderContextFormatted(attachment)}
+						</ScrollArea>
+					</TabsContent>
+					
+					<TabsContent value="raw" className="mt-4">
+						<div className="border rounded-lg overflow-hidden">
+							<CodeViewer
+								value={typeof attachment.value === "string" 
+									? attachment.value 
+									: JSON.stringify(attachment.value, null, 2)}
+								language="json"
+								height="600px"
+								minimap={false}
+								lineNumbers="on"
+								folding={true}
+								wordWrap="on"
+							/>
+						</div>
+					</TabsContent>
+				</Tabs>
+			);
+		}
+
+		// URL attachments
 		if (attachment.type === "url" && attachment.url) {
 			return (
 				<div className="space-y-4">
@@ -588,6 +635,7 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 			);
 		}
 
+		// Regular JSON attachments
 		if (attachment.type === "json" && attachment.value) {
 			const jsonString = typeof attachment.value === "string" 
 				? attachment.value 
@@ -608,6 +656,7 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 			);
 		}
 
+		// Markdown or text attachments
 		if ((attachment.type === "markdown" || attachment.type === "text") && attachment.content) {
 			return (
 				<div className="border rounded-lg overflow-hidden">
@@ -624,6 +673,7 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 			);
 		}
 
+		// Binary attachments
 		if (attachment.type === "binary") {
 			return (
 				<div className="p-4 bg-muted/50 rounded-lg space-y-2">
