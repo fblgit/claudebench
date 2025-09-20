@@ -8,7 +8,7 @@ description: Add data linked to a task, like a key-value store for tasks
 
 Add data linked to a task, functioning like a key-value store for tasks. This method allows you to attach various types of data including JSON objects, markdown documentation, text content, URLs, and binary references.
 
-> 📚 **See Also**: [Task Attachments Overview](./attachments) for comprehensive documentation on the attachment system, migration guide, and best practices.
+> 📚 **See Also**: [Attachments System Overview](../attachments) for comprehensive documentation on the attachment system, migration guide, and best practices.
 
 ## Request
 
@@ -164,7 +164,7 @@ When an attachment is successfully created, an event is published:
 
 ## Migration Notice
 
-⚠️ **Important**: As of PR #4, task data storage has migrated from `metadata.data` to this dedicated attachment system. See the [migration guide](./attachments#migration-from-metadata) for details.
+⚠️ **Important**: As of PR #4, task data storage has migrated from `metadata.data` to this dedicated attachment system. See the [migration guide](../attachments#migration-from-metadata) for details.
 
 ## Notes
 
@@ -192,7 +192,7 @@ When an attachment is successfully created, an event is published:
 
 ## Related
 
-- [Task Attachments Overview](./attachments) - Comprehensive attachment system guide
+- [Attachments System Overview](../attachments) - Comprehensive attachment system guide
 - [task.get_attachment](./get_attachment) - Get specific attachment by key
 - [task.list_attachments](./list_attachments) - List all attachments for a task
 - [task.get_attachments_batch](./get_attachments_batch) - Batch retrieval of attachments
