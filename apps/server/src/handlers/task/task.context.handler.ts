@@ -272,53 +272,9 @@ export class TaskContextHandler {
 	}
 	
 	/**
-	 * Generate the specialist prompt
+	 * Generate the specialist prompt using Nunjucks template
 	 */
 	private generateSpecialistPrompt(context: any): string {
-		// For now, create a structured prompt manually
-		// In production, this would use the nunjucks template
-		let prompt = `You are a ${context.specialist} specialist working on the following task:\n\n`;
-		prompt += `TASK: ${context.description}\n\n`;
-		prompt += `SCOPE: ${context.scope}\n\n`;
-		
-		if (context.customConstraints && context.customConstraints.length > 0) {
-			prompt += `CONSTRAINTS:\n`;
-			context.customConstraints.forEach((c: string) => prompt += `- ${c}\n`);
-			prompt += "\n";
-		}
-		
-		if (context.customRequirements && context.customRequirements.length > 0) {
-			prompt += `REQUIREMENTS:\n`;
-			context.customRequirements.forEach((r: string) => prompt += `- ${r}\n`);
-			prompt += "\n";
-		}
-		
-		if (context.existingFiles && context.existingFiles.length > 0) {
-			prompt += `EXISTING FILES TO CONSIDER:\n`;
-			context.existingFiles.forEach((f: string) => prompt += `- ${f}\n`);
-			prompt += "\n";
-		}
-		
-		if (context.additionalContext) {
-			prompt += `ADDITIONAL CONTEXT:\n${context.additionalContext}\n\n`;
-		}
-		
-		if (context.successCriteria && context.successCriteria.length > 0) {
-			prompt += `SUCCESS CRITERIA:\n`;
-			context.successCriteria.forEach((s: string) => prompt += `- ${s}\n`);
-			prompt += "\n";
-		}
-		
-		if (context.mandatoryReadings && context.mandatoryReadings.length > 0) {
-			prompt += `MANDATORY FILES TO READ:\n`;
-			context.mandatoryReadings.forEach((m: any) => {
-				prompt += `- ${m.path}: ${m.reason}\n`;
-			});
-			prompt += "\n";
-		}
-		
-		prompt += `Please implement this task following the constraints and requirements provided.`;
-		
-		return prompt;
+		return nunjucksEnv.render("task-context-prompt.njk", context);
 	}
 }
