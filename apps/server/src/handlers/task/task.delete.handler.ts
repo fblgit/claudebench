@@ -88,7 +88,7 @@ export class TaskDeleteHandler {
 			},
 			metadata: {
 				instanceId: ctx.instanceId,
-				requestId: ctx.requestId,
+				eventId: ctx.eventId,
 			},
 		});
 		
