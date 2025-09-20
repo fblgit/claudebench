@@ -321,7 +321,7 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 									diff={data.diff}
 									diffMode={DiffModeEnum.Split}
 									diffViewHighlight={true}
-									diffViewTheme="light"
+									diffViewTheme={theme === "dark" ? "dark" : "light"}
 									diffViewWrap={true}
 									diffViewFontSize={13}
 								/>
