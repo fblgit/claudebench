@@ -146,8 +146,16 @@ export function AttachmentViewer({ taskId, className }: AttachmentViewerProps) {
 		}
 	};
 
-	const getTypeColor = (type: string) => {
-		switch (type) {
+	const getTypeColor = (attachment: Attachment) => {
+		// Check for special attachment types by key pattern
+		if (attachment.key.startsWith("git-commit-") || attachment.key.startsWith("git_commit_")) {
+			return "bg-amber-500/10 text-amber-600 border-amber-500/20";
+		}
+		if (attachment.key.startsWith("context_")) {
+			return "bg-violet-500/10 text-violet-600 border-violet-500/20";
+		}
+		
+		switch (attachment.type) {
 			case "json":
 				return "bg-blue-500/10 text-blue-600 border-blue-500/20";
 			case "markdown":
