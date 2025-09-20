@@ -58,6 +58,10 @@ export function ContextGenerationDialog({
 }: ContextGenerationDialogProps) {
 	const [specialist, setSpecialist] = useState<string>("general");
 	const [customDescription, setCustomDescription] = useState("");
+	const [constraints, setConstraints] = useState("");
+	const [requirements, setRequirements] = useState("");
+	const [existingFiles, setExistingFiles] = useState("");
+	const [additionalContext, setAdditionalContext] = useState("");
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [generatedContext, setGeneratedContext] = useState<any>(null);
 	const [error, setError] = useState<string | null>(null);
