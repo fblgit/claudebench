@@ -199,9 +199,6 @@ export class StateProcessor {
 		}
 	}
 
-	// Removed updateSessionState, updateCondensedContext, and getSessionEventCount
-	// These are now handled atomically in the PROCESS_HOOK_EVENT Lua script
-
 	async createSnapshot(sessionId: string, reason: string): Promise<string> {
 		const snapshotId = `snap-${sessionId}-${Date.now()}`;
 
@@ -251,10 +248,6 @@ export class StateProcessor {
 
 		return snapshotId;
 	}
-
-	// Removed buildCondensedContext - now handled by BUILD_SESSION_CONTEXT Lua script
-
-	// Removed updateMetrics - now handled atomically in PROCESS_HOOK_EVENT and UPDATE_SESSION_METRICS
 
 	// Public method to get session context
 	async getSessionContext(sessionId: string): Promise<SessionContext | null> {
