@@ -666,6 +666,130 @@ export class RedisScriptExecutor {
 		
 		return specialists;
 	}
+	
+	/**
+	 * Process hook event atomically
+	 * Stores event, updates state, and context in one operation
+	 */
+	async processHookEvent(event: {
+		eventId: string;
+		eventType: string;
+		sessionId: string;
+		instanceId: string;
+		timestamp: number;
+		params: any;
+		result: any;
+		labels: string[];
+	}): Promise<{
+		streamEntry: string;
+		eventCount: number;
+		needsSnapshot: boolean;
+	}> {
+		const result = await this.redis.stream.eval(
+			scripts.PROCESS_HOOK_EVENT,
+			5,
+			redisKey("stream", "session", event.sessionId),
+			redisKey("session", "state", event.sessionId),
+			redisKey("session", "context", event.sessionId),
+			redisKey("session", "tools", event.sessionId),
+			redisKey("metrics", "session", event.sessionId),
+			event.eventId,
+			event.eventType,
+			event.sessionId,
+			event.instanceId,
+			event.timestamp.toString(),
+			JSON.stringify(event.params),
+			JSON.stringify(event.result),
+			JSON.stringify(event.labels)
+		) as [string, number, number];
+		
+		return {
+			streamEntry: result[0],
+			eventCount: result[1],
+			needsSnapshot: result[2] === 1,
+		};
+	}
+	
+	/**
+	 * Build session context atomically
+	 * Aggregates session data for quick retrieval
+	 */
+	async buildSessionContext(
+		sessionId: string,
+		limit: number = 100
+	): Promise<any> {
+		const contextJson = await this.redis.stream.eval(
+			scripts.BUILD_SESSION_CONTEXT,
+			4,
+			redisKey("stream", "session", sessionId),
+			redisKey("session", "context", sessionId),
+			redisKey("session", "tools", sessionId),
+			redisKey("session", "tasks", sessionId),
+			sessionId,
+			limit.toString()
+		) as string;
+		
+		return JSON.parse(contextJson);
+	}
+	
+	/**
+	 * Create session snapshot atomically
+	 * Captures current state for recovery
+	 */
+	async createSessionSnapshot(
+		sessionId: string,
+		snapshotId: string,
+		reason: string
+	): Promise<{
+		success: boolean;
+		snapshotId: string;
+		eventCount: number;
+	}> {
+		const result = await this.redis.stream.eval(
+			scripts.CREATE_SESSION_SNAPSHOT,
+			3,
+			redisKey("stream", "session", sessionId),
+			redisKey("snapshot", sessionId, snapshotId),
+			redisKey("session", "state", sessionId),
+			sessionId,
+			snapshotId,
+			reason,
+			Date.now().toString()
+		) as [number, string, number];
+		
+		return {
+			success: result[0] === 1,
+			snapshotId: result[1],
+			eventCount: result[2],
+		};
+	}
+	
+	/**
+	 * Update session metrics atomically
+	 * Tracks event counts and timing
+	 */
+	async updateSessionMetrics(
+		sessionId: string,
+		hookType: string
+	): Promise<{
+		eventCount: number;
+		totalCount: number;
+	}> {
+		const result = await this.redis.stream.eval(
+			scripts.UPDATE_SESSION_METRICS,
+			2,
+			redisKey("metrics", "session", sessionId),
+			redisKey("metrics", "global", "hooks"),
+			sessionId,
+			hookType,
+			Date.now().toString()
+		) as [number, number];
+		
+		return {
+			eventCount: result[0],
+			totalCount: result[1],
+		};
+	}
 }
 
 export const redisScripts = new RedisScriptExecutor();
