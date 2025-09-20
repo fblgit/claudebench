@@ -512,3 +512,13 @@ function TaskTimelineComponent({ tasks, onTaskClick, className }: TaskTimelinePr
 		</TooltipProvider>
 	);
 }
+
+// Export memoized component for performance optimization
+export const TaskTimeline = memo(TaskTimelineComponent, (prevProps, nextProps) => {
+	// Custom comparison: only re-render if tasks or className changed
+	return (
+		prevProps.tasks === nextProps.tasks &&
+		prevProps.className === nextProps.className &&
+		prevProps.onTaskClick === nextProps.onTaskClick
+	);
+});
