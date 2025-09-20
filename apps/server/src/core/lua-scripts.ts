@@ -1821,3 +1821,52 @@ redis.call('expire', global_metrics, 604800)  -- 7 days
 
 return {event_count, total_count}
 `;
+
+/**
+ * Delete task atomically
+ * Removes task from all queues and data structures
+ */
+export const DELETE_TASK = `
+local task_key = KEYS[1]           -- cb:task:{taskId}
+local global_queue = KEYS[2]       -- cb:queue:tasks:pending
+local metrics_key = KEYS[3]        -- cb:metrics:task.delete
+local task_id = ARGV[1]
+local timestamp = ARGV[2]
+
+-- Check if task exists
+local task_exists = redis.call('exists', task_key)
+if task_exists == 0 then
+  return {0, 'Task not found'}
+end
+
+-- Get task status before deletion for metrics
+local task_status = redis.call('hget', task_key, 'status')
+local assigned_to = redis.call('hget', task_key, 'assignedTo')
+
+-- Remove from global queue if pending
+if task_status == 'pending' then
+  redis.call('zrem', global_queue, task_id)
+end
+
+-- Remove from worker queue if assigned
+if assigned_to then
+  local worker_queue = 'cb:queue:instance:' .. assigned_to
+  redis.call('lrem', worker_queue, 0, task_id)
+end
+
+-- Delete attachments if any
+local attachment_keys = redis.call('keys', 'cb:attachment:' .. task_id .. ':*')
+if #attachment_keys > 0 then
+  redis.call('del', unpack(attachment_keys))
+end
+
+-- Delete the task
+redis.call('del', task_key)
+
+-- Update metrics
+redis.call('hincrby', metrics_key, 'total', 1)
+redis.call('hincrby', metrics_key, task_status or 'unknown', 1)
+redis.call('hset', metrics_key, 'lastDeleted', timestamp)
+
+return {1, task_id}
+`;
