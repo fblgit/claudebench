@@ -77,12 +77,13 @@
 .dark .d2h-del,
 .dark .d2h-del.d2h-change,
 .dark .d2h-code-line.d2h-del {
-  background: rgba(248, 81, 73, 0.20) !important;
+  background: rgba(248, 81, 73, 0.25) !important;
   color: hsl(var(--foreground)) !important;
+  border-left: 3px solid rgb(251, 146, 146) !important;
 }
 
 .dark .d2h-del .d2h-code-line-ctn {
-  background: rgba(248, 81, 73, 0.08) !important;
+  background: transparent !important;
   color: hsl(var(--foreground)) !important;
 }
 
