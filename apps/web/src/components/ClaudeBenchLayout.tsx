@@ -40,6 +40,13 @@ export function ClaudeBenchLayout({ children }: ClaudeBenchLayoutProps) {
       ),
     },
     {
+      label: "Projects",
+      href: "/projects",
+      icon: (
+        <IconFolders className="text-neutral-700 dark:text-neutral-200 h-5 w-5 shrink-0" />
+      ),
+    },
+    {
       label: "Events",
       href: "/events",
       icon: (
