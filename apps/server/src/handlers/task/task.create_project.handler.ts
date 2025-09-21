@@ -194,13 +194,16 @@ export class TaskCreateProjectHandler {
 			const createdTaskIds: string[] = [];
 			const subtaskMapping: Record<string, string> = {}; // Map subtask IDs to task IDs
 			
+			// Calculate cascading priorities with -5 decrement
+			let currentPriority = input.priority - 5; // Start 5 below parent task
+			
 			// First pass: Create all tasks and build mapping
 			for (const subtask of decomposeResult.decomposition.subtasks) {
 				try {
-					// Create a task for each subtask (dependencies will be updated later)
+					// Create a task for each subtask with cascading priority
 					const subtaskResult = await registry.executeHandler("task.create", {
 						text: subtask.description,
-						priority: Math.max(10, input.priority - 10), // Slightly lower priority than parent
+						priority: Math.max(5, currentPriority), // Ensure minimum priority of 5
 						metadata: {
 							type: "subtask",
 							projectId: projectId,
