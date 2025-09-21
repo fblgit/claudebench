@@ -232,8 +232,6 @@ export const swarmWorker = new Worker<SwarmJob>(
 					});
 					
 					// Step 1: Create main task
-					// Generate unique task ID to avoid collisions on retries
-					const taskId = `t-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 					const ctx = await createContext("swarm.create_project", projectId, true, { 
 						sessionId, 
 						clientId: sessionId,
@@ -247,10 +245,12 @@ export const swarmWorker = new Worker<SwarmJob>(
 						metadata: {
 							...metadata,
 							projectId,
-							taskId,
 							type: "swarm_project"
 						}
 					}, sessionId || instanceId);
+					
+					// Use the actual task ID returned by task.create
+					const taskId = taskResult.id;
 					
 					// Emit decomposing event
 					await eventBus.publish({
@@ -371,27 +371,23 @@ export const swarmWorker = new Worker<SwarmJob>(
 								parentTaskId: taskId
 							}, sessionId || instanceId);
 							
-							// Update the corresponding task with the generated context
+							// Store context as attachment to the subtask instead of updating metadata
 							if (createdSubtaskIds[i]) {
-								// First get the current task to preserve existing metadata
-								const taskKey = `cb:task:${createdSubtaskIds[i]}`;
-								const currentTaskData = await redis.pub.hgetall(taskKey);
-								const existingMetadata = currentTaskData.metadata ? JSON.parse(currentTaskData.metadata) : {};
-								
-								await registry.executeHandler("task.update", {
-									id: createdSubtaskIds[i],
-									updates: {
-										metadata: {
-											...existingMetadata,  // Preserve all existing metadata
-											generatedContext: contextResult.context,
-											contextPrompt: contextResult.prompt,
-											contextGeneratedAt: new Date().toISOString(),
-											contextGeneratedBy: instanceId
-										}
+								await registry.executeHandler("task.create_attachment", {
+									taskId: createdSubtaskIds[i],
+									key: `swarm_subtask_context_${subtask.specialist}`,
+									type: "json",
+									value: {
+										subtaskId: subtask.id,
+										specialist: subtask.specialist,
+										context: contextResult.context,
+										prompt: contextResult.prompt,
+										generatedAt: new Date().toISOString(),
+										generatedBy: instanceId
 									}
 								}, sessionId || instanceId);
 								
-								console.log(`[SwarmWorker] Updated task ${createdSubtaskIds[i]} with context for subtask ${subtask.id}`);
+								console.log(`[SwarmWorker] Created swarm subtask context attachment for task ${createdSubtaskIds[i]} (subtask ${subtask.id})`);
 							}
 							
 							contextCount++;
