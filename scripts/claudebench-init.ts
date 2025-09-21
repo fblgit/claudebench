@@ -264,47 +264,122 @@ async function setupRelay(config: ProjectConfig, projectDir: string) {
 	writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
 	console.log(`${c.green}✅${c.reset} Added 'relay' script to package.json`);
 	
-	// Create a simple relay.ts wrapper for bun
+	// Create a relay.ts wrapper that properly configures the Python relay
 	const relayTsPath = join(projectDir, ".claude", "relay.ts");
 	const relayTsContent = `#!/usr/bin/env bun
-// ClaudeBench Event Relay Wrapper
-// Run with: bun relay
+/**
+ * ClaudeBench Event Relay Wrapper
+ * 
+ * This runs the Python relay with proper configuration for this project.
+ * The Python relay handles:
+ * - Filtering events from own instance to reduce noise
+ * - Subscribing to relevant Redis channels
+ * - Auto-reconnection and heartbeats
+ * - Forwarding events to Claude Code via stdout
+ */
 
 import { spawn } from "child_process";
 import { resolve } from "path";
 
+// Load project configuration
 const config = JSON.parse(await Bun.file(".claudebench.json").text());
+
+// Instance ID priority: CLI arg > ENV > config > default
 const instanceId = process.argv[2] || process.env.CLAUDE_INSTANCE_ID || config.instanceId || "worker-1";
 
-console.log(\`🚀 Starting Event Relay for \${config.projectName}\`);
-console.log(\`   Instance: \${instanceId}\`);
+// Session ID for this relay session
+const sessionId = \`session-\${Date.now()}\`;
+
+// Extract Redis URL from server URL (same logic as Python relay)
+function getRedisUrl(serverUrl: string): string {
+	if (serverUrl.includes("localhost") || serverUrl.includes("127.0.0.1")) {
+		return "redis://localhost:6379/0";
+	}
+	const url = new URL(serverUrl);
+	return \`redis://\${url.hostname}:6379/0\`;
+}
+
+// Extract RPC URL from server URL
+function getRpcUrl(serverUrl: string): string {
+	return \`\${serverUrl}/rpc\`;
+}
+
+// Display startup banner
+console.log(\`
+╔══════════════════════════════════════════════════════════╗
+║           Claude Event Relay for ClaudeBench            ║
+║                                                          ║
+║  Project: \${config.projectName.padEnd(46)}\` + \`║
+║  Instance: \${instanceId.padEnd(45)}\` + \`║  
+╚══════════════════════════════════════════════════════════╝
+\`);
+
+console.log(\`🚀 Starting Event Relay\`);
+console.log(\`   Instance ID: \${instanceId}\`);
+console.log(\`   Session ID: \${sessionId}\`);
 console.log(\`   Server: \${config.server}\`);
+console.log(\`   Redis: \${getRedisUrl(config.server)}\`);
 console.log(\`   Press Ctrl+C to stop\\n\`);
 
+// Spawn the Python relay with full configuration
+// The Python script will handle all the complex logic including:
+// - Self-filtering (lines 106-128 in Python script)
+// - Redis pub/sub subscriptions
+// - Auto-reconnection
+// - Heartbeats to maintain registration
 const relay = spawn("python3", [resolve(import.meta.dir, "relay.py")], {
 	env: {
 		...process.env,
+		// Core configuration
 		CLAUDE_INSTANCE_ID: instanceId,
-		CLAUDEBENCH_SERVER: config.server,
+		CLAUDE_SESSION_ID: sessionId,
+		CLAUDEBENCH_RPC_URL: getRpcUrl(config.server),
+		REDIS_URL: getRedisUrl(config.server),
+		
+		// Relay configuration
+		RELAY_ROLES: "general,backend,frontend,docs,tests,relay",
+		HEARTBEAT_INTERVAL: "15",
+		EVENT_CHANNELS: "task.*,hook.*,system.*,instance.*",
+		
+		// Enable debug if requested
+		DEBUG: process.env.DEBUG || "false",
+		
+		// Ensure Python outputs immediately
 		PYTHONUNBUFFERED: "1",
 	},
-	stdio: "inherit",
+	stdio: "inherit", // Pass through all I/O
 });
 
+// Handle graceful shutdown
 process.on("SIGINT", () => {
-	console.log("\\n⏹️  Stopping relay...");
+	console.log("\\n⏹️  Shutting down relay gracefully...");
 	relay.kill("SIGINT");
+	// Give Python time to cleanup
+	setTimeout(() => process.exit(0), 1000);
+});
+
+process.on("SIGTERM", () => {
+	relay.kill("SIGTERM");
 	process.exit(0);
 });
 
+// Handle relay errors
 relay.on("error", (err) => {
 	console.error("❌ Failed to start relay:", err);
-	console.error("Make sure Python 3 is installed");
+	console.error("\\nTroubleshooting:");
+	console.error("1. Ensure Python 3.7+ is installed: python3 --version");
+	console.error("2. Install Redis client: pip3 install redis");
+	console.error("3. Check relay script exists: ls .claude/relay.py");
 	process.exit(1);
 });
 
-relay.on("exit", (code) => {
+// Handle relay exit
+relay.on("exit", (code, signal) => {
 	if (code !== 0 && code !== null) {
+		console.error(\`\\n❌ Relay exited with code \${code}\`);
+		if (signal) {
+			console.error(\`   Signal: \${signal}\`);
+		}
 		process.exit(code);
 	}
 });
