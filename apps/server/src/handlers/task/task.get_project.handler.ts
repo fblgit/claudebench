@@ -43,7 +43,10 @@ export class TaskGetProjectHandler {
 		// If only projectId provided, get parentTaskId from Redis
 		if (projectId && !parentTaskId) {
 			const projectKey = `cb:project:${projectId}`;
-			parentTaskId = await redis.pub.hget(projectKey, "parentTaskId");
+			const redisTaskId = await redis.pub.hget(projectKey, "parentTaskId");
+			if (redisTaskId) {
+				parentTaskId = redisTaskId;
+			}
 			if (!parentTaskId) {
 				// Fallback to PostgreSQL
 				const projectTask = await ctx.prisma.task.findFirst({
