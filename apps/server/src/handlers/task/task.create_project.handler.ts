@@ -194,9 +194,10 @@ export class TaskCreateProjectHandler {
 			const createdTaskIds: string[] = [];
 			const subtaskMapping: Record<string, string> = {}; // Map subtask IDs to task IDs
 			
+			// First pass: Create all tasks and build mapping
 			for (const subtask of decomposeResult.decomposition.subtasks) {
 				try {
-					// Create a task for each subtask
+					// Create a task for each subtask (dependencies will be updated later)
 					const subtaskResult = await registry.executeHandler("task.create", {
 						text: subtask.description,
 						priority: Math.max(10, input.priority - 10), // Slightly lower priority than parent
@@ -208,7 +209,7 @@ export class TaskCreateProjectHandler {
 							specialist: subtask.specialist,
 							complexity: subtask.complexity,
 							estimatedMinutes: subtask.estimatedMinutes,
-							dependencies: subtask.dependencies,
+							dependencies: [], // Will be updated with real task IDs
 							context: subtask.context,
 							sessionId: sessionId
 						}
