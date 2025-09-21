@@ -89,12 +89,10 @@ export class TaskGetProjectHandler {
 						}
 					},
 					{
-						// Exclude parent tasks - they have isParentTask: true
-						NOT: {
-							metadata: {
-								path: ["isParentTask"],
-								equals: true
-							}
+						// Only include actual subtasks - they have type: "subtask"
+						metadata: {
+							path: ["type"],
+							equals: "subtask"
 						}
 					}
 				]
@@ -112,7 +110,7 @@ export class TaskGetProjectHandler {
 			orderBy: { createdAt: "asc" }
 		});
 		
-		// No need to filter anymore since we excluded parent tasks in the query
+		// Subtasks are already filtered by type
 		const actualSubtasks = subtasks;
 		
 		// Get project metadata from Redis cache or attachments
