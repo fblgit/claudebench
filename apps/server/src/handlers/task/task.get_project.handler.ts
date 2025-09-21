@@ -78,30 +78,35 @@ export class TaskGetProjectHandler {
 			throw new Error(`Parent task ${parentTaskId} not found`);
 		}
 		
-		// Debug: Log what we're querying with
-		console.log(`[TaskGetProject] About to query subtasks with projectId: '${projectId}', parentTaskId: '${parentTaskId}'`);
-		console.log(`[TaskGetProject] projectId type: ${typeof projectId}, value: ${JSON.stringify(projectId)}`);
-		
-		// Fetch all subtasks for this project
-		const subtasks = await ctx.prisma.task.findMany({
-			where: {
-				metadata: {
-					path: ["projectId"],
-					equals: projectId
-				}
-			},
-			include: {
-				attachments: {
-					where: {
-						key: {
-							startsWith: "subtask_context"
-						}
-					},
-					orderBy: { createdAt: "desc" }
-				}
-			},
-			orderBy: { createdAt: "asc" }
-		});
+		// Use raw query because Prisma's JSON path queries are unreliable
+		const subtasks = await ctx.prisma.$queryRaw`
+			SELECT 
+				t.*,
+				COALESCE(
+					json_agg(
+						json_build_object(
+							'id', a.id,
+							'taskId', a."taskId",
+							'key', a.key,
+							'type', a.type,
+							'value', a.value,
+							'content', a.content,
+							'url', a.url,
+							'size', a.size,
+							'mimeType', a."mimeType",
+							'createdBy', a."createdBy",
+							'createdAt', a."createdAt",
+							'updatedAt', a."updatedAt"
+						) ORDER BY a."createdAt" DESC
+					) FILTER (WHERE a.key LIKE 'subtask_context%'),
+					'[]'::json
+				) as attachments
+			FROM "Task" t
+			LEFT JOIN "TaskAttachment" a ON t.id = a."taskId" AND a.key LIKE 'subtask_context%'
+			WHERE t.metadata->>'projectId' = ${projectId}
+			GROUP BY t.id, t.text, t.status, t.priority, t."assignedTo", t.result, t.error, t.metadata, t."createdAt", t."updatedAt", t."completedAt"
+			ORDER BY t."createdAt" ASC
+		` as any[];
 		
 		// Filter out the parent task from subtasks
 		const actualSubtasks = subtasks.filter(t => t.id !== parentTaskId);
