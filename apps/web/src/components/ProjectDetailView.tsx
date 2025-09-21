@@ -72,6 +72,10 @@ export function ProjectDetailView({
 		}
 	);
 
+	// Debug logging
+	console.log("ProjectDetailView props:", { projectId, taskId });
+	console.log("ProjectDetailView data:", data);
+
 	// Mutations
 	const updateTaskMutation = useEventMutation("task.update");
 	const completeTaskMutation = useEventMutation("task.complete");
