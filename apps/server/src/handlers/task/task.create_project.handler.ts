@@ -285,7 +285,7 @@ export class TaskCreateProjectHandler {
 				const subtaskTaskId = subtaskMapping[subtask.id];
 				if (subtaskTaskId) {
 					dependencyMapping[subtaskTaskId] = subtask.dependencies
-						.map(depId => subtaskMapping[depId])
+						.map((depId: string) => subtaskMapping[depId])
 						.filter(Boolean);
 				}
 			}
