@@ -670,7 +670,9 @@ export function CircuitBreaker(options: CircuitBreakerOptions) {
 				if (newErrorCount >= options.threshold && state !== "OPEN") {
 					// Open circuit with backoff
 					const attempt = await redis.incr(backoffAttemptKey);
-					const backoffTimeout = Math.floor(options.timeout * Math.pow(backoffMultiplier, attempt - 1));
+					const MAX_TIMEOUT = 300000; // Cap at 5 minutes (300000ms)
+					const calculatedTimeout = options.timeout * Math.pow(backoffMultiplier, attempt - 1);
+					const backoffTimeout = Math.min(Math.floor(calculatedTimeout), MAX_TIMEOUT);
 					
 					// Track backoff multiplier for tests
 					const backoffMultiplierKey = `cb:circuit:backoff:multiplier`;
