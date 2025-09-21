@@ -6,7 +6,7 @@
  * Run this from any project directory to connect it with ClaudeBench
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, copyFileSync } from "fs";
 import { join, resolve, basename } from "path";
 import { homedir } from "os";
 import readline from "readline/promises";
