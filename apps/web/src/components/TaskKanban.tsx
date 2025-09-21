@@ -857,15 +857,15 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 						onDragEnd={handleDragEnd}
 					>
 						<div 
-							className="grid gap-4 h-full"
+							className="grid gap-6 h-full"
 							style={{
 								gridTemplateColumns: groupByProject
-									? `repeat(${Math.min(filteredColumns.length, 4)}, minmax(0, 1fr))`
-									: "repeat(4, minmax(0, 1fr))"
+									? `repeat(${Math.min(filteredColumns.length, 4)}, minmax(320px, 1fr))`
+									: "repeat(4, minmax(320px, 1fr))"
 							}}>
 							{filteredColumns.map((column) => (
 								<div key={column.id} className="flex flex-col h-full">
-									<Card className="flex-1 flex flex-col">
+									<Card className="flex-1 flex flex-col min-w-[320px]">
 										<CardHeader className="pb-3">
 											<CardTitle className="text-sm flex items-center justify-between">
 												<div className={`flex items-center gap-2 ${column.color}`}>
