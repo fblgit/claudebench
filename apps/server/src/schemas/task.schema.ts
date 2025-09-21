@@ -330,13 +330,11 @@ export const taskDecomposeOutput = z.object({
 				patterns: z.array(z.string()),
 				constraints: z.array(z.string()),
 			}),
-			estimatedMinutes: z.number(),
-			rationale: z.string().optional(),
+			estimatedMinutes: z.number()
 		})),
 		executionStrategy: z.enum(["parallel", "sequential", "mixed"]),
 		totalComplexity: z.number(),
-		reasoning: z.string(),
-		architecturalConsiderations: z.array(z.string()).optional(),
+		reasoning: z.string()
 	}),
 	attachmentKey: z.string(),
 });
