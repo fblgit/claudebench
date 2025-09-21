@@ -93,19 +93,11 @@ export class TaskGetProjectHandler {
 			orderBy: { createdAt: "asc" }
 		});
 		
-		console.log(`[TaskGetProject] Found ${allTasks.length} total tasks, filtering for projectId='${projectId}'`);
-		
 		// Filter for tasks belonging to this project
 		const subtasks = allTasks.filter(task => {
 			const metadata = task.metadata as any;
-			const matches = metadata && metadata.projectId === projectId;
-			if (metadata?.projectId) {
-				console.log(`[TaskGetProject] Task ${task.id} has projectId='${metadata.projectId}', matches=${matches}`);
-			}
-			return matches;
+			return metadata && metadata.projectId === projectId;
 		});
-		
-		console.log(`[TaskGetProject] Found ${subtasks.length} tasks with projectId='${projectId}'`);
 		
 		// Filter out the parent task from subtasks
 		const actualSubtasks = subtasks.filter(t => t.id !== parentTaskId);
