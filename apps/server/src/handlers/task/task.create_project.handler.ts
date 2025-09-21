@@ -241,6 +241,44 @@ export class TaskCreateProjectHandler {
 				}
 			}
 			
+			// Second pass: Update dependencies with real task IDs
+			for (const subtask of decomposeResult.decomposition.subtasks) {
+				const taskId = subtaskMapping[subtask.id];
+				if (!taskId) continue;
+				
+				// Map subtask dependencies to real task IDs
+				const realDependencies = subtask.dependencies
+					.map(depId => subtaskMapping[depId])
+					.filter(Boolean); // Remove any unmapped dependencies
+				
+				if (realDependencies.length > 0) {
+					try {
+						// Update the task with real dependency IDs
+						await registry.executeHandler("task.update", {
+							id: taskId,
+							updates: {
+								metadata: {
+									type: "subtask",
+									projectId: projectId,
+									parentTaskId: taskId,
+									subtaskId: subtask.id,
+									specialist: subtask.specialist,
+									complexity: subtask.complexity,
+									estimatedMinutes: subtask.estimatedMinutes,
+									dependencies: realDependencies, // Real task IDs
+									context: subtask.context,
+									sessionId: sessionId
+								}
+							}
+						}, ctx.metadata?.clientId);
+						
+						console.log(`[TaskCreateProject] Updated task ${taskId} with ${realDependencies.length} dependencies`);
+					} catch (error) {
+						console.error(`[TaskCreateProject] Failed to update dependencies for task ${taskId}:`, error);
+					}
+				}
+			}
+			
 			// Store task mapping in project attachment
 			await registry.executeHandler("task.create_attachment", {
 				taskId: taskId,
