@@ -79,13 +79,8 @@ export class TaskGetProjectHandler {
 		}
 		
 		// Fetch all subtasks for this project
-		const subtasks = await ctx.prisma.task.findMany({
-			where: {
-				metadata: {
-					path: ["projectId"],
-					equals: projectId
-				}
-			},
+		// Using raw SQL-like JSON query for better compatibility
+		const allTasks = await ctx.prisma.task.findMany({
 			include: {
 				attachments: {
 					where: {
@@ -97,6 +92,12 @@ export class TaskGetProjectHandler {
 				}
 			},
 			orderBy: { createdAt: "asc" }
+		});
+		
+		// Filter tasks that belong to this project
+		const subtasks = allTasks.filter(task => {
+			const metadata = task.metadata as any;
+			return metadata?.projectId === projectId;
 		});
 		
 		// Filter out the parent task from subtasks
