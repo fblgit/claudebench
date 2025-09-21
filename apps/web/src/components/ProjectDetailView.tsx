@@ -63,7 +63,7 @@ export function ProjectDetailView({
 	const [viewAttachments, setViewAttachments] = useState<{ taskId: string; key?: string } | null>(null);
 
 	// Fetch project data using the new task.get_project handler
-	const { data, isLoading, error, refetch } = useEventQuery(
+	const { data: rawData, isLoading, error, refetch } = useEventQuery(
 		"task.get_project",
 		projectId ? { projectId } : { taskId },
 		{
@@ -72,9 +72,11 @@ export function ProjectDetailView({
 		}
 	);
 
-	// Debug logging
-	console.log("ProjectDetailView props:", { projectId, taskId });
-	console.log("ProjectDetailView data:", data);
+	// Ensure subtasks is always an array
+	const data = rawData ? {
+		...rawData,
+		subtasks: rawData.subtasks || []
+	} : null;
 
 	// Mutations
 	const updateTaskMutation = useEventMutation("task.update");
