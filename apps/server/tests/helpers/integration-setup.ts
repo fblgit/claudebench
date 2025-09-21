@@ -22,7 +22,8 @@ export async function setupIntegrationTest() {
 	// For tests, we need to set a faster check interval
 	process.env.HEALTH_CHECK_INTERVAL = "500"; // 500ms for tests
 	
-	// Don't start job scheduler yet - will start after setting up test scenario
+	// Start job scheduler to enable health monitoring
+	await jobScheduler.start();
 	
 	return redis;
 }
