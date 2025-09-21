@@ -174,7 +174,11 @@ export const monitoringWorker = new Worker<MonitoringJob>(
 			case "failure-detection":
 				// Use system.check_health handler to detect and handle failures
 				try {
-					const result = await registry.executeHandler("system.check_health", { timeout: 30000 });
+					// Use configuration value for timeout
+					const timeout = process.env.HEALTH_HEARTBEAT_TIMEOUT 
+						? parseInt(process.env.HEALTH_HEARTBEAT_TIMEOUT)
+						: healthMonitoring.heartbeatTimeout;
+					const result = await registry.executeHandler("system.check_health", { timeout });
 					return result;
 				} catch (error) {
 					console.error("[MonitoringWorker] Failed to check health:", error);
