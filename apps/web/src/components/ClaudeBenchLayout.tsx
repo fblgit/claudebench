@@ -11,6 +11,7 @@ import {
   IconRobot,
   IconBroadcast,
   IconBook,
+  IconFolders,
 } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { ModeToggle } from "@/components/mode-toggle";
