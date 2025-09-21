@@ -115,9 +115,8 @@ async function initialize() {
 			console.log(`   - ${h.event} (${h.className})`);
 		});
 		
-		// Start instance health monitoring
-		console.log("🏥 Starting health monitoring...");
-		instanceManager.startHealthMonitoring();
+		// Health monitoring is now handled by MonitoringWorker in jobs.ts
+		console.log("🏥 Health monitoring handled by job scheduler...");
 		
 		// Start job scheduler for multi-instance coordination
 		console.log("⏰ Starting job scheduler...");

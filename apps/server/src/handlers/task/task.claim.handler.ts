@@ -2,7 +2,6 @@ import { EventHandler, Instrumented, Resilient } from "@/core/decorator";
 import type { EventContext } from "@/core/context";
 import { taskClaimInput, taskClaimOutput } from "@/schemas/task.schema";
 import type { TaskClaimInput, TaskClaimOutput } from "@/schemas/task.schema";
-import { redisScripts } from "@/core/redis-scripts";
 import { redisKey } from "@/core/redis";
 import { registry } from "@/core/registry";
 
@@ -42,24 +41,61 @@ export class TaskClaimHandler {
 			throw new Error(`Worker ${input.workerId} is not available (status: ${status})`);
 		}
 		
-		// Use Lua script for atomic task claiming
-		const result = await redisScripts.claimTask(input.workerId);
+		// Use task.list handler to find pending tasks ordered by priority
+		const pendingTasks = await registry.executeHandler("task.list", {
+			status: "pending",
+			orderBy: "priority",
+			order: "desc",
+			limit: 10  // Check up to 10 pending tasks
+		}, ctx.metadata?.clientId);
 		
-		if (!result.claimed) {
-			// No tasks available
+		if (!pendingTasks || !pendingTasks.tasks || pendingTasks.tasks.length === 0) {
+			// No pending tasks available
 			return {
 				claimed: false,
 			};
 		}
 		
-		// Parse task data from Lua script response
-		const task = result.task;
+		// Try to claim the highest priority pending task
+		let claimedTask = null;
+		for (const task of pendingTasks.tasks) {
+			try {
+				// First assign the task to the worker
+				await registry.executeHandler("task.assign", {
+					taskId: task.id,
+					instanceId: input.workerId
+				}, ctx.metadata?.clientId);
+				
+				// Then update the status to in_progress
+				await registry.executeHandler("task.update", {
+					id: task.id,
+					updates: {
+						status: "in_progress"
+					}
+				}, ctx.metadata?.clientId);
+				
+				// Successfully claimed this task
+				claimedTask = task;
+				break;
+			} catch (error) {
+				// Task might have been claimed by another worker, continue to next task
+				console.debug(`[TaskClaim] Failed to claim task ${task.id}, trying next:`, error);
+				continue;
+			}
+		}
 		
-		// Emit event
+		if (!claimedTask) {
+			// Could not claim any task (all were taken by other workers)
+			return {
+				claimed: false,
+			};
+		}
+		
+		// Emit task.claimed event
 		await ctx.publish({
 			type: "task.claimed",
 			payload: {
-				taskId: result.taskId!,
+				taskId: claimedTask.id,
 				workerId: input.workerId,
 			},
 			metadata: {
@@ -67,26 +103,23 @@ export class TaskClaimHandler {
 			},
 		});
 		
-		// Fetch attachments using batch operation to avoid N+1 queries
+		// Fetch attachments for the claimed task
 		let attachments: Record<string, any> = {};
 		try {
-			// First list available attachments
 			const attachmentList = await registry.executeHandler("task.list_attachments", {
-				taskId: task.id,
-				limit: 100 // Get all attachments (reasonable limit)
+				taskId: claimedTask.id,
+				limit: 100
 			}, ctx.metadata?.clientId);
 			
 			if (attachmentList && attachmentList.attachments && attachmentList.attachments.length > 0) {
-				// Fetch all attachments in a single batch operation
 				const batchResult = await registry.executeHandler("task.get_attachments_batch", {
 					requests: attachmentList.attachments.map((a: { key: string }) => ({
-						taskId: task.id,
+						taskId: claimedTask.id,
 						key: a.key
 					}))
 				}, ctx.metadata?.clientId);
 				
 				if (batchResult && batchResult.attachments) {
-					// Transform batch result into record format
 					for (const attachment of batchResult.attachments) {
 						attachments[attachment.key] = {
 							type: attachment.type,
@@ -97,33 +130,26 @@ export class TaskClaimHandler {
 				}
 			}
 		} catch (error) {
-			// Log but don't fail the claim if attachments can't be fetched
-			console.warn(`[TaskClaim] Failed to fetch attachments for task ${task.id}:`, error);
+			console.warn(`[TaskClaim] Failed to fetch attachments for task ${claimedTask.id}:`, error);
 		}
 		
-		// Get result from attachments
-		let resultData = null;
-		if (attachments['result']) {
-			resultData = attachments['result'].value;
-		}
-		
-		// Return complete task details including metadata and attachments
+		// Return the claimed task details
 		return {
 			claimed: true,
-			taskId: result.taskId!,
+			taskId: claimedTask.id,
 			task: {
-				id: task.id,
-				text: task.text,
-				priority: parseInt(task.priority) || 50,
+				id: claimedTask.id,
+				text: claimedTask.text,
+				priority: claimedTask.priority,
 				status: "in_progress" as const,
 				assignedTo: input.workerId,
-				metadata: task.metadata ? JSON.parse(task.metadata) : null,
-				result: resultData,
-				error: task.error || null,
-				createdAt: task.createdAt,
-				updatedAt: task.updatedAt || task.createdAt,
-				completedAt: task.completedAt || null,
-				attachments: attachments, // Include all attachment data
+				metadata: claimedTask.metadata,
+				result: claimedTask.result,
+				error: claimedTask.error,
+				createdAt: claimedTask.createdAt,
+				updatedAt: claimedTask.updatedAt || claimedTask.createdAt,
+				completedAt: claimedTask.completedAt,
+				attachments: attachments,
 				attachmentCount: Object.keys(attachments).length
 			},
 		};

@@ -2,6 +2,7 @@ import { Queue, Worker } from "bullmq";
 import { getRedis } from "./redis";
 import { redisScripts } from "./redis-scripts";
 import { registry } from "./registry";
+import { healthMonitoring } from "../config";
 
 // Use existing Redis connection
 const connection = {
@@ -135,7 +136,11 @@ export const monitoringWorker = new Worker<MonitoringJob>(
 					
 					if (data.lastSeen) {
 						const timeSinceLastSeen = Date.now() - parseInt(data.lastSeen);
-						const health = timeSinceLastSeen > 30000 ? "unhealthy" : "healthy";
+						// Use configuration value with environment variable override support
+						const heartbeatTimeout = process.env.HEALTH_HEARTBEAT_TIMEOUT 
+							? parseInt(process.env.HEALTH_HEARTBEAT_TIMEOUT)
+							: healthMonitoring.heartbeatTimeout;
+						const health = timeSinceLastSeen > heartbeatTimeout ? "unhealthy" : "healthy";
 						
 						// Update gossip health
 						await redisScripts.updateGossipHealth(instanceId, health);
@@ -169,7 +174,11 @@ export const monitoringWorker = new Worker<MonitoringJob>(
 			case "failure-detection":
 				// Use system.check_health handler to detect and handle failures
 				try {
-					const result = await registry.executeHandler("system.check_health", { timeout: 30000 });
+					// Use configuration value for timeout
+					const timeout = process.env.HEALTH_HEARTBEAT_TIMEOUT 
+						? parseInt(process.env.HEALTH_HEARTBEAT_TIMEOUT)
+						: healthMonitoring.heartbeatTimeout;
+					const result = await registry.executeHandler("system.check_health", { timeout });
 					return result;
 				} catch (error) {
 					console.error("[MonitoringWorker] Failed to check health:", error);
@@ -232,8 +241,6 @@ export const swarmWorker = new Worker<SwarmJob>(
 					});
 					
 					// Step 1: Create main task
-					// Generate unique task ID to avoid collisions on retries
-					const taskId = `t-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 					const ctx = await createContext("swarm.create_project", projectId, true, { 
 						sessionId, 
 						clientId: sessionId,
@@ -247,10 +254,12 @@ export const swarmWorker = new Worker<SwarmJob>(
 						metadata: {
 							...metadata,
 							projectId,
-							taskId,
 							type: "swarm_project"
 						}
 					}, sessionId || instanceId);
+					
+					// Use the actual task ID returned by task.create
+					const taskId = taskResult.id;
 					
 					// Emit decomposing event
 					await eventBus.publish({
@@ -371,27 +380,23 @@ export const swarmWorker = new Worker<SwarmJob>(
 								parentTaskId: taskId
 							}, sessionId || instanceId);
 							
-							// Update the corresponding task with the generated context
+							// Store context as attachment to the subtask instead of updating metadata
 							if (createdSubtaskIds[i]) {
-								// First get the current task to preserve existing metadata
-								const taskKey = `cb:task:${createdSubtaskIds[i]}`;
-								const currentTaskData = await redis.pub.hgetall(taskKey);
-								const existingMetadata = currentTaskData.metadata ? JSON.parse(currentTaskData.metadata) : {};
-								
-								await registry.executeHandler("task.update", {
-									id: createdSubtaskIds[i],
-									updates: {
-										metadata: {
-											...existingMetadata,  // Preserve all existing metadata
-											generatedContext: contextResult.context,
-											contextPrompt: contextResult.prompt,
-											contextGeneratedAt: new Date().toISOString(),
-											contextGeneratedBy: instanceId
-										}
+								await registry.executeHandler("task.create_attachment", {
+									taskId: createdSubtaskIds[i],
+									key: `swarm_subtask_context_${subtask.specialist}`,
+									type: "json",
+									value: {
+										subtaskId: subtask.id,
+										specialist: subtask.specialist,
+										context: contextResult.context,
+										prompt: contextResult.prompt,
+										generatedAt: new Date().toISOString(),
+										generatedBy: instanceId
 									}
 								}, sessionId || instanceId);
 								
-								console.log(`[SwarmWorker] Updated task ${createdSubtaskIds[i]} with context for subtask ${subtask.id}`);
+								console.log(`[SwarmWorker] Created swarm subtask context attachment for task ${createdSubtaskIds[i]} (subtask ${subtask.id})`);
 							}
 							
 							contextCount++;
@@ -508,15 +513,22 @@ export class JobScheduler {
 		);
 		
 		// Schedule recurring monitoring jobs
+		// Use configuration value with environment variable override support
+		const checkInterval = process.env.HEALTH_CHECK_INTERVAL 
+			? parseInt(process.env.HEALTH_CHECK_INTERVAL)
+			: healthMonitoring.checkInterval;
+		
 		await monitoringQueue.add(
 			"health",
 			{ type: "health-check" },
 			{
-				repeat: { every: 3000 }, // Every 3 seconds
+				repeat: { every: checkInterval }, // Configurable interval
 				removeOnComplete: true,
 				removeOnFail: false,
 			}
 		);
+		
+		console.log(`[JobScheduler] Health monitoring scheduled every ${checkInterval}ms`);
 		
 		// Also run all jobs immediately for tests
 		await this.runImmediate();
