@@ -304,3 +304,62 @@ export const taskContextOutput = z.object({
 
 export type TaskContextInput = z.infer<typeof taskContextInput>;
 export type TaskContextOutput = z.infer<typeof taskContextOutput>;
+
+// task.decompose
+export const taskDecomposeInput = z.object({
+	taskId: z.string().min(1),
+	task: z.string().min(1).max(1000),
+	priority: z.number().int().min(0).max(100).default(50),
+	constraints: z.array(z.string()).optional(),
+	sessionId: z.string().optional(),
+	metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const taskDecomposeOutput = z.object({
+	taskId: z.string(),
+	subtaskCount: z.number(),
+	decomposition: z.object({
+		subtasks: z.array(z.object({
+			id: z.string(),
+			description: z.string(),
+			specialist: z.enum(["frontend", "backend", "testing", "docs", "general"]),
+			dependencies: z.array(z.string()),
+			complexity: z.number().min(1).max(100),
+			context: z.object({
+				files: z.array(z.string()),
+				patterns: z.array(z.string()),
+				constraints: z.array(z.string()),
+			}),
+			estimatedMinutes: z.number()
+		})),
+		executionStrategy: z.enum(["parallel", "sequential", "mixed"]),
+		totalComplexity: z.number(),
+		reasoning: z.string()
+	}),
+	attachmentKey: z.string(),
+});
+
+export type TaskDecomposeInput = z.infer<typeof taskDecomposeInput>;
+export type TaskDecomposeOutput = z.infer<typeof taskDecomposeOutput>;
+
+// task.create_project
+export const taskCreateProjectInput = z.object({
+	project: z.string().min(1).max(2000),
+	priority: z.number().int().min(0).max(100).default(75),
+	constraints: z.array(z.string()).optional(),
+	requirements: z.array(z.string()).optional(),
+	sessionId: z.string().optional(),
+	metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const taskCreateProjectOutput = z.object({
+	projectId: z.string(),
+	taskId: z.string(),
+	status: z.enum(["created", "decomposing", "ready", "failed"]),
+	estimatedMinutes: z.number().optional(),
+	message: z.string(),
+	attachmentKey: z.string(),
+});
+
+export type TaskCreateProjectInput = z.infer<typeof taskCreateProjectInput>;
+export type TaskCreateProjectOutput = z.infer<typeof taskCreateProjectOutput>;

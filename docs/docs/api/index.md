@@ -39,6 +39,8 @@ ClaudeBench organizes events into domains:
 - [task.complete](./task/complete) - Complete task
 - [task.claim](./task/claim) - Claim tasks for processing
 - [task.list](./task/list) - List tasks with filters
+- [task.decompose](./task/decompose) - Decompose complex tasks into subtasks (replaces swarm.decompose)
+- [task.context](./task/context) - Generate execution context for tasks
 
 ### System Domain
 - [system.health](./system/health) - System health check
