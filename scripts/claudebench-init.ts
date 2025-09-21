@@ -218,6 +218,102 @@ ${config.hooks ? "✅ **Hooks**: Tool validation and monitoring via .claude/sett
 }
 
 
+async function setupRelay(config: ProjectConfig, projectDir: string) {
+	// Copy the Python relay script to .claude/relay.py
+	const claudeDir = join(projectDir, ".claude");
+	const relayDestPath = join(claudeDir, "relay.py");
+	const claudeBenchRoot = resolve(__dirname, "..");
+	const relaySourcePath = join(claudeBenchRoot, "scripts", "claude_event_relay.py");
+	
+	// Ensure .claude directory exists
+	if (!existsSync(claudeDir)) {
+		mkdirSync(claudeDir, { recursive: true });
+	}
+	
+	// Copy the relay script
+	if (existsSync(relaySourcePath)) {
+		copyFileSync(relaySourcePath, relayDestPath);
+		console.log(`${c.green}✅${c.reset} Created .claude/relay.py`);
+	} else {
+		console.log(`${c.yellow}⚠️${c.reset} Relay script not found: ${relaySourcePath}`);
+		return;
+	}
+	
+	// Create or update package.json with relay script
+	const packageJsonPath = join(projectDir, "package.json");
+	let packageJson: any = {};
+	
+	if (existsSync(packageJsonPath)) {
+		try {
+			packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
+		} catch {
+			// Invalid package.json, start fresh
+			packageJson = {};
+		}
+	}
+	
+	// Add scripts section if it doesn't exist
+	if (!packageJson.scripts) {
+		packageJson.scripts = {};
+	}
+	
+	// Add relay script
+	packageJson.scripts.relay = `CLAUDE_INSTANCE_ID="${config.instanceId}" python3 .claude/relay.py`;
+	
+	// Save updated package.json
+	writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
+	console.log(`${c.green}✅${c.reset} Added 'relay' script to package.json`);
+	
+	// Create a simple relay.ts wrapper for bun
+	const relayTsPath = join(projectDir, ".claude", "relay.ts");
+	const relayTsContent = `#!/usr/bin/env bun
+// ClaudeBench Event Relay Wrapper
+// Run with: bun relay
+
+import { spawn } from "child_process";
+import { resolve } from "path";
+
+const config = JSON.parse(await Bun.file(".claudebench.json").text());
+const instanceId = process.argv[2] || process.env.CLAUDE_INSTANCE_ID || config.instanceId || "worker-1";
+
+console.log(\`🚀 Starting Event Relay for \${config.projectName}\`);
+console.log(\`   Instance: \${instanceId}\`);
+console.log(\`   Server: \${config.server}\`);
+console.log(\`   Press Ctrl+C to stop\\n\`);
+
+const relay = spawn("python3", [resolve(import.meta.dir, "relay.py")], {
+	env: {
+		...process.env,
+		CLAUDE_INSTANCE_ID: instanceId,
+		CLAUDEBENCH_SERVER: config.server,
+		PYTHONUNBUFFERED: "1",
+	},
+	stdio: "inherit",
+});
+
+process.on("SIGINT", () => {
+	console.log("\\n⏹️  Stopping relay...");
+	relay.kill("SIGINT");
+	process.exit(0);
+});
+
+relay.on("error", (err) => {
+	console.error("❌ Failed to start relay:", err);
+	console.error("Make sure Python 3 is installed");
+	process.exit(1);
+});
+
+relay.on("exit", (code) => {
+	if (code !== 0 && code !== null) {
+		process.exit(code);
+	}
+});
+`;
+	
+	writeFileSync(relayTsPath, relayTsContent);
+	console.log(`${c.green}✅${c.reset} Created .claude/relay.ts wrapper`);
+}
+
 async function setupHooks(config: ProjectConfig, projectDir: string) {
 	// Create project-local .claude directory
 	const claudeDir = join(projectDir, ".claude");
