@@ -37,7 +37,7 @@ interface ProjectListProps {
 	onProjectSelect?: (projectId?: string, taskId?: string) => void;
 }
 
-export function ProjectList({ className, onCreateProject }: ProjectListProps) {
+export function ProjectList({ className, onCreateProject, onProjectSelect }: ProjectListProps) {
 	// State
 	const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 	const [searchQuery, setSearchQuery] = useState("");
