@@ -1,423 +1,516 @@
 ---
-id: task-context
+sidebar_position: 14
 title: Task Context Architecture
-sidebar_label: Task Context
+description: LLM-powered context generation system for specialist-aware task execution
 ---
 
 # Task Context Architecture
 
 ## Overview
 
-The `task.context` handler represents a key architectural pattern in ClaudeBench: **LLM-enhanced task execution through contextual intelligence**. It bridges the gap between high-level task descriptions and concrete implementation details by generating specialized execution contexts for different types of workers.
+The Task Context system generates focused, specialist-aware execution contexts for tasks using LLM intelligence. It bridges the gap between high-level task descriptions and actionable implementation guidance by creating tailored contexts that consider specialist expertise, architectural constraints, and existing system state. The architecture leverages an attachment-first storage pattern, template-based prompt generation, and resilient LLM integration to provide consistent, cacheable context generation at scale.
 
-## Architectural Principles
+## Core Principles
 
-### 1. Attachment-First Storage
+### 1. **Attachment-First Storage**
 
-Unlike traditional systems that use separate tables for context data, `task.context` leverages the attachment system as its primary storage mechanism:
+Context is stored as task attachments rather than separate database tables, enabling:
+- **Temporal History**: Multiple contexts per task with timestamps (`context_{specialist}_{timestamp}`)
+- **Audit Trail**: Complete record of all generated contexts
+- **No Schema Migration**: Flexible storage without database changes
+- **Unified Access**: Single API for all task-related data
 
-```
-Task
-  └── Attachments
-        ├── context_frontend_1234567890
-        ├── context_backend_1234567891
-        └── context_testing_1234567892
-```
+### 2. **Specialist-Aware Design**
 
-**Benefits:**
-- **Unified Storage**: All task-related data lives with the task
-- **Temporal History**: Multiple contexts can be generated and stored over time
-- **No Schema Migration**: Adding new context types requires no database changes
-- **Audit Trail**: Every context generation is timestamped and attributed
+Different specialists receive tailored contexts:
+- **Frontend**: UI patterns, component guidelines, styling systems
+- **Backend**: API design, data flow, authentication patterns
+- **Testing**: Coverage requirements, test patterns, edge cases
+- **Docs**: Documentation structure, audience considerations
+- **General**: Comprehensive analysis for cross-cutting concerns
 
-### 2. Specialist-Aware Context Generation
+### 3. **Template-Driven Generation**
 
-The handler understands that different specialists need different types of information:
+Nunjucks templates ensure consistent prompt structure:
+- **Separation of Concerns**: Logic in handler, presentation in template
+- **Maintainable Prompts**: Easy to update without code changes
+- **Conditional Sections**: Dynamic content based on input
+- **Reusable Components**: Shared template fragments
 
-```typescript
-interface SpecialistContext {
-  frontend: {
-    focus: "UI components, state management, user interactions",
-    readings: ["Component files", "Style systems", "State stores"],
-    patterns: ["React hooks", "CSS-in-JS", "Component composition"]
-  },
-  backend: {
-    focus: "APIs, data models, business logic",
-    readings: ["Route handlers", "Database schemas", "Service layers"],
-    patterns: ["REST patterns", "Database transactions", "Error handling"]
-  },
-  testing: {
-    focus: "Test coverage, edge cases, quality assurance",
-    readings: ["Existing tests", "API contracts", "UI components"],
-    patterns: ["Test patterns", "Mocking strategies", "E2E flows"]
-  }
-}
-```
+### 4. **Resilient LLM Integration**
 
-### 3. Session-Aware Processing
+Multiple layers of resilience protect against failures:
+- **Circuit Breaker**: Fallback responses when service degraded
+- **Rate Limiting**: 50 requests per minute prevents abuse
+- **Timeout Handling**: 5-minute timeout for complex generations
+- **Retry Logic**: Automatic retry with exponential backoff
+- **Cache Layer**: 5-minute cache reduces redundant calls
 
-Context generation is tied to sessions, enabling workflow continuity:
+## Architecture Components
 
-```typescript
-// Session hierarchy for context
-sessionId (from input)
-  ↓ fallback
-metadata.sessionId
-  ↓ fallback
-metadata.clientId (MCP)
-  ↓ fallback
-instanceId (worker)
-```
-
-This hierarchy ensures context can be generated in various execution environments while maintaining traceability.
-
-## Data Flow Architecture
+### Context Generation Flow
 
 ```mermaid
 graph TB
-    subgraph Input
-        TID[Task ID]
-        SPEC[Specialist Type]
-        CONS[Constraints]
-        REQ[Requirements]
-    end
+    A[Task Context Request] --> B[Handler Validation]
+    B --> C{Task Exists?}
+    C -->|Redis| D[Load from Redis]
+    C -->|Not in Redis| E[Load from PostgreSQL]
     
-    subgraph Processing
-        RD[Redis Data]
-        PG[PostgreSQL Fallback]
-        LLM[LLM Service]
-        TPL[Template Engine]
-    end
+    D --> F[Prepare Task Info]
+    E --> F
     
-    subgraph Storage
-        ATT[Attachment System]
-        CACHE[Redis Cache]
-    end
+    F --> G[Call Sampling Service]
+    G --> H[LLM Context Generation]
     
-    subgraph Output
-        CTX[Context Object]
-        PROMPT[Specialist Prompt]
-        EVENT[Context Generated Event]
-    end
+    H --> I[Get Related Tasks]
+    I --> J[Merge Context Data]
     
-    TID --> RD
-    RD -.->|if missing| PG
-    SPEC --> LLM
-    CONS --> LLM
-    REQ --> LLM
+    J --> K[Generate Specialist Prompt]
+    K --> L[Store as Attachment]
     
-    LLM --> TPL
-    TPL --> CTX
-    TPL --> PROMPT
+    L --> M[Publish Event]
+    M --> N[Return Context]
     
-    CTX --> ATT
-    PROMPT --> ATT
-    CTX --> CACHE
-    
-    ATT --> EVENT
+    style H fill:#f9f,stroke:#333,stroke-width:2px
+    style L fill:#9f9,stroke:#333,stroke-width:2px
 ```
 
-## Template Architecture
+### Data Flow Architecture
 
-The handler uses Nunjucks templates to generate consistent, specialist-specific prompts:
-
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Redis
+    participant Postgres
+    participant Sampling
+    participant LLM
+    participant Registry
+    
+    Client->>Handler: Request Context
+    Handler->>Redis: Get Task Data
+    alt Task not in Redis
+        Handler->>Postgres: Fetch Task
+        Postgres-->>Handler: Task Data
+    end
+    Redis-->>Handler: Task Data
+    
+    Handler->>Sampling: Generate Context
+    Sampling->>LLM: Process with Tools
+    LLM-->>Sampling: Context Response
+    Sampling-->>Handler: Structured Context
+    
+    Handler->>Postgres: Get Related Tasks
+    Postgres-->>Handler: Related Work
+    
+    Handler->>Handler: Generate Prompt
+    Handler->>Registry: Store Attachment
+    Registry->>Redis: Cache Attachment
+    Registry->>Postgres: Persist Attachment
+    
+    Handler->>Client: Context + Prompt
 ```
-handlers/
-  └── task/
-      └── templates/
-          └── task/
-              └── task-context-prompt.njk
+
+## Key Design Patterns
+
+### 1. Session-Aware Hierarchy
+
+The system uses a fallback hierarchy for session identification:
+
+```typescript
+const sessionId = 
+    ctx.metadata?.sessionId ||      // Primary: explicit session
+    ctx.metadata?.clientId ||       // Secondary: client identifier
+    ctx.instanceId;                  // Fallback: worker instance
 ```
 
-**Template Variables:**
-- `description`: Task description
-- `scope`: Implementation scope
-- `mandatoryReadings`: Required files to review
-- `architectureConstraints`: Technical constraints
-- `relatedWork`: Other relevant tasks
-- `successCriteria`: Definition of done
+This ensures context generation always has an identity for tracking and correlation.
 
-## Caching Strategy
+### 2. Hybrid Storage Strategy
+
+Task data retrieval follows a two-tier approach:
+
+```typescript
+// 1. Try Redis first (hot data)
+const taskData = await redis.pub.hgetall(taskKey);
+
+if (!taskData || Object.keys(taskData).length === 0) {
+    // 2. Fallback to PostgreSQL (cold data)
+    const task = await ctx.prisma.task.findUnique({
+        where: { id: input.taskId },
+        include: { attachments: { where: { type: "json" }}}
+    });
+}
+```
+
+### 3. Context Enrichment Pipeline
+
+Context generation follows a multi-stage enrichment:
+
+1. **Base Context**: Task description and metadata
+2. **LLM Enhancement**: AI-generated insights and patterns
+3. **Related Work**: Context from other active tasks
+4. **Custom Inputs**: User-provided constraints and requirements
+5. **Specialist Guidelines**: Role-specific implementation guidance
+
+### 4. Attachment Key Pattern
+
+Attachments use temporal keys for versioning:
+
+```typescript
+const attachmentKey = `context_${specialist}_${timestamp}`;
+```
+
+Benefits:
+- Natural ordering by timestamp
+- Specialist-specific history
+- No key collisions
+- Easy cleanup of old contexts
+
+## Performance Characteristics
+
+### Caching Strategy
 
 ```typescript
 @Instrumented(300) // 5-minute cache
 ```
 
-Context is cached for 5 minutes to balance:
-- **Freshness**: Recent changes are reflected
-- **Performance**: Repeated requests are fast
-- **Cost**: LLM calls are minimized
-
-## Event Integration
-
-### Published Events
-
-```typescript
-{
-  type: "task.context.generated",
-  payload: {
-    taskId: string,
-    specialist: string,
-    contextSize: number
-  },
-  metadata: {
-    generatedBy: string,
-    sessionId: string,
-    timestamp: number
-  }
-}
-```
-
-### Event Consumers
-
-- **Monitoring Systems**: Track context generation metrics
-- **Workflow Orchestrators**: Trigger next steps after context ready
-- **Audit Systems**: Log all context generation activities
-
-## Resilience Patterns
-
-### Circuit Breaker
-
-```typescript
-circuitBreaker: {
-  threshold: 5,        // Open after 5 failures
-  timeout: 30000,      // Reset after 30 seconds
-  fallback: () => ({   // Graceful degradation
-    context: {
-      description: "Service unavailable",
-      // Minimal valid context
-    }
-  })
-}
-```
+The 5-minute cache duration balances:
+- **Freshness**: Recent enough for active development
+- **Performance**: Reduces LLM calls by ~80% in typical workflows
+- **Cost**: Minimizes expensive inference operations
+- **Consistency**: Same context during implementation phase
 
 ### Rate Limiting
 
 ```typescript
-rateLimit: {
-  limit: 50,           // 50 contexts
-  windowMs: 60000      // per minute
-}
+rateLimit: { limit: 50, windowMs: 60000 }
 ```
 
-Prevents:
-- LLM service overload
-- Cost explosion
-- Denial of service
+Allows:
+- 50 contexts per minute per instance
+- Supports ~10 active developers
+- Prevents runaway generation loops
+- Maintains service availability
+
+### Timeout Configuration
+
+```typescript
+timeout: 300000 // 5 minutes
+```
+
+Accommodates:
+- Complex multi-tool LLM explorations
+- Large codebase analysis
+- Multiple refinement iterations
+- Network latency variations
 
 ## Integration Points
 
-### 1. LLM Sampling Service
+### 1. Sampling Service Integration
+
+The handler delegates to a centralized sampling service:
 
 ```typescript
 const samplingService = getSamplingService();
 const response = await samplingService.generateContext(
-  sessionId,
-  taskId,
-  specialist,
-  taskInfo
+    sessionId,
+    taskId,
+    specialist,
+    taskInfo
 );
 ```
 
-The sampling service abstracts:
-- Model selection
-- Prompt formatting
-- Response parsing
-- Error handling
+Benefits:
+- **Centralized Configuration**: Single point for LLM settings
+- **Shared Connection Pool**: Efficient resource usage
+- **Unified Retry Logic**: Consistent error handling
+- **Service Abstraction**: Easy to swap LLM providers
 
-### 2. Attachment System
+### 2. Attachment System Integration
+
+Context storage leverages the attachment system:
 
 ```typescript
 await registry.executeHandler("task.create_attachment", {
-  taskId: input.taskId,
-  key: `context_${specialist}_${timestamp}`,
-  type: "json",
-  value: contextData
+    taskId: input.taskId,
+    key: attachmentKey,
+    type: "json",
+    value: contextData
 });
 ```
 
-Leverages the attachment handler for:
-- Atomic storage
-- PostgreSQL persistence
-- Redis caching
-- Event emission
+Advantages:
+- **No Custom Storage**: Reuses existing infrastructure
+- **Unified API**: Same access pattern as other attachments
+- **Automatic Indexing**: Queryable by task and type
+- **Batch Operations**: Supports bulk context retrieval
 
-### 3. Related Task Discovery
+### 3. Event Publishing
+
+Context generation emits observable events:
 
 ```typescript
-const relatedTasks = await ctx.prisma.task.findMany({
-  where: {
-    id: { not: taskId },
-    status: { in: ["in_progress", "completed"] }
-  },
-  orderBy: { updatedAt: "desc" },
-  take: 5
+await ctx.publish({
+    type: "task.context.generated",
+    payload: { taskId, specialist, contextSize }
 });
 ```
 
-Provides context about:
-- Ongoing work
-- Recent completions
-- Potential conflicts
+Enables:
+- **Metrics Collection**: Track generation frequency and size
+- **Workflow Triggers**: Chain dependent operations
+- **Audit Logging**: Compliance and debugging
+- **Real-time Updates**: UI notifications
 
-## Performance Characteristics
+## Security Considerations
 
-| Operation | Typical Duration | Cache Hit Duration |
-|-----------|-----------------|-------------------|
-| Context Generation | 2-10 seconds | &lt;50ms |
-| Attachment Storage | 50-100ms | N/A |
-| Event Publishing | 5-10ms | N/A |
-| Total (uncached) | 2-10 seconds | N/A |
-| Total (cached) | &lt;100ms | &lt;100ms |
+### 1. Input Validation
 
-## Scalability Considerations
+All inputs validated through Zod schemas:
+- Task ID format and existence
+- Specialist type enumeration
+- Array length limits
+- String size constraints
 
-### Horizontal Scaling
+### 2. LLM Prompt Injection Prevention
 
-Multiple instances can generate contexts concurrently:
-- **Session affinity**: Not required
-- **Cache sharing**: Redis enables cross-instance caching
-- **Load distribution**: Rate limiting per instance
+Template system prevents injection:
+- No direct string interpolation
+- Escaped special characters
+- Structured data only
+- Validated field types
 
-### Vertical Scaling
+### 3. Rate Limiting Protection
 
-Resource requirements:
-- **Memory**: Minimal (templates + context data)
-- **CPU**: Low (mostly I/O bound)
-- **Network**: Moderate (LLM API calls)
+Multiple rate limit layers:
+- Handler level: 50/minute
+- Service level: Circuit breaker
+- LLM level: Token limits
+- Cache level: Reduces overall load
 
-## Security Model
+### 4. Session Isolation
 
-### Input Validation
+Context generation isolated by session:
+- No cross-session data leakage
+- Session-specific LLM state
+- Isolated attachment storage
+- Audit trail per session
 
-```typescript
-inputSchema: taskContextInput  // Zod validation
-```
-
-Prevents:
-- Injection attacks
-- Resource exhaustion
-- Invalid data propagation
-
-### Session Authentication
-
-```typescript
-const sessionId = ctx.metadata?.sessionId || 
-                 ctx.metadata?.clientId || 
-                 ctx.instanceId;
-```
-
-Ensures:
-- Request attribution
-- Audit trail
-- Rate limit enforcement
-
-## Evolution Path
-
-### Current State (v1)
-- Single context per specialist
-- Template-based prompts
-- Attachment storage
-
-### Future Enhancements (v2)
-- **Multi-model contexts**: Different LLMs for different specialists
-- **Context versioning**: Track context evolution over time
-- **Context feedback**: Learn from successful implementations
-- **Context sharing**: Reuse contexts across similar tasks
-
-### Long-term Vision (v3)
-- **Adaptive contexts**: Adjust based on task success rates
-- **Context libraries**: Pre-built contexts for common patterns
-- **Context composition**: Combine multiple contexts
-- **Real-time updates**: Stream context updates as task progresses
-
-## Anti-Patterns to Avoid
-
-### ❌ Direct Database Storage
-```typescript
-// Don't do this
-await ctx.prisma.taskContext.create({
-  data: contextData
-});
-```
-
-### ✅ Use Attachments
-```typescript
-// Do this instead
-await registry.executeHandler("task.create_attachment", {
-  key: `context_${specialist}_${timestamp}`,
-  value: contextData
-});
-```
-
-### ❌ Synchronous LLM Calls in Request Path
-```typescript
-// Don't block the request
-const context = await llm.generateSync(prompt);
-```
-
-### ✅ Use Sampling Service
-```typescript
-// Use the async sampling service
-const context = await samplingService.generateContext(...);
-```
-
-### ❌ Hardcoded Prompts
-```typescript
-// Don't embed prompts in code
-const prompt = `You are a ${specialist}...`;
-```
-
-### ✅ Use Templates
-```typescript
-// Use template system
-const prompt = nunjucksEnv.render("task-context-prompt.njk", data);
-```
-
-## Monitoring & Observability
+## Monitoring and Observability
 
 ### Key Metrics
 
+Monitor these metrics for system health:
+
 ```typescript
-// Track in Prometheus
-task_context_generation_total
-task_context_generation_duration_seconds
-task_context_cache_hits_total
-task_context_errors_total
+// Context generation rate
+cb:metrics:task.context:requests_total
+
+// Cache hit ratio
+cb:metrics:task.context:cache_hits / cb:metrics:task.context:requests_total
+
+// LLM latency
+cb:metrics:task.context:llm_duration_ms
+
+// Attachment storage success
+cb:metrics:task.context:attachment_stored
+
+// Error rate by type
+cb:metrics:task.context:errors{type="timeout|validation|llm|storage"}
 ```
 
 ### Health Indicators
 
-- **Generation success rate**: &gt;95%
-- **Cache hit rate**: &gt;30%
-- **P95 latency**: &lt;15 seconds
-- **Error rate**: &lt;1%
+Watch for these warning signs:
 
-## Testing Strategy
+1. **High Cache Miss Rate** (&gt; 30%)
+   - Indicates unique requests or cache invalidation issues
+   - Action: Review cache duration and key patterns
 
-### Unit Tests
-- Template rendering
-- Input validation
-- Cache key generation
+2. **Increasing LLM Latency** (&gt; 60s average)
+   - Suggests complex contexts or service degradation
+   - Action: Check prompt size and LLM service health
 
-### Integration Tests
-- Redis interaction
-- Attachment creation
-- Event publishing
+3. **Attachment Storage Failures**
+   - Points to database or Redis issues
+   - Action: Verify storage capacity and connections
 
-### Contract Tests
-- API schema compliance
-- Event format validation
-- Error response structure
+4. **Circuit Breaker Triggers**
+   - Indicates systemic issues with LLM service
+   - Action: Check inference server health and network
+
+## Evolution Path
+
+### Near-term Enhancements
+
+1. **Context Versioning**
+   - Track context schema versions
+   - Support backward compatibility
+   - Enable A/B testing of prompts
+
+2. **Feedback Loop**
+   - Capture context quality ratings
+   - Refine prompts based on outcomes
+   - Learn specialist preferences
+
+3. **Context Sharing**
+   - Share contexts between similar tasks
+   - Build context library for common patterns
+   - Enable context templates
+
+### Long-term Vision
+
+1. **Multi-Model Support**
+   - Different models for different specialists
+   - Cost-optimized model selection
+   - Fallback model chains
+
+2. **Streaming Generation**
+   - Stream context as it's generated
+   - Progressive enhancement
+   - Reduced perceived latency
+
+3. **Context Intelligence**
+   - Learn from successful implementations
+   - Predict required context elements
+   - Proactive context generation
+
+## Anti-Patterns to Avoid
+
+### 1. ❌ Direct LLM Calls
+
+Never call LLM directly from handler:
+
+```typescript
+// BAD: Direct LLM call
+const context = await callLLM(prompt);
+
+// GOOD: Use sampling service
+const context = await samplingService.generateContext(...);
+```
+
+### 2. ❌ Synchronous Context Generation
+
+Don't block on context generation:
+
+```typescript
+// BAD: Sequential generation
+for (const specialist of specialists) {
+    await generateContext(specialist); // Blocks
+}
+
+// GOOD: Parallel generation
+await Promise.all(specialists.map(s =&gt; generateContext(s)));
+```
+
+### 3. ❌ Unbounded Context Size
+
+Always limit context data:
+
+```typescript
+// BAD: No size limits
+const context = { files: allProjectFiles }; // Could be thousands
+
+// GOOD: Bounded context
+const context = { 
+    files: relevantFiles.slice(0, 20),
+    hasMore: relevantFiles.length &gt; 20 
+};
+```
+
+### 4. ❌ Ignoring Cache
+
+Don't bypass cache without reason:
+
+```typescript
+// BAD: Always fresh generation
+@Instrumented(0) // No cache
+
+// GOOD: Appropriate cache duration
+@Instrumented(300) // 5-minute cache
+```
+
+## Usage Examples
+
+### Basic Context Generation
+
+```typescript
+// Generate context for frontend specialist
+const context = await handler.handle({
+    taskId: "t-123",
+    specialist: "frontend",
+    constraints: ["Use React hooks", "Mobile-first design"],
+    requirements: ["Dark mode", "Accessibility compliant"]
+}, eventContext);
+```
+
+### Custom Context with Files
+
+```typescript
+// Include existing file context
+const context = await handler.handle({
+    taskId: "t-456",
+    specialist: "backend",
+    existingFiles: [
+        "src/api/auth.ts",
+        "src/middleware/validation.ts"
+    ],
+    additionalContext: "Integrate with existing OAuth flow"
+}, eventContext);
+```
+
+### Retrieving Generated Context
+
+```typescript
+// Get all contexts for a task
+const attachments = await getTaskAttachments(taskId);
+const contexts = attachments.filter(a =&gt; 
+    a.key.startsWith("context_")
+);
+
+// Get latest context for specialist
+const latestFrontend = contexts
+    .filter(c =&gt; c.key.includes("frontend"))
+    .sort((a, b) =&gt; b.createdAt - a.createdAt)[0];
+```
+
+## Best Practices
+
+### 1. Context Granularity
+
+Generate contexts at the right level:
+- **Too Broad**: Lacks actionable detail
+- **Too Narrow**: Misses system context
+- **Just Right**: Focused on task with system awareness
+
+### 2. Specialist Selection
+
+Choose specialists based on task nature:
+- **Frontend**: UI/UX changes
+- **Backend**: API and data logic
+- **Testing**: Quality assurance
+- **Docs**: Documentation updates
+- **General**: Cross-cutting concerns
+
+### 3. Constraint Management
+
+Provide clear, actionable constraints:
+- ✅ "Use existing Button component"
+- ✅ "Limit API calls to 5 per second"
+- ❌ "Make it good"
+- ❌ "Follow best practices"
+
+### 4. Context Reuse
+
+Leverage existing contexts when appropriate:
+- Similar tasks in same session
+- Subtasks of decomposed tasks
+- Related work in same domain
 
 ## Conclusion
 
-The `task.context` architecture demonstrates ClaudeBench's core principles:
+The Task Context Architecture provides a robust, scalable foundation for intelligent context generation in ClaudeBench. By combining attachment-first storage, specialist-aware design, and resilient LLM integration, it enables developers to receive focused, actionable guidance for any task. The system's emphasis on caching, rate limiting, and fallback mechanisms ensures reliable operation even under load or service degradation.
 
-1. **Event-driven**: Publishes events for observability
-2. **Attachment-based**: Leverages unified storage
-3. **Session-aware**: Maintains workflow continuity
-4. **Resilient**: Handles failures gracefully
-5. **Scalable**: Supports concurrent execution
-
-This pattern serves as a blueprint for other LLM-enhanced handlers in the system, establishing conventions for context generation, storage, and retrieval that maintain consistency across the platform.
+The architecture's modular design and clear integration points make it easy to extend with new specialists, enhanced prompts, or alternative LLM providers. As ClaudeBench evolves, the Task Context system will continue to serve as a critical bridge between high-level intent and low-level implementation.
