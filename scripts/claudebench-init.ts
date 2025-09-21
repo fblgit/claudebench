@@ -140,9 +140,57 @@ ${c.reset}`);
 	writeFileSync(configPath, JSON.stringify(config, null, 2));
 	console.log(`${c.green}✅${c.reset} Created ${c.bright}.claudebench.json${c.reset}`);
 
-	// 2. Create CLAUDE.local.md
+	// 2. Create/append CLAUDE.local.md
 	const claudeLocalPath = join(projectDir, "CLAUDE.local.md");
-	const claudeContent = generateClaudeLocal(config, server, projectDir);
+	const claudeBenchRoot = resolve(__dirname, "..");
+	const templatePath = join(claudeBenchRoot, "scripts", "CLAUDE.local.md");
+	
+	let claudeContent = "";
+	
+	// Start with template if it exists
+	if (existsSync(templatePath)) {
+		claudeContent = readFileSync(templatePath, "utf-8");
+	}
+	
+	// Add project-specific configuration
+	claudeContent += `\n\n## ClaudeBench Project Configuration
+
+This project has been initialized with ClaudeBench integration.
+
+### Configuration
+- **Server**: ${config.server}
+- **Project**: ${config.projectName}
+- **Initialized**: ${config.createdAt}
+
+### Active Features
+${config.hooks ? "✅ **Hooks**: Tool validation and monitoring via .claude/settings.json" : "❌ **Hooks**: Not configured"}
+✅ **MCP**: ClaudeBench server available via .mcp.json
+✅ **Task Management**: Use ClaudeBench task tools
+
+### Usage
+
+1. **Start ClaudeBench server** (if not running):
+   \`\`\`bash
+   cd ${claudeBenchRoot}
+   bun dev
+   \`\`\`
+
+2. **Monitor events** (optional):
+   \`\`\`bash
+   cd ${claudeBenchRoot}
+   bun relay
+   \`\`\`
+
+3. **Task Management**:
+   - \`mcp__claudebench__task__create\` - Create new tasks
+   - \`mcp__claudebench__task__claim\` - Claim tasks  
+   - \`mcp__claudebench__task__complete\` - Complete tasks
+   - \`mcp__claudebench__task__list\` - List tasks
+
+### Project Notes
+<!-- Add your project-specific instructions below -->
+`;
+	
 	writeFileSync(claudeLocalPath, claudeContent);
 	console.log(`${c.green}✅${c.reset} Created ${c.bright}CLAUDE.local.md${c.reset}`);
 
