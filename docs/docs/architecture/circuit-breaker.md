@@ -97,6 +97,7 @@ interface CircuitBreakerConfig {
   successThreshold: number;  // Successes needed to close (default: 3)
   slidingWindow: number;     // Window for failure counting (ms)
   fallback?: () => any;      // Fallback response function
+  backoffMultiplier?: number; // Exponential backoff multiplier (default: 1.5)
 }
 
 @CircuitBreaker({
@@ -112,6 +113,9 @@ export class ProtectedHandler {
     return await this.performOperation(input);
   }
 }
+
+// Note: Circuit breaker timeout is capped at 5 minutes (300000ms) to prevent
+// overflow from exponential backoff calculations
 ```
 
 ### Circuit Breaker Logic
@@ -191,12 +195,19 @@ export class CircuitBreakerManager {
     const recentFailures = await this.redis.llen(failuresKey);
     
     if (recentFailures >= this.config.threshold) {
-      // Open the circuit
+      // Open the circuit with exponential backoff
+      const attempt = await this.redis.incr(`cb:circuit:backoff:attempt`);
+      const backoffMultiplier = this.config.backoffMultiplier || 1.5;
+      const MAX_TIMEOUT = 300000; // 5 minutes cap
+      
+      const calculatedTimeout = this.config.timeout * Math.pow(backoffMultiplier, attempt - 1);
+      const backoffTimeout = Math.min(Math.floor(calculatedTimeout), MAX_TIMEOUT);
+      
       await this.setCircuitState(stateKey, {
         status: 'open',
         failureCount: recentFailures,
         lastFailureTime: Date.now(),
-        nextAttemptTime: Date.now() + this.config.timeout,
+        nextAttemptTime: Date.now() + backoffTimeout,
         consecutiveSuccesses: 0
       });
     }
@@ -646,8 +657,9 @@ describe('Resilience Integration', () => {
 
 1. **Circuit Breaker Thresholds**: Set based on acceptable error rates (typically 5-10%)
 2. **Rate Limits**: Configure based on actual capacity testing
-3. **Timeouts**: Set slightly above P95 response times
+3. **Timeouts**: Set slightly above P95 response times (capped at 5 minutes maximum)
 4. **Fallback Quality**: Ensure fallbacks provide meaningful responses
+5. **Exponential Backoff**: Default multiplier is 1.5x, with automatic capping at 300000ms to prevent overflow
 
 ### Operational Considerations
 
