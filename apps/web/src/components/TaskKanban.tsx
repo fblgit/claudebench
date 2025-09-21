@@ -864,7 +864,7 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 									: "repeat(4, minmax(0, 1fr))"
 							}}>
 							{filteredColumns.map((column) => (
-								<div key={column.id} className="flex flex-col h-full">
+								<div key={column.id} className="flex flex-col h-full min-w-[250px]">
 									<Card className="flex-1 flex flex-col">
 										<CardHeader className="pb-3">
 											<CardTitle className="text-sm flex items-center justify-between">
