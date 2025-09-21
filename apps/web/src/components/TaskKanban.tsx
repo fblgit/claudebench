@@ -349,6 +349,22 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 		}));
 	}, [columns, filteredTasks]);
 
+	// Get unique projects from tasks
+	const projects = useMemo(() => {
+		const projectMap = new Map<string, { id: string; name: string }>();
+		tasks.forEach((task) => {
+			const projectId = task.metadata?.projectId;
+			const projectName = task.metadata?.projectName || task.metadata?.projectText;
+			if (projectId && !projectMap.has(projectId)) {
+				projectMap.set(projectId, {
+					id: projectId,
+					name: projectName || projectId,
+				});
+			}
+		});
+		return Array.from(projectMap.values());
+	}, [tasks]);
+
 	// Handle drag start
 	const handleDragStart = (event: DragStartEvent) => {
 		setActiveId(event.active.id as string);
