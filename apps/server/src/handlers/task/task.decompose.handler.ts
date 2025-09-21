@@ -95,10 +95,10 @@ export class TaskDecomposeHandler {
 		if (specialists.length === 0) {
 			console.warn("[TaskDecompose] No active specialists, using default specialist types");
 			specialists.push(
-				{ id: "default-frontend", type: "frontend", load: 0 },
-				{ id: "default-backend", type: "backend", load: 0 },
-				{ id: "default-testing", type: "testing", load: 0 },
-				{ id: "default-docs", type: "docs", load: 0 }
+				{ id: "default-frontend", type: "frontend", capabilities: [], currentLoad: 0, maxCapacity: 10 },
+				{ id: "default-backend", type: "backend", capabilities: [], currentLoad: 0, maxCapacity: 10 },
+				{ id: "default-testing", type: "testing", capabilities: [], currentLoad: 0, maxCapacity: 10 },
+				{ id: "default-docs", type: "docs", capabilities: [], currentLoad: 0, maxCapacity: 10 }
 			);
 		}
 		
@@ -166,10 +166,10 @@ export class TaskDecomposeHandler {
 						estimatedMinutes: subtask.estimatedMinutes,
 						dependencies: subtask.dependencies,
 						context: subtask.context,
-						rationale: subtask.rationale,
+						rationale: (subtask as any).rationale,
 						status: "pending"
 					})),
-					architecturalConsiderations: decomposition.architecturalConsiderations,
+					architecturalConsiderations: (decomposition as any).architecturalConsiderations,
 					decomposedAt: new Date().toISOString(),
 					decomposedBy: ctx.instanceId,
 					sessionId: sessionId,
