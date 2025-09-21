@@ -97,6 +97,7 @@ interface CircuitBreakerConfig {
   successThreshold: number;  // Successes needed to close (default: 3)
   slidingWindow: number;     // Window for failure counting (ms)
   fallback?: () => any;      // Fallback response function
+  backoffMultiplier?: number; // Exponential backoff multiplier (default: 1.5)
 }
 
 @CircuitBreaker({
@@ -112,6 +113,9 @@ export class ProtectedHandler {
     return await this.performOperation(input);
   }
 }
+
+// Note: Circuit breaker timeout is capped at 5 minutes (300000ms) to prevent
+// overflow from exponential backoff calculations
 ```
 
 ### Circuit Breaker Logic
