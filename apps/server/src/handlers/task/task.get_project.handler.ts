@@ -82,10 +82,11 @@ export class TaskGetProjectHandler {
 		console.log(`[TaskGetProject] Query params - projectId: ${projectId}, parentTaskId: ${parentTaskId}`);
 		
 		// Fetch all subtasks for this project
+		// Using the correct Prisma JSON query syntax for PostgreSQL
 		const subtasks = await ctx.prisma.task.findMany({
 			where: {
 				metadata: {
-					path: ["projectId"],
+					path: '$.projectId',
 					equals: projectId
 				}
 			},
