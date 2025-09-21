@@ -856,13 +856,14 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 						onDragOver={handleDragOver}
 						onDragEnd={handleDragEnd}
 					>
-						<div 
-							className="grid gap-6 h-full"
-							style={{
-								gridTemplateColumns: groupByProject
-									? `repeat(${Math.min(filteredColumns.length, 4)}, minmax(320px, 1fr))`
-									: "repeat(4, minmax(320px, 1fr))"
-							}}>
+						<div className="h-full overflow-x-auto">
+							<div 
+								className="grid gap-6 h-full min-w-fit"
+								style={{
+									gridTemplateColumns: groupByProject
+										? `repeat(${Math.min(filteredColumns.length, 4)}, minmax(340px, 1fr))`
+										: "repeat(4, minmax(340px, 1fr))"
+								}}>
 							{filteredColumns.map((column) => (
 								<div key={column.id} className="flex flex-col h-full">
 									<Card className="flex-1 flex flex-col min-w-[320px]">
@@ -916,6 +917,7 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 									</Card>
 								</div>
 							))}
+							</div>
 						</div>
 						<DragOverlay>
 							{activeTask && (
