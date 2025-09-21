@@ -455,10 +455,9 @@ if #task_data == 0 then
   return {0, nil, nil}
 end
 
--- Update task assignment
+-- Update task assignment (status will be updated by task.update handler)
 redis.call('hset', task_key,
   'assignedTo', worker_id,
-  'status', 'in_progress',
   'assignedAt', timestamp,
   'updatedAt', timestamp
 )
