@@ -214,56 +214,6 @@ ${config.hooks ? "✅ **Hooks**: Tool validation and monitoring via .claude/sett
 	console.log(`\nYour project is now connected to ClaudeBench! 🚀\n`);
 }
 
-function generateClaudeLocal(config: ProjectConfig, server: string, projectDir: string): string {
-	return `# ClaudeBench Integration
-
-This project is connected to ClaudeBench for enhanced development capabilities.
-
-## Configuration
-- **Server**: ${server}
-- **Instance**: ${config.instanceId}
-- **Project**: ${config.projectName}
-- **Initialized**: ${config.createdAt}
-
-## Features
-${config.hooks ? "✅ **Hooks**: Tool validation and monitoring enabled" : "❌ **Hooks**: Not configured"}
-✅ **Task Management**: Use ClaudeBench tasks instead of TodoWrite
-✅ **Auto-commit**: Git commits with task context
-
-## Usage
-
-### Start ClaudeBench server
-\`\`\`bash
-# In ClaudeBench directory
-bun dev
-\`\`\`
-
-### Monitor events (optional)
-\`\`\`bash
-# In ClaudeBench directory
-bun relay
-\`\`\`
-
-### Task Management
-Use these MCP tools for task management:
-- \`mcp__claudebench__task__create\` - Create new tasks
-- \`mcp__claudebench__task__claim\` - Claim tasks
-- \`mcp__claudebench__task__complete\` - Complete tasks
-- \`mcp__claudebench__task__list\` - List tasks
-
-## Project Instructions
-
-When working in this project:
-1. Always run \`bun relay\` in background to monitor events
-2. Use ClaudeBench task tools instead of TodoWrite
-3. Document task completions with detailed metadata
-4. The backend is the source of truth for all contracts
-
-## Custom Notes
-
-<!-- Add your project-specific instructions here -->
-`;
-}
 
 async function setupHooks(config: ProjectConfig, projectDir: string) {
 	// Create project-local .claude directory
