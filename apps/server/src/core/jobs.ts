@@ -2,6 +2,7 @@ import { Queue, Worker } from "bullmq";
 import { getRedis } from "./redis";
 import { redisScripts } from "./redis-scripts";
 import { registry } from "./registry";
+import { healthMonitoring } from "../config";
 
 // Use existing Redis connection
 const connection = {
