@@ -106,35 +106,39 @@ export function useProjects(options: UseProjectsOptions = {}) {
 		},
 		{
 			refetchInterval,
-			select: (data: { tasks: any[], totalCount: number }) => {
-				// Filter for project tasks only
-				const projects = data.tasks.filter(
-					(task: any) => 
-						task.metadata?.type === "project" || 
-						task.text.toLowerCase().includes("[project]")
-				);
-				
-				// Map to ProjectData format
-				return {
-					projects: projects.map((task: any): ProjectData => ({
-						id: task.id,
-						text: task.text,
-						status: task.status,
-						priority: task.priority,
-						createdAt: task.createdAt,
-						updatedAt: task.updatedAt,
-						metadata: task.metadata,
-						attachmentCount: task.attachmentCount,
-					})),
-					totalCount: projects.length,
-				};
-			},
 		}
 	);
+	
+	// Process the data after fetching
+	const processedData = useMemo(() => {
+		if (!query.data) return null;
+		
+		// Filter for project tasks only
+		const projects = query.data.tasks.filter(
+			(task: any) => 
+				task.metadata?.type === "project" || 
+				task.text.toLowerCase().includes("[project]")
+		);
+		
+		// Map to ProjectData format
+		return {
+			projects: projects.map((task: any): ProjectData => ({
+				id: task.id,
+				text: task.text,
+				status: task.status,
+				priority: task.priority,
+				createdAt: task.createdAt,
+				updatedAt: task.updatedAt,
+				metadata: task.metadata,
+				attachmentCount: task.attachmentCount,
+			})),
+			totalCount: projects.length,
+		};
+	}, [query.data]);
 
 	return {
-		projects: (query.data as any)?.projects || [],
-		totalCount: (query.data as any)?.totalCount || 0,
+		projects: processedData?.projects || [],
+		totalCount: processedData?.totalCount || 0,
 		isLoading: query.isLoading,
 		error: query.error,
 		refetch: query.refetch,
@@ -153,7 +157,6 @@ export function useProjectDetails(projectId?: string, taskId?: string) {
 		{
 			enabled,
 			refetchInterval: 10000,
-			retry: 3,
 			staleTime: 5000,
 		}
 	);
