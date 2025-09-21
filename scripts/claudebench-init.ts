@@ -71,16 +71,30 @@ ${c.reset}`);
 		}
 	}
 
-	// Interactive configuration
-	const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+	// Configuration - use args or interactive
+	let server: string;
+	let instanceId: string;
+	let enableHooks: string;
 	
-	console.log(`${c.bright}Configuration:${c.reset}\n`);
-	
-	const server = await rl.question(`ClaudeBench server URL [http://localhost:3000]: `) || "http://localhost:3000";
-	const instanceId = await rl.question(`Instance ID [worker-1]: `) || "worker-1";
-	const enableHooks = await rl.question(`Enable hooks for Claude Code? [Y/n]: `);
-	
-	rl.close();
+	if (isNonInteractive) {
+		console.log(`${c.bright}Non-interactive mode${c.reset}\n`);
+		server = serverArg || "http://localhost:3000";
+		instanceId = instanceArg || "worker-1";
+		enableHooks = "Y";
+		console.log(`Server: ${server}`);
+		console.log(`Instance: ${instanceId}`);
+		console.log(`Hooks: enabled\n`);
+	} else {
+		const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+		
+		console.log(`${c.bright}Configuration:${c.reset}\n`);
+		
+		server = await rl.question(`ClaudeBench server URL [http://localhost:3000]: `) || "http://localhost:3000";
+		instanceId = await rl.question(`Instance ID [worker-1]: `) || "worker-1";
+		enableHooks = await rl.question(`Enable hooks for Claude Code? [Y/n]: `);
+		
+		rl.close();
+	}
 
 	// Test server connection
 	console.log(`\n${c.cyan}🔍 Testing connection to ${server}...${c.reset}`);
