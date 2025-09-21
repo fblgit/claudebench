@@ -196,6 +196,7 @@ export class TaskContextHandler {
 		// Generate the prompt for the specialist
 		const contextData = {
 			...response,
+			attachments: processedAttachments,  // Add attachments to context
 			customConstraints: input.constraints,
 			customRequirements: input.requirements,
 			existingFiles: input.existingFiles,
