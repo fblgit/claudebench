@@ -243,8 +243,8 @@ export class TaskCreateProjectHandler {
 			
 			// Second pass: Update dependencies with real task IDs
 			for (const subtask of decomposeResult.decomposition.subtasks) {
-				const taskId = subtaskMapping[subtask.id];
-				if (!taskId) continue;
+				const subtaskTaskId = subtaskMapping[subtask.id];
+				if (!subtaskTaskId) continue;
 				
 				// Map subtask dependencies to real task IDs
 				const realDependencies = subtask.dependencies
@@ -255,7 +255,7 @@ export class TaskCreateProjectHandler {
 					try {
 						// Update the task with real dependency IDs
 						await registry.executeHandler("task.update", {
-							id: taskId,
+							id: subtaskTaskId,
 							updates: {
 								metadata: {
 									type: "subtask",
