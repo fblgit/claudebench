@@ -190,7 +190,7 @@ export function TaskCard({
 									<MoreVertical className="h-3 w-3" />
 								</Button>
 							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end">
+							<DropdownMenuContent align="start">
 								<DropdownMenuLabel>Actions</DropdownMenuLabel>
 								<DropdownMenuSeparator />
 								{task.status !== "completed" && onComplete && (
