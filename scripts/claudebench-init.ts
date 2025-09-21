@@ -146,7 +146,7 @@ ${c.reset}`);
 	writeFileSync(claudeLocalPath, claudeContent);
 	console.log(`${c.green}✅${c.reset} Created ${c.bright}CLAUDE.local.md${c.reset}`);
 
-	// 3. Update Claude Code hooks if enabled
+	// 3. Setup hooks and MCP configuration
 	if (config.hooks) {
 		await setupHooks(config, projectDir);
 	}
