@@ -166,10 +166,8 @@ export class TaskDecomposeHandler {
 						estimatedMinutes: subtask.estimatedMinutes,
 						dependencies: subtask.dependencies,
 						context: subtask.context,
-						rationale: (subtask as any).rationale,
 						status: "pending"
 					})),
-					architecturalConsiderations: (decomposition as any).architecturalConsiderations,
 					decomposedAt: new Date().toISOString(),
 					decomposedBy: ctx.instanceId,
 					sessionId: sessionId,
