@@ -78,18 +78,9 @@ export class TaskGetProjectHandler {
 			throw new Error(`Parent task ${parentTaskId} not found`);
 		}
 		
-		// Debug logging
-		console.log(`[TaskGetProject] Query params - projectId: ${projectId}, parentTaskId: ${parentTaskId}`);
-		
-		// Fetch all subtasks for this project
-		// Using the correct Prisma JSON query syntax for PostgreSQL
-		const subtasks = await ctx.prisma.task.findMany({
-			where: {
-				metadata: {
-					path: '$.projectId',
-					equals: projectId
-				}
-			},
+		// Fetch all tasks and filter in memory since Prisma JSON queries are not working reliably
+		// This is a workaround for the Prisma JSON path query issue
+		const allTasks = await ctx.prisma.task.findMany({
 			include: {
 				attachments: {
 					where: {
@@ -103,12 +94,14 @@ export class TaskGetProjectHandler {
 			orderBy: { createdAt: "asc" }
 		});
 		
-		console.log(`[TaskGetProject] Found ${subtasks.length} tasks with projectId ${projectId}`);
+		// Filter tasks that belong to this project
+		const subtasks = allTasks.filter(task => {
+			const metadata = task.metadata as any;
+			return metadata?.projectId === projectId;
+		});
 		
 		// Filter out the parent task from subtasks
 		const actualSubtasks = subtasks.filter(t => t.id !== parentTaskId);
-		
-		console.log(`[TaskGetProject] After filtering parent, ${actualSubtasks.length} subtasks remain`);
 		
 		// Get project metadata from Redis cache or attachments
 		const projectKey = `cb:project:${projectId}`;
