@@ -195,12 +195,19 @@ export class CircuitBreakerManager {
     const recentFailures = await this.redis.llen(failuresKey);
     
     if (recentFailures >= this.config.threshold) {
-      // Open the circuit
+      // Open the circuit with exponential backoff
+      const attempt = await this.redis.incr(`cb:circuit:backoff:attempt`);
+      const backoffMultiplier = this.config.backoffMultiplier || 1.5;
+      const MAX_TIMEOUT = 300000; // 5 minutes cap
+      
+      const calculatedTimeout = this.config.timeout * Math.pow(backoffMultiplier, attempt - 1);
+      const backoffTimeout = Math.min(Math.floor(calculatedTimeout), MAX_TIMEOUT);
+      
       await this.setCircuitState(stateKey, {
         status: 'open',
         failureCount: recentFailures,
         lastFailureTime: Date.now(),
-        nextAttemptTime: Date.now() + this.config.timeout,
+        nextAttemptTime: Date.now() + backoffTimeout,
         consecutiveSuccesses: 0
       });
     }
