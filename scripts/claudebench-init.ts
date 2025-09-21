@@ -112,7 +112,7 @@ ${c.reset}`);
 		});
 		
 		const result = await response.json();
-		if (!result.result?.status || result.result.status !== "healthy") {
+		if (!result.result?.status || (result.result.status !== "healthy" && result.result.status !== "degraded")) {
 			throw new Error("Server unhealthy");
 		}
 		console.log(`${c.green}✅ Connected successfully${c.reset}\n`);
