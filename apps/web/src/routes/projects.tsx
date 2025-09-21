@@ -61,6 +61,7 @@ function ProjectsPage() {
 
 					<ProjectList
 						onCreateProject={() => setShowCreateDialog(true)}
+						onProjectSelect={handleProjectSelect}
 					/>
 				</div>
 			)}
