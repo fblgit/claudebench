@@ -513,15 +513,22 @@ export class JobScheduler {
 		);
 		
 		// Schedule recurring monitoring jobs
+		// Use configuration value with environment variable override support
+		const checkInterval = process.env.HEALTH_CHECK_INTERVAL 
+			? parseInt(process.env.HEALTH_CHECK_INTERVAL)
+			: healthMonitoring.checkInterval;
+		
 		await monitoringQueue.add(
 			"health",
 			{ type: "health-check" },
 			{
-				repeat: { every: 3000 }, // Every 3 seconds
+				repeat: { every: checkInterval }, // Configurable interval
 				removeOnComplete: true,
 				removeOnFail: false,
 			}
 		);
+		
+		console.log(`[JobScheduler] Health monitoring scheduled every ${checkInterval}ms`);
 		
 		// Also run all jobs immediately for tests
 		await this.runImmediate();
