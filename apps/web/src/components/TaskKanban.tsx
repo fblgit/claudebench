@@ -59,6 +59,8 @@ import {
 	GitBranch,
 	BarChart3,
 	Activity,
+	FolderOpen,
+	Layers,
 } from "lucide-react";
 import { TaskCard } from "./TaskCard";
 import { TaskDetailModal } from "./TaskDetailModal";
