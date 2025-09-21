@@ -55,6 +55,28 @@ export class TaskClaimHandler {
 		// Parse task data from Lua script response
 		const task = result.task;
 		
+		// Update task status to in_progress using task.update handler
+		// This ensures both Redis and PostgreSQL are updated
+		try {
+			await registry.executeHandler("task.update", {
+				id: result.taskId!,
+				updates: {
+					status: "in_progress",
+					metadata: task.metadata ? {
+						...JSON.parse(task.metadata),
+						assignedTo: input.workerId,
+						assignedAt: new Date().toISOString()
+					} : {
+						assignedTo: input.workerId,
+						assignedAt: new Date().toISOString()
+					}
+				}
+			}, ctx.metadata?.clientId);
+		} catch (updateError) {
+			console.error(`[TaskClaim] Failed to update task status for ${result.taskId}:`, updateError);
+			// Continue - task was claimed in Redis, status update failure shouldn't fail the claim
+		}
+		
 		// Emit event
 		await ctx.publish({
 			type: "task.claimed",
