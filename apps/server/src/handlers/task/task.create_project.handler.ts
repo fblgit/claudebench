@@ -221,6 +221,9 @@ export class TaskCreateProjectHandler {
 					createdTaskIds.push(subtaskResult.id);
 					subtaskMapping[subtask.id] = subtaskResult.id;
 					
+					// Decrement priority for next task
+					currentPriority -= 5;
+					
 					// Store subtask context as attachment
 					await registry.executeHandler("task.create_attachment", {
 						taskId: subtaskResult.id,
