@@ -119,6 +119,7 @@ ${c.reset}`);
 	} catch (err) {
 		console.log(`${c.red}❌ Cannot connect to ClaudeBench server${c.reset}`);
 		console.log(`   Make sure ClaudeBench is running: ${c.cyan}bun dev${c.reset}`);
+		console.log(`   Error: ${err}`);
 		process.exit(1);
 	}
 
