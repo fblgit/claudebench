@@ -63,7 +63,7 @@ export function ProjectDetailView({
 	const [viewAttachments, setViewAttachments] = useState<{ taskId: string; key?: string } | null>(null);
 
 	// Fetch project data using the new task.get_project handler
-	const { data: rawData, isLoading, error, refetch } = useEventQuery(
+	const { data, isLoading, error, refetch } = useEventQuery(
 		"task.get_project",
 		projectId ? { projectId } : { taskId },
 		{
@@ -71,12 +71,6 @@ export function ProjectDetailView({
 			refetchInterval: 10000,
 		}
 	);
-
-	// Ensure subtasks is always an array
-	const data = rawData ? {
-		...rawData,
-		subtasks: rawData.subtasks || []
-	} : null;
 
 	// Mutations
 	const updateTaskMutation = useEventMutation("task.update");
