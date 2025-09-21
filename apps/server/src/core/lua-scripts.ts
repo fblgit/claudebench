@@ -408,26 +408,51 @@ local history_key = KEYS[3]       -- cb:history:assignments
 local worker_id = ARGV[1]
 local timestamp = ARGV[2]
 
--- Get highest priority task (first in sorted set with negative scores)
-local tasks = redis.call('zrange', global_queue, 0, 0)  -- zrange gets lowest score, which is highest priority (-90 < -10)
-if #tasks == 0 then
-  return {0, nil} -- No tasks available
+-- Try to find a pending task (may need to check multiple tasks)
+local max_attempts = 10  -- Check up to 10 tasks to find a pending one
+local task_id = nil
+local task_key = nil
+local task_data = nil
+
+for i = 1, max_attempts do
+  -- Get highest priority task (first in sorted set with negative scores)
+  local tasks = redis.call('zrange', global_queue, 0, 0)  -- zrange gets lowest score, which is highest priority (-90 < -10)
+  if #tasks == 0 then
+    return {0, nil, nil} -- No tasks available
+  end
+  
+  local candidate_id = tasks[1]
+  local candidate_key = 'cb:task:' .. candidate_id
+  
+  -- Check task status before claiming
+  local status = redis.call('hget', candidate_key, 'status')
+  
+  if status == 'pending' or status == nil or status == '' then
+    -- Found a pending task (or task with no status, treat as pending), try to claim it
+    local removed = redis.call('zrem', global_queue, candidate_id)
+    if removed == 1 then
+      -- Successfully removed from queue
+      task_id = candidate_id
+      task_key = candidate_key
+      task_data = redis.call('hgetall', task_key)
+      break
+    end
+    -- If remove failed, another worker claimed it, continue to next task
+  else
+    -- Task is not pending (could be in_progress, completed, or failed)
+    -- Remove it from the pending queue since it shouldn't be there
+    redis.call('zrem', global_queue, candidate_id)
+    -- Continue looking for a pending task
+  end
 end
 
-local task_id = tasks[1]
-
--- Atomically remove from global queue
-local removed = redis.call('zrem', global_queue, task_id)
-if removed == 0 then
-  return {0, nil} -- Task was already claimed
+if not task_id then
+  return {0, nil, nil} -- No pending tasks found
 end
 
--- Get task data
-local task_key = 'cb:task:' .. task_id
-local task_data = redis.call('hgetall', task_key)
 if #task_data == 0 then
   -- Task doesn't exist, shouldn't happen
-  return {0, nil}
+  return {0, nil, nil}
 end
 
 -- Update task assignment

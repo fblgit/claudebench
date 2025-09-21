@@ -22,8 +22,7 @@ export async function setupIntegrationTest() {
 	// For tests, we need to set a faster check interval
 	process.env.HEALTH_CHECK_INTERVAL = "500"; // 500ms for tests
 	
-	// Start job scheduler to enable health monitoring
-	await jobScheduler.start();
+	// Don't start job scheduler yet - will start after setting up test scenario
 	
 	return redis;
 }
@@ -192,9 +191,6 @@ export async function setupCircuitBreaker() {
  * Clean up integration test data
  */
 export async function cleanupIntegrationTest() {
-	// Stop the job scheduler to clean up workers
-	await jobScheduler.stop();
-	
 	// Close the event bus to clean up all listeners and subscriptions
 	await eventBus.close();
 	
