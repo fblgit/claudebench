@@ -177,7 +177,76 @@ export function TaskCard({
 					</div>
 				</CardHeader>
 				<CardContent className="px-3 pb-2 pt-0">
-					<div className="flex items-center justify-between">
+					<div className="flex items-center gap-2">
+						{/* Dropdown Menu - First */}
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button
+									variant="ghost"
+									size="sm"
+									className="h-6 w-6 p-0"
+									onClick={(e) => e.stopPropagation()}
+								>
+									<MoreVertical className="h-3 w-3" />
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end">
+								<DropdownMenuLabel>Actions</DropdownMenuLabel>
+								<DropdownMenuSeparator />
+								{task.status !== "completed" && onComplete && (
+									<DropdownMenuItem onClick={() => onComplete(task.id)}>
+										<CheckCircle className="h-4 w-4 mr-2" />
+										Mark Complete
+									</DropdownMenuItem>
+								)}
+								{onGenerateContext && (
+									<DropdownMenuItem 
+										onClick={(e) => {
+											e.stopPropagation();
+											onGenerateContext(task.id);
+										}}
+									>
+										<Brain className="h-4 w-4 mr-2" />
+										Generate Context
+									</DropdownMenuItem>
+								)}
+								{instances.length > 0 && onAssign && (
+									<>
+										<DropdownMenuSeparator />
+										<DropdownMenuLabel>Assign To</DropdownMenuLabel>
+										{instances.map((instance) => (
+											<DropdownMenuItem
+												key={instance.id}
+												onClick={() => onAssign(task.id, instance.id)}
+											>
+												<User className="h-4 w-4 mr-2" />
+												{instance.id}
+												<span className="ml-auto text-xs text-muted-foreground">
+													{instance.roles.join(", ")}
+												</span>
+											</DropdownMenuItem>
+										))}
+									</>
+								)}
+								{onDelete && (
+									<>
+										<DropdownMenuSeparator />
+										<DropdownMenuItem
+											onClick={(e) => {
+												e.stopPropagation();
+												console.log("Deleting task with ID:", task.id);
+												onDelete(task.id);
+											}}
+											className="text-red-600"
+										>
+											<XCircle className="h-4 w-4 mr-2" />
+											Delete
+										</DropdownMenuItem>
+									</>
+								)}
+							</DropdownMenuContent>
+						</DropdownMenu>
+
 						<div className="flex flex-wrap items-center gap-2 flex-1">
 							{/* Project Badge */}
 							{projectId && (
