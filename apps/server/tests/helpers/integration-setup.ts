@@ -18,10 +18,9 @@ export async function setupIntegrationTest() {
 	await registry.discover();
 	await eventBus.initialize();
 	
-	// Start health monitoring loop for failure detection
+	// Health monitoring is now handled by MonitoringWorker in jobs.ts
 	// For tests, we need to set a faster check interval
 	process.env.HEALTH_CHECK_INTERVAL = "500"; // 500ms for tests
-	instanceManager.startHealthMonitoring();
 	
 	// Don't start job scheduler yet - will start after setting up test scenario
 	
