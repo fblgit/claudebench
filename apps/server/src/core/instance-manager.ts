@@ -26,7 +26,7 @@ export class InstanceManager {
 			? parseInt(process.env.HEALTH_HEARTBEAT_TIMEOUT)
 			: healthMonitoring.heartbeatTimeout;
 	}
-	private healthCheckInterval: NodeJS.Timeout | null = null;
+	// Health monitoring is now handled by MonitoringWorker in jobs.ts
 
 	// Register an instance
 	async register(id: string, roles: string[]): Promise<boolean> {
@@ -75,10 +75,7 @@ export class InstanceManager {
 		// Register with task queue
 		await taskQueue.registerWorker(id, roles).catch(() => {}); // Don't fail if queue not ready
 		
-		// Start health monitoring if not already running
-		if (!this.healthCheckInterval) {
-			this.startHealthMonitoring();
-		}
+		// Health monitoring is now handled by MonitoringWorker in jobs.ts
 		
 		// Initialize heartbeat for this instance to populate gossip/metrics
 		await this.heartbeat(id);
@@ -167,69 +164,8 @@ export class InstanceManager {
 		return "healthy";
 	}
 
-	// Start periodic health monitoring
-	startHealthMonitoring(): void {
-		// Prevent multiple intervals
-		if (this.healthCheckInterval) {
-			return;
-		}
-		
-		// Use env var if set, otherwise use config default
-		const checkInterval = process.env.HEALTH_CHECK_INTERVAL 
-			? parseInt(process.env.HEALTH_CHECK_INTERVAL) 
-			: healthMonitoring.checkInterval;
-		
-		this.healthCheckInterval = setInterval(async () => {
-			await this.monitorInstances();
-		}, checkInterval);
-		
-		console.log(`[InstanceManager] Health monitoring started (interval: ${checkInterval}ms)`);
-	}
 
-	// Monitor all instances
-	private async monitorInstances(): Promise<void> {
-		const instances = await this.getActiveInstances();
-		console.log(`[InstanceManager] Monitoring ${instances.length} instances`);
-		
-		for (const instance of instances) {
-			const health = await this.checkHealth(instance.id);
-			console.log(`[InstanceManager] Instance ${instance.id} health: ${health} (was: ${instance.health})`);
-			
-			if (health !== instance.health) {
-				// Update health status
-				const instanceKey = redisKey("instance", instance.id);
-				await this.redis.stream.hset(instanceKey, "health", health);
-				
-				if (health === "unhealthy") {
-					// Mark instance as OFFLINE (test expects this)
-					await this.redis.stream.hset(instanceKey, "status", "OFFLINE");
-					console.log(`[InstanceManager] Instance ${instance.id} marked OFFLINE`);
-					
-					// Handle failed instance
-					await this.handleFailedInstance(instance.id);
-				}
-			}
-		}
-	}
 
-	// Handle failed instance
-	private async handleFailedInstance(instanceId: string): Promise<void> {
-		console.log(`[InstanceManager] Handling failed instance: ${instanceId}`);
-		
-		// Use Lua script to atomically mark OFFLINE and reassign tasks
-		const result = await redisScripts.reassignFailedTasks(instanceId);
-		
-		if (result.error) {
-			console.error(`[InstanceManager] Failed to reassign tasks from ${instanceId}: ${result.error}`);
-		} else if (result.reassigned > 0) {
-			console.log(`[InstanceManager] Reassigned ${result.reassigned} tasks from ${instanceId} to ${result.workers} workers`);
-		} else {
-			console.log(`[InstanceManager] No tasks to reassign from ${instanceId}`);
-		}
-		
-		// Don't delete the instance - keep it with OFFLINE status for visibility
-		// Tests expect to see the OFFLINE status
-	}
 
 	// Get instance by role
 	async getInstancesByRole(role: string): Promise<Instance[]> {
@@ -347,10 +283,7 @@ export class InstanceManager {
 	
 	// Cleanup on shutdown
 	async cleanup(): Promise<void> {
-		if (this.healthCheckInterval) {
-			clearInterval(this.healthCheckInterval);
-			this.healthCheckInterval = null;
-		}
+		// Health monitoring cleanup is now handled by MonitoringWorker in jobs.ts
 	}
 }
 
