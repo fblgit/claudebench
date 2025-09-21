@@ -856,7 +856,14 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 						onDragOver={handleDragOver}
 						onDragEnd={handleDragEnd}
 					>
-						<div className="grid grid-cols-4 gap-4 h-full">
+						<div className={cn(
+							"grid gap-4 h-full",
+							groupByProject 
+								? filteredColumns.length <= 3 
+									? `grid-cols-${filteredColumns.length}` 
+									: "grid-cols-3"
+								: "grid-cols-4"
+						)}>
 							{filteredColumns.map((column) => (
 								<div key={column.id} className="flex flex-col h-full">
 									<Card className="flex-1 flex flex-col">
