@@ -24,8 +24,7 @@ export type SystemJob =
 
 export type MonitoringJob =
 	| { type: "health-check" }
-	| { type: "failure-detection" }
-	| { type: "redistribute-tasks" };
+	| { type: "failure-detection" };
 
 export type SwarmJob =
 	| { 
