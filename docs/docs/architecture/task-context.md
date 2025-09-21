@@ -264,11 +264,11 @@ Provides context about:
 
 | Operation | Typical Duration | Cache Hit Duration |
 |-----------|-----------------|-------------------|
-| Context Generation | 2-10 seconds | <50ms |
+| Context Generation | 2-10 seconds | &lt;50ms |
 | Attachment Storage | 50-100ms | N/A |
 | Event Publishing | 5-10ms | N/A |
 | Total (uncached) | 2-10 seconds | N/A |
-| Total (cached) | <100ms | <100ms |
+| Total (cached) | &lt;100ms | &lt;100ms |
 
 ## Scalability Considerations
 
@@ -388,10 +388,10 @@ task_context_errors_total
 
 ### Health Indicators
 
-- **Generation success rate**: >95%
-- **Cache hit rate**: >30%
-- **P95 latency**: <15 seconds
-- **Error rate**: <1%
+- **Generation success rate**: &gt;95%
+- **Cache hit rate**: &gt;30%
+- **P95 latency**: &lt;15 seconds
+- **Error rate**: &lt;1%
 
 ## Testing Strategy
 
