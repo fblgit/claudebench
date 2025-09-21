@@ -199,7 +199,10 @@ ${config.hooks ? "✅ **Hooks**: Tool validation and monitoring via .claude/sett
 		await setupHooks(config, projectDir);
 	}
 
-	// 4. Update .gitignore
+	// 4. Setup relay capability
+	await setupRelay(config, projectDir);
+	
+	// 5. Update .gitignore
 	updateGitignore(projectDir);
 	console.log(`${c.green}✅${c.reset} Updated ${c.bright}.gitignore${c.reset}`);
 
