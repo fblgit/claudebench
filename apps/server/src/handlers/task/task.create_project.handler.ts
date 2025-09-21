@@ -210,7 +210,6 @@ export class TaskCreateProjectHandler {
 							estimatedMinutes: subtask.estimatedMinutes,
 							dependencies: subtask.dependencies,
 							context: subtask.context,
-							rationale: (subtask as any).rationale,
 							sessionId: sessionId
 						}
 					}, ctx.metadata?.clientId);
@@ -230,7 +229,6 @@ export class TaskCreateProjectHandler {
 							specialist: subtask.specialist,
 							dependencies: subtask.dependencies,
 							context: subtask.context,
-							rationale: (subtask as any).rationale,
 							complexity: subtask.complexity,
 							estimatedMinutes: subtask.estimatedMinutes
 						}
