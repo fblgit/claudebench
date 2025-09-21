@@ -593,7 +593,7 @@ export function ProjectDetailView({
 			{/* Modals */}
 			{selectedTaskForContext && (
 				<ContextGenerationDialog
-					task={project?.subtasks.find(t => t.id === selectedTaskForContext) || null}
+					task={data?.subtasks.find((t: any) => t.id === selectedTaskForContext) || null}
 					open={!!selectedTaskForContext}
 					onOpenChange={(open) => !open && setSelectedTaskForContext(null)}
 				/>
