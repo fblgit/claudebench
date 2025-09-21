@@ -7,7 +7,7 @@ export const Route = createFileRoute("/tasks")({
 
 function TasksComponent() {
 	return (
-		<div className="max-w-[1600px] mx-auto px-4 py-4 h-full flex flex-col">
+		<div className="w-full px-4 py-4 h-full flex flex-col">
 			<div className="mb-4 flex-shrink-0">
 				<h1 className="text-2xl font-bold">Task Management</h1>
 				<p className="text-muted-foreground">
