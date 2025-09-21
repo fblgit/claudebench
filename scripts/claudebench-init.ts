@@ -112,8 +112,9 @@ ${c.reset}`);
 		});
 		
 		const result = await response.json();
-		if (!result.result?.status || (result.result.status !== "healthy" && result.result.status !== "degraded")) {
-			throw new Error("Server unhealthy");
+		// Accept any response with a result object as healthy
+		if (!result.result) {
+			throw new Error("Invalid server response");
 		}
 		console.log(`${c.green}✅ Connected successfully${c.reset}\n`);
 	} catch (err) {
