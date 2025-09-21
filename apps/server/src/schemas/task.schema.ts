@@ -343,3 +343,25 @@ export const taskDecomposeOutput = z.object({
 
 export type TaskDecomposeInput = z.infer<typeof taskDecomposeInput>;
 export type TaskDecomposeOutput = z.infer<typeof taskDecomposeOutput>;
+
+// task.create_project
+export const taskCreateProjectInput = z.object({
+	project: z.string().min(1).max(2000),
+	priority: z.number().int().min(0).max(100).default(75),
+	constraints: z.array(z.string()).optional(),
+	requirements: z.array(z.string()).optional(),
+	sessionId: z.string().optional(),
+	metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const taskCreateProjectOutput = z.object({
+	projectId: z.string(),
+	taskId: z.string(),
+	status: z.enum(["created", "decomposing", "ready", "failed"]),
+	estimatedMinutes: z.number().optional(),
+	message: z.string(),
+	attachmentKey: z.string(),
+});
+
+export type TaskCreateProjectInput = z.infer<typeof taskCreateProjectInput>;
+export type TaskCreateProjectOutput = z.infer<typeof taskCreateProjectOutput>;
