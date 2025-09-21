@@ -151,8 +151,8 @@ export function TaskCard({
 				{...listeners}
 			>
 				<CardHeader className="px-3 py-2">
-					<div className="flex items-start gap-2">
-						<div className="flex-1 min-w-0 overflow-hidden">
+					<div className="flex items-start justify-between gap-2">
+						<div className="flex-1 min-w-0">
 							<div className="flex items-center gap-2 mb-1">
 								{getStatusIcon(task.status)}
 								<span className="text-xs text-muted-foreground">
@@ -172,7 +172,7 @@ export function TaskCard({
 									</Tooltip>
 								)}
 							</div>
-							<p className="text-sm font-medium line-clamp-2 break-words">
+							<p className="text-sm font-medium line-clamp-2">
 								{task.text}
 							</p>
 						</div>
@@ -181,7 +181,7 @@ export function TaskCard({
 								<Button
 									variant="ghost"
 									size="sm"
-									className="h-8 w-8 p-0 flex-shrink-0"
+									className="h-8 w-8 p-0"
 									onClick={(e) => e.stopPropagation()}
 								>
 									<MoreVertical className="h-4 w-4" />
