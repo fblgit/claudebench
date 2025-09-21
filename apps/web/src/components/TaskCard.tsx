@@ -123,6 +123,8 @@ export function TaskCard({
 	const dueDate = task.metadata?.dueDate as string;
 	const role = task.metadata?.role as string;
 	const dependencies = task.metadata?.dependencies as string[] || [];
+	const projectId = task.metadata?.projectId as string;
+	const projectName = task.metadata?.projectName || task.metadata?.projectText as string;
 
 	return (
 		<TooltipProvider>
