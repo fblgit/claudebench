@@ -78,12 +78,13 @@ export class TaskGetProjectHandler {
 			throw new Error(`Parent task ${parentTaskId} not found`);
 		}
 		
-		// Fetch all subtasks for this project
+		// Fetch all subtasks by parentTaskId instead of projectId
+		// This avoids the unreliable Prisma JSON path query
 		const subtasks = await ctx.prisma.task.findMany({
 			where: {
 				metadata: {
-					path: ["projectId"],
-					equals: projectId
+					path: ["parentTaskId"],
+					equals: parentTaskId
 				}
 			},
 			include: {
