@@ -99,8 +99,8 @@ export function ProjectList({ className, onCreateProject, onProjectSelect }: Pro
 				(project) =>
 					project.text.toLowerCase().includes(query) ||
 					project.metadata?.projectId?.toLowerCase().includes(query) ||
-					project.metadata?.constraints?.some((c) => c.toLowerCase().includes(query)) ||
-					project.metadata?.requirements?.some((r) => r.toLowerCase().includes(query))
+					project.metadata?.constraints?.some((c: string) => c.toLowerCase().includes(query)) ||
+					project.metadata?.requirements?.some((r: string) => r.toLowerCase().includes(query))
 			);
 		}
 
@@ -126,7 +126,7 @@ export function ProjectList({ className, onCreateProject, onProjectSelect }: Pro
 	};
 
 	const handleDecompose = async (projectId: string) => {
-		const project = projects.find((p) => p.id === projectId);
+		const project = projects.find((p: ProjectData) => p.id === projectId);
 		if (!project) return;
 
 		try {
@@ -149,7 +149,7 @@ export function ProjectList({ className, onCreateProject, onProjectSelect }: Pro
 	};
 
 	const handleViewDetails = (projectId: string) => {
-		const project = projects.find((p) => p.metadata?.projectId === projectId || p.id === projectId);
+		const project = projects.find((p: ProjectData) => p.metadata?.projectId === projectId || p.id === projectId);
 		if (project) {
 			setSelectedProject(project);
 		}
@@ -249,7 +249,7 @@ export function ProjectList({ className, onCreateProject, onProjectSelect }: Pro
 						</SelectContent>
 					</Select>
 
-					<ToggleGroup value={viewMode} onValueChange={(value) => value && setViewMode(value as any)}>
+					<ToggleGroup type="single" value={viewMode} onValueChange={(value: string) => value && setViewMode(value as "grid" | "list")}>
 						<ToggleGroupItem value="grid" aria-label="Grid view">
 							<Grid3x3 className="h-4 w-4" />
 						</ToggleGroupItem>
@@ -336,7 +336,7 @@ export function ProjectList({ className, onCreateProject, onProjectSelect }: Pro
 			{/* Modals */}
 			{selectedProject && (
 				<TaskDetailModal
-					isOpen={!!selectedProject}
+					open={!!selectedProject}
 					onClose={() => setSelectedProject(null)}
 					task={selectedProject as any}
 				/>
@@ -344,7 +344,7 @@ export function ProjectList({ className, onCreateProject, onProjectSelect }: Pro
 
 			{contextTaskId && (
 				<ContextGenerationDialog
-					isOpen={!!contextTaskId}
+					open={!!contextTaskId}
 					onClose={() => setContextTaskId(null)}
 					taskId={contextTaskId}
 				/>
