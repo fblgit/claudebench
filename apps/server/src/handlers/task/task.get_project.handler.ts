@@ -78,8 +78,14 @@ export class TaskGetProjectHandler {
 			throw new Error(`Parent task ${parentTaskId} not found`);
 		}
 		
-		// Fetch ALL tasks and filter in memory (Prisma JSON queries are broken)
-		const allTasks = await ctx.prisma.task.findMany({
+		// Fetch all subtasks for this project
+		const subtasks = await ctx.prisma.task.findMany({
+			where: {
+				metadata: {
+					path: ["projectId"],
+					equals: projectId
+				}
+			},
 			include: {
 				attachments: {
 					where: {
@@ -91,19 +97,6 @@ export class TaskGetProjectHandler {
 				}
 			},
 			orderBy: { createdAt: "asc" }
-		});
-		
-		// DEBUG: Return count in error to see what's happening
-		const tasksWithProject = allTasks.filter(t => {
-			const m = t.metadata as any;
-			return m && m.projectId;
-		});
-		throw new Error(`DEBUG: Found ${allTasks.length} total tasks, ${tasksWithProject.length} have projectId, looking for '${projectId}'`);
-		
-		// Filter for tasks belonging to this project
-		const subtasks = allTasks.filter(task => {
-			const metadata = task.metadata as any;
-			return metadata && metadata.projectId === projectId;
 		});
 		
 		// Filter out the parent task from subtasks
