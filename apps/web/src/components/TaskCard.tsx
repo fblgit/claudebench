@@ -148,10 +148,11 @@ export function TaskCard({
 					}
 				}}
 				{...attributes}
+				{...listeners}
 			>
 				<CardHeader className="px-3 py-2">
 					<div className="flex items-start justify-between gap-2">
-						<div className="flex-1 min-w-0" {...listeners}>
+						<div className="flex-1 min-w-0">
 							<div className="flex items-center gap-2 mb-1">
 								{getStatusIcon(task.status)}
 								<span className="text-xs text-muted-foreground">
