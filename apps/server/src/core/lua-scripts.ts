@@ -1073,13 +1073,16 @@ end
 local task_keys = redis.call('keys', task_pattern)
 local tasks = {}
 for i = 1, math.min(#task_keys, 10) do
-  local data = redis.call('hgetall', task_keys[i])
-  if #data > 0 then
-    local task = {}
-    for j = 1, #data, 2 do
-      task[data[j]] = data[j + 1]
+  -- Skip attachment-related keys
+  if not string.match(task_keys[i], ':attachment') then
+    local data = redis.call('hgetall', task_keys[i])
+    if #data > 0 then
+      local task = {}
+      for j = 1, #data, 2 do
+        task[data[j]] = data[j + 1]
+      end
+      table.insert(tasks, task)
     end
-    table.insert(tasks, task)
   end
 end
 
