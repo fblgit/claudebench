@@ -16,7 +16,7 @@ ClaudeBench is a Redis-first event-driven AI workbench that provides a powerful 
 
 ```
 ┌─────────────────────────────────────────────────┐
-│                  Web Dashboard                   │
+│                  Web Dashboard                  │
 │         (React + TanStack + Tailwind)           │
 └────────────────────┬────────────────────────────┘
                      │ WebSocket + HTTP
@@ -30,9 +30,9 @@ ClaudeBench is a Redis-first event-driven AI workbench that provides a powerful 
 │  Pub/Sub + State  │     │  (Persistence)   │
 └───────────────────┘     └──────────────────┘
          │
-┌────────▼─────────────────────────────────────┐
+┌────────▼──────────────────────────────────────┐
 │         Swarm Intelligence Layer              │
-│   (Decomposition, Assignment, Synthesis)     │
+│   (Decomposition, Assignment, Synthesis)      │
 └───────────────────────────────────────────────┘
 ```
 
@@ -55,6 +55,7 @@ ClaudeBench is a Redis-first event-driven AI workbench that provides a powerful 
 - [x] Rich view of Attachments in the tasks (context and commit types)
 - [x] Task.context generation from Kanban
 - [ ] Improve processing and rehydration rich/efficient context
+- [ ] Install CLI (setup hooks, agents, mcp, config, etc)
 - [ ] MCP reconnect session-resume mechanism (messy, low priority)
 
 ### Prerequisites
