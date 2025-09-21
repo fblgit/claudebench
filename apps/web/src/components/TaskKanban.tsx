@@ -856,14 +856,13 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 						onDragOver={handleDragOver}
 						onDragEnd={handleDragEnd}
 					>
-						<div className={cn(
-							"grid gap-4 h-full",
-							groupByProject 
-								? filteredColumns.length <= 3 
-									? `grid-cols-${filteredColumns.length}` 
-									: "grid-cols-3"
-								: "grid-cols-4"
-						)}>
+						<div 
+							className="grid gap-4 h-full"
+							style={{
+								gridTemplateColumns: groupByProject
+									? `repeat(${Math.min(filteredColumns.length, 4)}, minmax(0, 1fr))`
+									: "repeat(4, minmax(0, 1fr))"
+							}}>
 							{filteredColumns.map((column) => (
 								<div key={column.id} className="flex flex-col h-full">
 									<Card className="flex-1 flex flex-col">
