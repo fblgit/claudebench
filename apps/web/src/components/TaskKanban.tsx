@@ -325,6 +325,13 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 				if (filterAssignee !== "unassigned" && task.assignedTo !== filterAssignee) return false;
 			}
 			
+			// Project filter
+			if (filterProject !== "all") {
+				const taskProjectId = task.metadata?.projectId;
+				if (filterProject === "unassigned" && taskProjectId) return false;
+				if (filterProject !== "unassigned" && taskProjectId !== filterProject) return false;
+			}
+			
 			// Priority filter
 			if (task.priority < filterPriority[0] || task.priority > filterPriority[1]) {
 				return false;
@@ -332,7 +339,7 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 			
 			return true;
 		});
-	}, [tasks, searchTerm, filterAssignee, filterPriority]);
+	}, [tasks, searchTerm, filterAssignee, filterProject, filterPriority]);
 
 	// Get filtered columns
 	const filteredColumns = useMemo(() => {
