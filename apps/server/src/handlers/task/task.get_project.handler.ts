@@ -93,6 +93,13 @@ export class TaskGetProjectHandler {
 			orderBy: { createdAt: "asc" }
 		});
 		
+		// DEBUG: Return count in error to see what's happening
+		const tasksWithProject = allTasks.filter(t => {
+			const m = t.metadata as any;
+			return m && m.projectId;
+		});
+		throw new Error(`DEBUG: Found ${allTasks.length} total tasks, ${tasksWithProject.length} have projectId, looking for '${projectId}'`);
+		
 		// Filter for tasks belonging to this project
 		const subtasks = allTasks.filter(task => {
 			const metadata = task.metadata as any;
