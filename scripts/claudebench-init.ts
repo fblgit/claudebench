@@ -246,7 +246,8 @@ async function setupHooks(config: ProjectConfig, projectDir: string) {
 	const template = JSON.parse(readFileSync(templatePath, "utf-8"));
 	
 	// Create the hook command with environment variables
-	const hookCommand = `CLAUDEBENCH_RPC_URL="${config.server}/rpc" CLAUDE_PROJECT_DIR="${projectDir}" CLAUDE_INSTANCE_ID="${config.instanceId}" python3 ${hookScript}`;
+	// CLAUDE_INSTANCE_ID comes from the environment when Claude Code runs
+	const hookCommand = `CLAUDEBENCH_RPC_URL="${config.server}/rpc" CLAUDE_PROJECT_DIR="${projectDir}" python3 ${hookScript}`;
 	
 	// Update all hook commands in the template to use our configured command
 	const settings = JSON.parse(JSON.stringify(template)); // Deep clone
