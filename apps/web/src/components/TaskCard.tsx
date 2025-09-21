@@ -247,6 +247,19 @@ export function TaskCard({
 				</CardHeader>
 				<CardContent className="px-3 pb-2 pt-0">
 					<div className="flex flex-wrap items-center gap-2">
+						{/* Project Badge */}
+						{projectId && (
+							<Tooltip>
+								<TooltipTrigger>
+									<Badge variant="secondary" className="text-xs text-blue-600 border-blue-600">
+										<FolderOpen className="h-3 w-3 mr-1" />
+										{projectName || projectId}
+									</Badge>
+								</TooltipTrigger>
+								<TooltipContent>Project: {projectName || projectId}</TooltipContent>
+							</Tooltip>
+						)}
+
 						{/* Priority Badge */}
 						<Tooltip>
 							<TooltipTrigger>
