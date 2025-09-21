@@ -151,40 +151,110 @@ export function TaskCard({
 				{...listeners}
 			>
 				<CardHeader className="px-3 py-2">
-					<div className="flex items-start justify-between gap-2">
-						<div className="flex-1 min-w-0">
-							<div className="flex items-center gap-2 mb-1">
-								{getStatusIcon(task.status)}
-								<span className="text-xs text-muted-foreground">
-									#{task.id}
-								</span>
-								{task.assignedTo && (
-									<Tooltip>
-										<TooltipTrigger>
-											<Badge variant="outline" className="text-xs">
-												<User className="h-3 w-3 mr-1" />
-												{task.assignedTo}
-											</Badge>
-										</TooltipTrigger>
-										<TooltipContent>
-											Assigned to {task.assignedTo}
-										</TooltipContent>
-									</Tooltip>
-								)}
-							</div>
-							<p className="text-sm font-medium line-clamp-2">
-								{task.text}
-							</p>
+					<div className="flex-1">
+						<div className="flex items-center gap-2 mb-1">
+							{getStatusIcon(task.status)}
+							<span className="text-xs text-muted-foreground">
+								#{task.id}
+							</span>
+							{task.assignedTo && (
+								<Tooltip>
+									<TooltipTrigger>
+										<Badge variant="outline" className="text-xs">
+											<User className="h-3 w-3 mr-1" />
+											{task.assignedTo}
+										</Badge>
+									</TooltipTrigger>
+									<TooltipContent>
+										Assigned to {task.assignedTo}
+									</TooltipContent>
+								</Tooltip>
+							)}
+						</div>
+						<p className="text-sm font-medium line-clamp-2">
+							{task.text}
+						</p>
+					</div>
+				</CardHeader>
+				<CardContent className="px-3 pb-2 pt-0">
+					<div className="flex items-center justify-between">
+						<div className="flex flex-wrap items-center gap-2 flex-1">
+							{/* Project Badge */}
+							{projectId && (
+								<Tooltip>
+									<TooltipTrigger>
+										<Badge variant="secondary" className="text-xs text-blue-600 border-blue-600">
+											<FolderOpen className="h-3 w-3 mr-1" />
+											{projectName || projectId}
+										</Badge>
+									</TooltipTrigger>
+									<TooltipContent>Project: {projectName || projectId}</TooltipContent>
+								</Tooltip>
+							)}
+
+							{/* Priority Badge */}
+							<Tooltip>
+								<TooltipTrigger>
+									<Badge
+										variant="outline"
+										className={cn("text-xs", getPriorityColor(task.priority))}
+									>
+										<Flag className="h-3 w-3 mr-1" />
+										{task.priority}
+									</Badge>
+								</TooltipTrigger>
+								<TooltipContent>Priority: {task.priority}/100</TooltipContent>
+							</Tooltip>
+
+							{/* Role Badge */}
+							{role && (
+								<Badge variant="secondary" className="text-xs">
+									<Hash className="h-3 w-3 mr-1" />
+									{role}
+								</Badge>
+							)}
+
+							{/* Due Date */}
+							{dueDate && (
+								<Tooltip>
+									<TooltipTrigger>
+										<Badge variant="outline" className="text-xs">
+											<Calendar className="h-3 w-3 mr-1" />
+											{format(new Date(dueDate), "MMM d")}
+										</Badge>
+									</TooltipTrigger>
+									<TooltipContent>
+										Due: {format(new Date(dueDate), "PPP")}
+									</TooltipContent>
+								</Tooltip>
+							)}
+
+							{/* Tags */}
+							{tags.length > 0 && (
+								<div className="flex gap-1">
+									{tags.slice(0, 2).map((tag) => (
+										<Badge key={tag} variant="outline" className="text-xs">
+											<Tag className="h-3 w-3 mr-1" />
+											{tag}
+										</Badge>
+									))}
+									{tags.length > 2 && (
+										<Badge variant="outline" className="text-xs">
+											+{tags.length - 2}
+										</Badge>
+									)}
+								</div>
+							)}
 						</div>
 						<DropdownMenu>
 							<DropdownMenuTrigger asChild>
 								<Button
 									variant="ghost"
 									size="sm"
-									className="h-8 w-8 p-0"
+									className="h-6 w-6 p-0 ml-2"
 									onClick={(e) => e.stopPropagation()}
 								>
-									<MoreVertical className="h-4 w-4" />
+									<MoreVertical className="h-3 w-3" />
 								</Button>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent align="end">
@@ -243,76 +313,6 @@ export function TaskCard({
 								)}
 							</DropdownMenuContent>
 						</DropdownMenu>
-					</div>
-				</CardHeader>
-				<CardContent className="px-3 pb-2 pt-0">
-					<div className="flex flex-wrap items-center gap-2">
-						{/* Project Badge */}
-						{projectId && (
-							<Tooltip>
-								<TooltipTrigger>
-									<Badge variant="secondary" className="text-xs text-blue-600 border-blue-600">
-										<FolderOpen className="h-3 w-3 mr-1" />
-										{projectName || projectId}
-									</Badge>
-								</TooltipTrigger>
-								<TooltipContent>Project: {projectName || projectId}</TooltipContent>
-							</Tooltip>
-						)}
-
-						{/* Priority Badge */}
-						<Tooltip>
-							<TooltipTrigger>
-								<Badge
-									variant="outline"
-									className={cn("text-xs", getPriorityColor(task.priority))}
-								>
-									<Flag className="h-3 w-3 mr-1" />
-									{task.priority}
-								</Badge>
-							</TooltipTrigger>
-							<TooltipContent>Priority: {task.priority}/100</TooltipContent>
-						</Tooltip>
-
-						{/* Role Badge */}
-						{role && (
-							<Badge variant="secondary" className="text-xs">
-								<Hash className="h-3 w-3 mr-1" />
-								{role}
-							</Badge>
-						)}
-
-						{/* Due Date */}
-						{dueDate && (
-							<Tooltip>
-								<TooltipTrigger>
-									<Badge variant="outline" className="text-xs">
-										<Calendar className="h-3 w-3 mr-1" />
-										{format(new Date(dueDate), "MMM d")}
-									</Badge>
-								</TooltipTrigger>
-								<TooltipContent>
-									Due: {format(new Date(dueDate), "PPP")}
-								</TooltipContent>
-							</Tooltip>
-						)}
-
-						{/* Tags */}
-						{tags.length > 0 && (
-							<div className="flex gap-1">
-								{tags.slice(0, 2).map((tag) => (
-									<Badge key={tag} variant="outline" className="text-xs">
-										<Tag className="h-3 w-3 mr-1" />
-										{tag}
-									</Badge>
-								))}
-								{tags.length > 2 && (
-									<Badge variant="outline" className="text-xs">
-										+{tags.length - 2}
-									</Badge>
-								)}
-							</div>
-						)}
 
 						{/* Dependencies Indicator */}
 						{dependencies.length > 0 && (
