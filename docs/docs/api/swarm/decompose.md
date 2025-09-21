@@ -1,5 +1,7 @@
 # swarm.decompose
 
+> **⚠️ DEPRECATED**: This handler has been replaced by [`task.decompose`](../task/decompose.md). Please migrate to the new handler for better domain alignment, attachment-based storage, and enhanced session support. See the [migration guide](../../guides/task-decompose-migration.md) for details.
+
 Decompose complex tasks into subtasks using LLM intelligence for distributed execution across specialist agents.
 
 ## Overview
