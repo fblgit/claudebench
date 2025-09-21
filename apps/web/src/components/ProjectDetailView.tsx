@@ -593,9 +593,9 @@ export function ProjectDetailView({
 			{/* Modals */}
 			{selectedTaskForContext && (
 				<ContextGenerationDialog
+					task={null}
 					open={!!selectedTaskForContext}
-					onClose={() => setSelectedTaskForContext(null)}
-					taskId={selectedTaskForContext}
+					onOpenChange={(open) => !open && setSelectedTaskForContext(null)}
 				/>
 			)}
 
