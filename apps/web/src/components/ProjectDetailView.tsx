@@ -63,9 +63,16 @@ export function ProjectDetailView({
 	const [viewAttachments, setViewAttachments] = useState<{ taskId: string; key?: string } | null>(null);
 
 	// Fetch project data using the new task.get_project handler
+	// Ensure we use taskId when projectId is undefined or null
+	const queryParams = projectId && projectId !== undefined 
+		? { projectId } 
+		: taskId 
+			? { taskId }
+			: {};
+	
 	const { data, isLoading, error, refetch } = useEventQuery(
 		"task.get_project",
-		projectId ? { projectId } : { taskId },
+		queryParams,
 		{
 			enabled: !!(projectId || taskId),
 			refetchInterval: 10000,
@@ -74,6 +81,7 @@ export function ProjectDetailView({
 
 	// Debug logging
 	console.log("ProjectDetailView props:", { projectId, taskId });
+	console.log("ProjectDetailView query params:", queryParams);
 	console.log("ProjectDetailView data:", data);
 
 	// Mutations
