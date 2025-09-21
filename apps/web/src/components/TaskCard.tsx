@@ -32,6 +32,7 @@ import {
 	Hash,
 	Paperclip,
 	Brain,
+	FolderOpen,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 
