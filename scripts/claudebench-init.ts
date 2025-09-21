@@ -35,6 +35,12 @@ interface ProjectConfig {
 }
 
 async function main() {
+	// Parse command line arguments
+	const args = process.argv.slice(2);
+	const isNonInteractive = args.includes("--non-interactive") || args.includes("-n");
+	const serverArg = args.find(a => a.startsWith("--server="))?.split("=")[1];
+	const instanceArg = args.find(a => a.startsWith("--instance="))?.split("=")[1];
+	
 	console.log(`${c.bright}${c.blue}
 ╔═══════════════════════════════════════╗
 ║   ClaudeBench Project Initializer     ║
