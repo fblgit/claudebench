@@ -746,29 +746,70 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 
 				<TabsContent value="kanban" className="flex-1 min-h-0">
 					{/* Filters */}
-					<div className="flex items-center gap-4 mb-4">
-						<div className="flex-1">
-							<Input
-								placeholder="Search tasks..."
-								value={searchTerm}
-								onChange={(e) => setSearchTerm(e.target.value)}
-								className="max-w-sm"
-							/>
+					<div className="flex flex-col gap-3 mb-4">
+						<div className="flex items-center gap-4">
+							<div className="flex-1">
+								<Input
+									placeholder="Search tasks..."
+									value={searchTerm}
+									onChange={(e) => setSearchTerm(e.target.value)}
+									className="max-w-sm"
+								/>
+							</div>
+							<Select value={filterAssignee} onValueChange={setFilterAssignee}>
+								<SelectTrigger className="w-[200px]">
+									<User className="h-4 w-4 mr-2" />
+									<SelectValue placeholder="Filter by assignee" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="all">All Assignees</SelectItem>
+									<SelectItem value="unassigned">Unassigned</SelectItem>
+									{instances.map((instance) => (
+										<SelectItem key={instance.id} value={instance.id}>
+											{instance.id}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							<Select value={filterProject} onValueChange={setFilterProject}>
+								<SelectTrigger className="w-[200px]">
+									<FolderOpen className="h-4 w-4 mr-2" />
+									<SelectValue placeholder="Filter by project" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="all">All Projects</SelectItem>
+									<SelectItem value="unassigned">No Project</SelectItem>
+									{projects.map((project) => (
+										<SelectItem key={project.id} value={project.id}>
+											{project.name}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
 						</div>
-						<Select value={filterAssignee} onValueChange={setFilterAssignee}>
-							<SelectTrigger className="w-[200px]">
-								<SelectValue placeholder="Filter by assignee" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="all">All Tasks</SelectItem>
-								<SelectItem value="unassigned">Unassigned</SelectItem>
-								{instances.map((instance) => (
-									<SelectItem key={instance.id} value={instance.id}>
-										{instance.id}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
+						<div className="flex items-center justify-between">
+							<div className="flex items-center gap-2">
+								<span className="text-sm text-muted-foreground">View Mode:</span>
+								<ToggleGroup type="single" value={groupByProject ? "project" : "status"} onValueChange={(value) => setGroupByProject(value === "project")}>
+									<ToggleGroupItem value="status" aria-label="Group by status">
+										<Layers className="h-4 w-4 mr-2" />
+										By Status
+									</ToggleGroupItem>
+									<ToggleGroupItem value="project" aria-label="Group by project">
+										<FolderOpen className="h-4 w-4 mr-2" />
+										By Project
+									</ToggleGroupItem>
+								</ToggleGroup>
+							</div>
+							{groupByProject && projects.length === 0 && (
+								<Alert className="py-2 px-3">
+									<AlertCircle className="h-4 w-4" />
+									<AlertDescription className="text-xs">
+										No projects found. Create projects to use project view.
+									</AlertDescription>
+								</Alert>
+							)}
+						</div>
 					</div>
 
 					{/* Kanban Board */}
