@@ -25,6 +25,8 @@ export class TaskGetProjectHandler {
 		let projectId = input.projectId;
 		let parentTaskId = input.taskId;
 		
+		console.log(`[TaskGetProject] Input: projectId='${projectId}', taskId='${parentTaskId}'`);
+		
 		// If only taskId provided, get projectId from task metadata
 		if (!projectId && parentTaskId) {
 			const taskData = await ctx.prisma.task.findUnique({
@@ -35,6 +37,7 @@ export class TaskGetProjectHandler {
 			}
 			const metadata = taskData.metadata as any;
 			projectId = metadata.projectId;
+			console.log(`[TaskGetProject] Got projectId from task metadata: '${projectId}'`);
 			if (!projectId) {
 				throw new Error(`Task ${parentTaskId} is not a project task`);
 			}
