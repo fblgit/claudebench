@@ -192,6 +192,9 @@ export async function setupCircuitBreaker() {
  * Clean up integration test data
  */
 export async function cleanupIntegrationTest() {
+	// Stop the job scheduler to clean up workers
+	await jobScheduler.stop();
+	
 	// Close the event bus to clean up all listeners and subscriptions
 	await eventBus.close();
 	
