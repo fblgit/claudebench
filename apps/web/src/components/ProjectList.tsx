@@ -34,6 +34,7 @@ import { toast } from "sonner";
 interface ProjectListProps {
 	className?: string;
 	onCreateProject?: () => void;
+	onProjectSelect?: (projectId?: string, taskId?: string) => void;
 }
 
 export function ProjectList({ className, onCreateProject }: ProjectListProps) {
