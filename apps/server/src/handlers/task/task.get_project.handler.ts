@@ -78,6 +78,11 @@ export class TaskGetProjectHandler {
 			throw new Error(`Parent task ${parentTaskId} not found`);
 		}
 		
+		// TEST: Return dummy data to confirm hot reload is working
+		if (projectId === "proj-1758456808784-1yoplia") {
+			throw new Error("TEST: Hot reload is working!");
+		}
+		
 		// Fetch ALL tasks and filter in memory (Prisma JSON queries are broken)
 		const allTasks = await ctx.prisma.task.findMany({
 			include: {
