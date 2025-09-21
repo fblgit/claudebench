@@ -24,7 +24,8 @@ export type SystemJob =
 
 export type MonitoringJob =
 	| { type: "health-check" }
-	| { type: "failure-detection" };
+	| { type: "failure-detection" }
+	| { type: "redistribute-tasks" };
 
 export type SwarmJob =
 	| { 
@@ -149,21 +150,16 @@ export const monitoringWorker = new Worker<MonitoringJob>(
 							// Mark as OFFLINE
 							await redis.stream.hset(key, "status", "OFFLINE");
 							
-							// Immediately redistribute tasks from failed instance
-							const redistributionResult = await redisScripts.reassignFailedTasks(instanceId);
+							// Check for tasks to redistribute
+							const queueKey = `cb:queue:instance:${instanceId}`;
+							const queueLength = await redis.stream.llen(queueKey);
 							
-							if (redistributionResult.reassigned > 0) {
-								console.log(`[MonitoringWorker] Redistributed ${redistributionResult.reassigned} tasks from failed instance ${instanceId}`);
-								
-								// Track redistribution for tests
-								const redistributedKey = `cb:redistributed:from:${instanceId}`;
-								for (let i = 0; i < redistributionResult.reassigned; i++) {
-									await redis.stream.lpush(redistributedKey, JSON.stringify({
-										taskId: `task-${i}`,
-										redistributedAt: Date.now(),
-									}));
-								}
-								await redis.stream.expire(redistributedKey, 3600);
+							if (queueLength > 0) {
+								// Schedule redistribution job
+								await monitoringQueue.add("redistribute", { 
+									type: "redistribute-tasks",
+									instanceId 
+								});
 							}
 						} else {
 							healthResults.healthy++;
@@ -189,8 +185,29 @@ export const monitoringWorker = new Worker<MonitoringJob>(
 					return { healthy: [], failed: [], reassigned: {} };
 				}
 				
-			// Note: redistribute-tasks case removed - redistribution now happens
-			// immediately in health-check case when unhealthy instances are detected
+			case "redistribute-tasks":
+				// This would be triggered when an instance fails
+				const instanceId = (job.data as any).instanceId;
+				if (instanceId) {
+					const result = await redisScripts.reassignFailedTasks(instanceId);
+					
+					if (result.reassigned > 0) {
+						console.log(`[MonitoringWorker] Redistributed ${result.reassigned} tasks from ${instanceId}`);
+						
+						// Track redistribution for tests
+						const redistributedKey = `cb:redistributed:from:${instanceId}`;
+						for (let i = 0; i < result.reassigned; i++) {
+							await redis.stream.lpush(redistributedKey, JSON.stringify({
+								taskId: `task-${i}`,
+								redistributedAt: Date.now(),
+							}));
+						}
+						await redis.stream.expire(redistributedKey, 3600);
+					}
+					
+					return result;
+				}
+				return { reassigned: 0, workers: 0 };
 		}
 	},
 	{ connection }
