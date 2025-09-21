@@ -274,7 +274,7 @@ export class TaskCreateProjectHandler {
 						
 						console.log(`[TaskCreateProject] Updated task ${subtaskTaskId} with ${realDependencies.length} dependencies`);
 					} catch (error) {
-						console.error(`[TaskCreateProject] Failed to update dependencies for task ${taskId}:`, error);
+						console.error(`[TaskCreateProject] Failed to update dependencies for task ${subtaskTaskId}:`, error);
 					}
 				}
 			}
