@@ -525,7 +525,7 @@ export function CircuitBreaker(options: CircuitBreakerOptions) {
 						fallbackResponseKey, 
 						fallbackMessage,
 						"PX", 
-						options.timeout
+						Math.min(options.timeout, 300000) // Cap at 5 minutes
 					);
 					
 					if (options.fallback) {
