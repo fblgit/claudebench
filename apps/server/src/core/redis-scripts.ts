@@ -239,29 +239,6 @@ export class RedisScriptExecutor {
 	}
 	
 	/**
-	 * Worker claims next available task
-	 */
-	async claimTask(
-		workerId: string
-	): Promise<{ claimed: boolean; taskId: string | null; task: any }> {
-		const result = await this.redis.stream.eval(
-			scripts.TASK_CLAIM,
-			3,
-			redisKey("queue", "tasks", "pending"),
-			redisKey("queue", "instance", workerId),
-			redisKey("history", "assignments"),
-			workerId,
-			Date.now().toString()
-		) as [number, string | null, string | null];
-		
-		return {
-			claimed: result[0] === 1,
-			taskId: result[1],
-			task: result[2] ? JSON.parse(result[2]) : null,
-		};
-	}
-	
-	/**
 	 * Reassign task with deny list (taint/toleration)
 	 */
 	async reassignTask(
