@@ -657,8 +657,9 @@ describe('Resilience Integration', () => {
 
 1. **Circuit Breaker Thresholds**: Set based on acceptable error rates (typically 5-10%)
 2. **Rate Limits**: Configure based on actual capacity testing
-3. **Timeouts**: Set slightly above P95 response times
+3. **Timeouts**: Set slightly above P95 response times (capped at 5 minutes maximum)
 4. **Fallback Quality**: Ensure fallbacks provide meaningful responses
+5. **Exponential Backoff**: Default multiplier is 1.5x, with automatic capping at 300000ms to prevent overflow
 
 ### Operational Considerations
 
