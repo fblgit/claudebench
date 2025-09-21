@@ -78,6 +78,9 @@ export class TaskGetProjectHandler {
 			throw new Error(`Parent task ${parentTaskId} not found`);
 		}
 		
+		// Debug logging
+		console.log(`[TaskGetProject] Query params - projectId: ${projectId}, parentTaskId: ${parentTaskId}`);
+		
 		// Fetch all subtasks for this project
 		const subtasks = await ctx.prisma.task.findMany({
 			where: {
@@ -99,8 +102,12 @@ export class TaskGetProjectHandler {
 			orderBy: { createdAt: "asc" }
 		});
 		
+		console.log(`[TaskGetProject] Found ${subtasks.length} tasks with projectId ${projectId}`);
+		
 		// Filter out the parent task from subtasks
 		const actualSubtasks = subtasks.filter(t => t.id !== parentTaskId);
+		
+		console.log(`[TaskGetProject] After filtering parent, ${actualSubtasks.length} subtasks remain`);
 		
 		// Get project metadata from Redis cache or attachments
 		const projectKey = `cb:project:${projectId}`;
