@@ -272,7 +272,7 @@ export class TaskCreateProjectHandler {
 							}
 						}, ctx.metadata?.clientId);
 						
-						console.log(`[TaskCreateProject] Updated task ${taskId} with ${realDependencies.length} dependencies`);
+						console.log(`[TaskCreateProject] Updated task ${subtaskTaskId} with ${realDependencies.length} dependencies`);
 					} catch (error) {
 						console.error(`[TaskCreateProject] Failed to update dependencies for task ${taskId}:`, error);
 					}
