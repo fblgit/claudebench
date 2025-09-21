@@ -1,12 +1,12 @@
 ---
-title: ClaudeBench CLI Installer
+title: CLI Installer Technical Reference
 sidebar_label: CLI Installer
-description: Bootstrap any project with ClaudeBench integration
+description: Technical details of the ClaudeBench initialization script
 ---
 
-# ClaudeBench CLI Installer
+# CLI Installer Technical Reference
 
-The ClaudeBench CLI installer (`claudebench-init`) is a tool that bootstraps any project directory with ClaudeBench integration. It sets up hooks, MCP configuration, and documentation to connect your project with the ClaudeBench ecosystem.
+Technical documentation for the ClaudeBench initialization script (`claudebench-init.ts`) that bootstraps repositories with ClaudeBench integration.
 
 ## Overview
 
