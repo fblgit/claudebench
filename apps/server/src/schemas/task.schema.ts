@@ -363,3 +363,70 @@ export const taskCreateProjectOutput = z.object({
 
 export type TaskCreateProjectInput = z.infer<typeof taskCreateProjectInput>;
 export type TaskCreateProjectOutput = z.infer<typeof taskCreateProjectOutput>;
+
+// task.get_project
+export const taskGetProjectInput = z.object({
+	projectId: z.string().min(1).optional(),
+	taskId: z.string().min(1).optional(),
+}).refine(data => data.projectId || data.taskId, {
+	message: "Either 'projectId' or 'taskId' must be provided",
+	path: ["projectId"],
+});
+
+export const taskGetProjectOutput = z.object({
+	projectId: z.string(),
+	parentTask: z.object({
+		id: z.string(),
+		text: z.string(),
+		status: TaskStatus,
+		priority: z.number(),
+		createdAt: z.string().datetime(),
+		updatedAt: z.string().datetime(),
+		metadata: z.record(z.string(), z.unknown()).nullable(),
+		attachments: z.array(z.object({
+			key: z.string(),
+			type: AttachmentType,
+			value: z.unknown().optional(),
+			createdAt: z.string()
+		})).optional(),
+	}),
+	subtasks: z.array(z.object({
+		id: z.string(),
+		text: z.string(),
+		status: TaskStatus,
+		priority: z.number(),
+		specialist: z.string().optional(),
+		complexity: z.number().optional(),
+		estimatedMinutes: z.number().optional(),
+		dependencies: z.array(z.string()).optional(),
+		createdAt: z.string().datetime(),
+		updatedAt: z.string().datetime(),
+		attachments: z.array(z.object({
+			key: z.string(),
+			type: AttachmentType,
+			value: z.unknown().optional(),
+			createdAt: z.string()
+		})).optional(),
+	})),
+	projectMetadata: z.object({
+		description: z.string(),
+		status: z.string(),
+		constraints: z.array(z.string()).optional(),
+		requirements: z.array(z.string()).optional(),
+		estimatedMinutes: z.number().optional(),
+		strategy: z.enum(["parallel", "sequential", "mixed"]).optional(),
+		totalComplexity: z.number().optional(),
+		createdAt: z.string().datetime(),
+		createdBy: z.string().optional(),
+	}),
+	stats: z.object({
+		totalTasks: z.number(),
+		pendingTasks: z.number(),
+		inProgressTasks: z.number(),
+		completedTasks: z.number(),
+		failedTasks: z.number(),
+	})
+});
+
+export type TaskGetProjectInput = z.infer<typeof taskGetProjectInput>;
+export type TaskGetProjectOutput = z.infer<typeof taskGetProjectOutput>;
