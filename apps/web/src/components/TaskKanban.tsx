@@ -23,6 +23,7 @@ import { Slider } from "@/components/ui/slider";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
 	Dialog,
 	DialogContent,
@@ -59,6 +60,8 @@ import {
 	GitBranch,
 	BarChart3,
 	Activity,
+	FolderOpen,
+	Layers,
 } from "lucide-react";
 import { TaskCard } from "./TaskCard";
 import { TaskDetailModal } from "./TaskDetailModal";
@@ -169,9 +172,11 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 	
 	// Filters
 	const [filterAssignee, setFilterAssignee] = useState<string>("all");
+	const [filterProject, setFilterProject] = useState<string>("all");
 	const [filterPriority, setFilterPriority] = useState<[number, number]>([0, 100]);
 	const [searchTerm, setSearchTerm] = useState("");
 	const [viewMode, setViewMode] = useState<"board" | "swimlanes">("board");
+	const [groupByProject, setGroupByProject] = useState<boolean>(false);
 	
 	// Drag state
 	const [activeId, setActiveId] = useState<string | null>(null);
@@ -309,6 +314,22 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 		setColumns(newColumns);
 	}, [tasks]);
 
+	// Get unique projects from tasks
+	const projects = useMemo(() => {
+		const projectMap = new Map<string, { id: string; name: string }>();
+		tasks.forEach((task) => {
+			const projectId = task.metadata?.projectId;
+			const projectName = task.metadata?.projectName || task.metadata?.projectText;
+			if (projectId && !projectMap.has(projectId)) {
+				projectMap.set(projectId, {
+					id: projectId,
+					name: projectName || projectId,
+				});
+			}
+		});
+		return Array.from(projectMap.values());
+	}, [tasks]);
+
 	// Filter tasks
 	const filteredTasks = useMemo(() => {
 		return tasks.filter((task) => {
@@ -323,6 +344,13 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 				if (filterAssignee !== "unassigned" && task.assignedTo !== filterAssignee) return false;
 			}
 			
+			// Project filter
+			if (filterProject !== "all") {
+				const taskProjectId = task.metadata?.projectId;
+				if (filterProject === "unassigned" && taskProjectId) return false;
+				if (filterProject !== "unassigned" && taskProjectId !== filterProject) return false;
+			}
+			
 			// Priority filter
 			if (task.priority < filterPriority[0] || task.priority > filterPriority[1]) {
 				return false;
@@ -330,15 +358,51 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 			
 			return true;
 		});
-	}, [tasks, searchTerm, filterAssignee, filterPriority]);
+	}, [tasks, searchTerm, filterAssignee, filterProject, filterPriority]);
 
 	// Get filtered columns
 	const filteredColumns = useMemo(() => {
-		return columns.map((column) => ({
-			...column,
-			tasks: filteredTasks.filter((task) => task.status === column.status),
-		}));
-	}, [columns, filteredTasks]);
+		if (groupByProject) {
+			// Group by project
+			const projectColumns: Column[] = [];
+			
+			// Add column for tasks without project
+			const unassignedTasks = filteredTasks.filter((task) => !task.metadata?.projectId);
+			if (unassignedTasks.length > 0) {
+				projectColumns.push({
+					id: "no-project",
+					title: "No Project",
+					status: "pending", // Default status for drag-drop compatibility
+					icon: <FolderOpen className="h-4 w-4" />,
+					color: "text-gray-500",
+					tasks: unassignedTasks,
+				});
+			}
+			
+			// Add column for each project
+			projects.forEach((project) => {
+				const projectTasks = filteredTasks.filter((task) => task.metadata?.projectId === project.id);
+				if (projectTasks.length > 0) {
+					projectColumns.push({
+						id: project.id,
+						title: project.name,
+						status: "pending", // Default status for drag-drop compatibility
+						icon: <FolderOpen className="h-4 w-4" />,
+						color: "text-blue-500",
+						tasks: projectTasks,
+					});
+				}
+			});
+			
+			return projectColumns;
+		} else {
+			// Group by status (default)
+			return columns.map((column) => ({
+				...column,
+				tasks: filteredTasks.filter((task) => task.status === column.status),
+			}));
+		}
+	}, [columns, filteredTasks, groupByProject, projects]);
 
 	// Handle drag start
 	const handleDragStart = (event: DragStartEvent) => {
@@ -718,29 +782,70 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 
 				<TabsContent value="kanban" className="flex-1 min-h-0">
 					{/* Filters */}
-					<div className="flex items-center gap-4 mb-4">
-						<div className="flex-1">
-							<Input
-								placeholder="Search tasks..."
-								value={searchTerm}
-								onChange={(e) => setSearchTerm(e.target.value)}
-								className="max-w-sm"
-							/>
+					<div className="flex flex-col gap-3 mb-4">
+						<div className="flex items-center gap-4">
+							<div className="flex-1">
+								<Input
+									placeholder="Search tasks..."
+									value={searchTerm}
+									onChange={(e) => setSearchTerm(e.target.value)}
+									className="max-w-sm"
+								/>
+							</div>
+							<Select value={filterAssignee} onValueChange={setFilterAssignee}>
+								<SelectTrigger className="w-[200px]">
+									<User className="h-4 w-4 mr-2" />
+									<SelectValue placeholder="Filter by assignee" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="all">All Assignees</SelectItem>
+									<SelectItem value="unassigned">Unassigned</SelectItem>
+									{instances.map((instance) => (
+										<SelectItem key={instance.id} value={instance.id}>
+											{instance.id}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							<Select value={filterProject} onValueChange={setFilterProject}>
+								<SelectTrigger className="w-[200px]">
+									<FolderOpen className="h-4 w-4 mr-2" />
+									<SelectValue placeholder="Filter by project" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="all">All Projects</SelectItem>
+									<SelectItem value="unassigned">No Project</SelectItem>
+									{projects.map((project) => (
+										<SelectItem key={project.id} value={project.id}>
+											{project.name}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
 						</div>
-						<Select value={filterAssignee} onValueChange={setFilterAssignee}>
-							<SelectTrigger className="w-[200px]">
-								<SelectValue placeholder="Filter by assignee" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="all">All Tasks</SelectItem>
-								<SelectItem value="unassigned">Unassigned</SelectItem>
-								{instances.map((instance) => (
-									<SelectItem key={instance.id} value={instance.id}>
-										{instance.id}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
+						<div className="flex items-center justify-between">
+							<div className="flex items-center gap-2">
+								<span className="text-sm text-muted-foreground">View Mode:</span>
+								<ToggleGroup type="single" value={groupByProject ? "project" : "status"} onValueChange={(value) => setGroupByProject(value === "project")}>
+									<ToggleGroupItem value="status" aria-label="Group by status">
+										<Layers className="h-4 w-4 mr-2" />
+										By Status
+									</ToggleGroupItem>
+									<ToggleGroupItem value="project" aria-label="Group by project">
+										<FolderOpen className="h-4 w-4 mr-2" />
+										By Project
+									</ToggleGroupItem>
+								</ToggleGroup>
+							</div>
+							{groupByProject && projects.length === 0 && (
+								<Alert className="py-2 px-3">
+									<AlertCircle className="h-4 w-4" />
+									<AlertDescription className="text-xs">
+										No projects found. Create projects to use project view.
+									</AlertDescription>
+								</Alert>
+							)}
+						</div>
 					</div>
 
 					{/* Kanban Board */}
@@ -751,7 +856,13 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 						onDragOver={handleDragOver}
 						onDragEnd={handleDragEnd}
 					>
-						<div className="grid grid-cols-4 gap-4 h-full">
+						<div 
+							className="grid gap-4 h-full"
+							style={{
+								gridTemplateColumns: groupByProject
+									? `repeat(${Math.min(filteredColumns.length, 4)}, minmax(0, 1fr))`
+									: "repeat(4, minmax(0, 1fr))"
+							}}>
 							{filteredColumns.map((column) => (
 								<div key={column.id} className="flex flex-col h-full">
 									<Card className="flex-1 flex flex-col">

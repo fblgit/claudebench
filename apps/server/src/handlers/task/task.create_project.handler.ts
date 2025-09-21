@@ -248,7 +248,7 @@ export class TaskCreateProjectHandler {
 				
 				// Map subtask dependencies to real task IDs
 				const realDependencies = subtask.dependencies
-					.map(depId => subtaskMapping[depId])
+					.map((depId: string) => subtaskMapping[depId])
 					.filter(Boolean); // Remove any unmapped dependencies
 				
 				if (realDependencies.length > 0) {
@@ -285,7 +285,7 @@ export class TaskCreateProjectHandler {
 				const subtaskTaskId = subtaskMapping[subtask.id];
 				if (subtaskTaskId) {
 					dependencyMapping[subtaskTaskId] = subtask.dependencies
-						.map(depId => subtaskMapping[depId])
+						.map((depId: string) => subtaskMapping[depId])
 						.filter(Boolean);
 				}
 			}

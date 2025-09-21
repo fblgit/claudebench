@@ -11,6 +11,7 @@ import {
   IconRobot,
   IconBroadcast,
   IconBook,
+  IconFolders,
 } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -36,6 +37,13 @@ export function ClaudeBenchLayout({ children }: ClaudeBenchLayoutProps) {
       href: "/tasks",
       icon: (
         <IconListDetails className="text-neutral-700 dark:text-neutral-200 h-5 w-5 shrink-0" />
+      ),
+    },
+    {
+      label: "Projects",
+      href: "/projects",
+      icon: (
+        <IconFolders className="text-neutral-700 dark:text-neutral-200 h-5 w-5 shrink-0" />
       ),
     },
     {

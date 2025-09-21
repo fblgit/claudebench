@@ -9,6 +9,7 @@ export * from "./task.delete.handler";  // NEW delete handler
 export * from "./task.context.handler"; // NEW context generation
 export * from "./task.decompose.handler"; // NEW decompose handler
 export * from "./task.create_project.handler"; // NEW project creation
+export * from "./task.get_project.handler"; // NEW get project with hierarchy
 
 // Task attachment handlers - key-value store for tasks
 export * from "./task.create_attachment.handler";
