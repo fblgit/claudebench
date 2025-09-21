@@ -52,7 +52,7 @@ export class TaskGetProjectHandler {
 				const projectTask = await ctx.prisma.task.findFirst({
 					where: {
 						metadata: {
-							path: ["projectId"],
+							path: '$.projectId',
 							equals: projectId
 						}
 					}
