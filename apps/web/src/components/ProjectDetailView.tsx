@@ -602,8 +602,6 @@ export function ProjectDetailView({
 			{viewAttachments && (
 				<AttachmentViewer
 					taskId={viewAttachments.taskId}
-					key={viewAttachments.key}
-					onClose={() => setViewAttachments(null)}
 				/>
 			)}
 		</div>
