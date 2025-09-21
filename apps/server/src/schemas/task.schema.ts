@@ -304,3 +304,42 @@ export const taskContextOutput = z.object({
 
 export type TaskContextInput = z.infer<typeof taskContextInput>;
 export type TaskContextOutput = z.infer<typeof taskContextOutput>;
+
+// task.decompose
+export const taskDecomposeInput = z.object({
+	taskId: z.string().min(1),
+	task: z.string().min(1).max(1000),
+	priority: z.number().int().min(0).max(100).default(50),
+	constraints: z.array(z.string()).optional(),
+	sessionId: z.string().optional(),
+	metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const taskDecomposeOutput = z.object({
+	taskId: z.string(),
+	subtaskCount: z.number(),
+	decomposition: z.object({
+		subtasks: z.array(z.object({
+			id: z.string(),
+			description: z.string(),
+			specialist: z.enum(["frontend", "backend", "testing", "docs", "general"]),
+			dependencies: z.array(z.string()),
+			complexity: z.number().min(1).max(100),
+			context: z.object({
+				files: z.array(z.string()),
+				patterns: z.array(z.string()),
+				constraints: z.array(z.string()),
+			}),
+			estimatedMinutes: z.number(),
+			rationale: z.string().optional(),
+		})),
+		executionStrategy: z.enum(["parallel", "sequential", "mixed"]),
+		totalComplexity: z.number(),
+		reasoning: z.string(),
+		architecturalConsiderations: z.array(z.string()).optional(),
+	}),
+	attachmentKey: z.string(),
+});
+
+export type TaskDecomposeInput = z.infer<typeof taskDecomposeInput>;
+export type TaskDecomposeOutput = z.infer<typeof taskDecomposeOutput>;
