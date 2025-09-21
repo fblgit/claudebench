@@ -336,17 +336,17 @@ export function ProjectList({ className, onCreateProject, onProjectSelect }: Pro
 			{/* Modals */}
 			{selectedProject && (
 				<TaskDetailModal
-					open={!!selectedProject}
-					onClose={() => setSelectedProject(null)}
 					task={selectedProject as any}
+					open={!!selectedProject}
+					onOpenChange={(open) => !open && setSelectedProject(null)}
 				/>
 			)}
 
 			{contextTaskId && (
 				<ContextGenerationDialog
+					task={{ id: contextTaskId, text: '', status: 'pending' }}
 					open={!!contextTaskId}
-					onClose={() => setContextTaskId(null)}
-					taskId={contextTaskId}
+					onOpenChange={(open) => !open && setContextTaskId(null)}
 				/>
 			)}
 		</div>
