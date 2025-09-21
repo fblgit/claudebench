@@ -118,7 +118,11 @@ export function ProjectList({ className, onCreateProject, onProjectSelect }: Pro
 
 	// Handlers
 	const handleProjectClick = (project: ProjectData) => {
-		setSelectedProject(project);
+		if (onProjectSelect) {
+			onProjectSelect(project.metadata?.projectId, project.id);
+		} else {
+			setSelectedProject(project);
+		}
 	};
 
 	const handleDecompose = async (projectId: string) => {
