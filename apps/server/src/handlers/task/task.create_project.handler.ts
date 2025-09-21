@@ -279,6 +279,17 @@ export class TaskCreateProjectHandler {
 				}
 			}
 			
+			// Build dependency mapping with real task IDs
+			const dependencyMapping: Record<string, string[]> = {};
+			for (const subtask of decomposeResult.decomposition.subtasks) {
+				const subtaskTaskId = subtaskMapping[subtask.id];
+				if (subtaskTaskId) {
+					dependencyMapping[subtaskTaskId] = subtask.dependencies
+						.map(depId => subtaskMapping[depId])
+						.filter(Boolean);
+				}
+			}
+			
 			// Store task mapping in project attachment
 			await registry.executeHandler("task.create_attachment", {
 				taskId: taskId,
@@ -289,6 +300,7 @@ export class TaskCreateProjectHandler {
 					parentTaskId: taskId,
 					createdTasks: createdTaskIds,
 					subtaskMapping: subtaskMapping,
+					dependencyMapping: dependencyMapping,
 					totalTasks: createdTaskIds.length,
 					decompositionKey: decomposeResult.attachmentKey,
 					strategy: decomposeResult.decomposition.executionStrategy,
