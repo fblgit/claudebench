@@ -136,7 +136,11 @@ export const monitoringWorker = new Worker<MonitoringJob>(
 					
 					if (data.lastSeen) {
 						const timeSinceLastSeen = Date.now() - parseInt(data.lastSeen);
-						const health = timeSinceLastSeen > 30000 ? "unhealthy" : "healthy";
+						// Use configuration value with environment variable override support
+						const heartbeatTimeout = process.env.HEALTH_HEARTBEAT_TIMEOUT 
+							? parseInt(process.env.HEALTH_HEARTBEAT_TIMEOUT)
+							: healthMonitoring.heartbeatTimeout;
+						const health = timeSinceLastSeen > heartbeatTimeout ? "unhealthy" : "healthy";
 						
 						// Update gossip health
 						await redisScripts.updateGossipHealth(instanceId, health);
