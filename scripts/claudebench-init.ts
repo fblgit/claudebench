@@ -218,76 +218,84 @@ When working in this project:
 }
 
 async function setupHooks(config: ProjectConfig, projectDir: string) {
-	const claudeSettingsPath = join(homedir(), ".claude", "settings.json");
+	// Create project-local .claude directory
+	const claudeDir = join(projectDir, ".claude");
+	const claudeSettingsPath = join(claudeDir, "settings.json");
 	
-	// Check if Claude Code settings exist
-	if (!existsSync(claudeSettingsPath)) {
-		console.log(`${c.yellow}⚠️${c.reset} Claude Code settings not found at ${claudeSettingsPath}`);
-		console.log(`   Hooks configuration skipped - configure manually later`);
+	// Create .claude directory if it doesn't exist
+	if (!existsSync(claudeDir)) {
+		mkdirSync(claudeDir, { recursive: true });
+	}
+	
+	// Load the template from scripts/claude_code_hooks.json
+	const claudeBenchRoot = resolve(__dirname, "..");
+	const templatePath = join(claudeBenchRoot, "scripts", "claude_code_hooks.json");
+	const hookScript = join(claudeBenchRoot, "scripts", "claude_code_hooks.py");
+	
+	if (!existsSync(templatePath)) {
+		console.log(`${c.yellow}⚠️${c.reset} Template not found: ${templatePath}`);
+		return;
+	}
+	
+	if (!existsSync(hookScript)) {
+		console.log(`${c.yellow}⚠️${c.reset} Hook script not found: ${hookScript}`);
 		return;
 	}
 
-	try {
-		// Read existing settings
-		const settings = JSON.parse(readFileSync(claudeSettingsPath, "utf-8"));
-		
-		// Prepare hook command - this will call the Python bridge script
-		// We need to know where ClaudeBench is installed
-		const claudeBenchRoot = resolve(__dirname, "..");
-		const hookScript = join(claudeBenchRoot, "scripts", "claude_code_hooks.py");
-		
-		if (!existsSync(hookScript)) {
-			console.log(`${c.yellow}⚠️${c.reset} Hook script not found: ${hookScript}`);
-			return;
-		}
-
-		const hookCommand = `CLAUDEBENCH_RPC_URL="${config.server}/rpc" CLAUDE_PROJECT_DIR="${projectDir}" CLAUDE_INSTANCE_ID="${config.instanceId}" python3 ${hookScript}`;
-		
-		// Initialize hooks object if needed
-		if (!settings.hooks) {
-			settings.hooks = {};
-		}
-
-		// Add hooks for this project (with condition to only run in this directory)
-		const projectCondition = `cwd:${projectDir}`;
-		
-		// Helper to add hook with condition
-		const addHook = (hookType: string, matcher: string = ".*") => {
-			if (!settings.hooks[hookType]) {
-				settings.hooks[hookType] = [];
+	// Load template settings
+	const template = JSON.parse(readFileSync(templatePath, "utf-8"));
+	
+	// Create the hook command with environment variables
+	const hookCommand = `CLAUDEBENCH_RPC_URL="${config.server}/rpc" CLAUDE_PROJECT_DIR="${projectDir}" CLAUDE_INSTANCE_ID="${config.instanceId}" python3 ${hookScript}`;
+	
+	// Update all hook commands in the template to use our configured command
+	const settings = JSON.parse(JSON.stringify(template)); // Deep clone
+	
+	// Update all hooks to use the configured command
+	for (const hookType in settings.hooks) {
+		if (Array.isArray(settings.hooks[hookType])) {
+			for (const hookConfig of settings.hooks[hookType]) {
+				if (hookConfig.hooks && Array.isArray(hookConfig.hooks)) {
+					for (const hook of hookConfig.hooks) {
+						if (hook.type === "command") {
+							hook.command = hookCommand;
+						}
+					}
+				}
 			}
-			
-			// Check if hook already exists for this project
-			const existing = settings.hooks[hookType].find((h: any) => 
-				h.condition === projectCondition
-			);
-			
-			if (!existing) {
-				settings.hooks[hookType].push({
-					matcher,
-					condition: projectCondition,
-					hooks: [{
-						type: "command",
-						command: hookCommand
-					}]
-				});
-			}
-		};
-
-		// Add all hook types
-		addHook("PreToolUse");
-		addHook("PostToolUse");
-		addHook("PostToolUse", "TodoWrite"); // Special handling for TodoWrite
-		addHook("UserPromptSubmit", "");
-		
-		// Save updated settings
-		writeFileSync(claudeSettingsPath, JSON.stringify(settings, null, 2));
-		console.log(`${c.green}✅${c.reset} Updated Claude Code hooks`);
-		
-	} catch (err) {
-		console.log(`${c.yellow}⚠️${c.reset} Could not update Claude Code settings: ${err}`);
-		console.log(`   You may need to configure hooks manually`);
+		}
 	}
+	
+	// Add project-specific metadata
+	settings.project = config.projectName;
+	settings.claudebench = {
+		server: config.server,
+		instanceId: config.instanceId,
+		version: config.version
+	};
+	
+	// Save project-local Claude settings
+	writeFileSync(claudeSettingsPath, JSON.stringify(settings, null, 2));
+	console.log(`${c.green}✅${c.reset} Created .claude/settings.json`);
+	
+	// Also create .mcp.json for MCP configuration
+	const mcpPath = join(projectDir, ".mcp.json");
+	const mcpConfig = {
+		version: "1.0.0",
+		servers: {
+			claudebench: {
+				command: "bun",
+				args: [join(claudeBenchRoot, "apps", "server", "src", "mcp-server.ts")],
+				env: {
+					CLAUDEBENCH_RPC_URL: `${config.server}/rpc`,
+					NODE_ENV: "production"
+				}
+			}
+		}
+	};
+	
+	writeFileSync(mcpPath, JSON.stringify(mcpConfig, null, 2));
+	console.log(`${c.green}✅${c.reset} Created .mcp.json`);
 }
 
 function updateGitignore(projectDir: string) {
