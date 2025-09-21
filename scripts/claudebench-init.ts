@@ -282,15 +282,10 @@ async function setupHooks(config: ProjectConfig, projectDir: string) {
 	// Also create .mcp.json for MCP configuration
 	const mcpPath = join(projectDir, ".mcp.json");
 	const mcpConfig = {
-		version: "1.0.0",
-		servers: {
+		mcpServers: {
 			claudebench: {
-				command: "bun",
-				args: [join(claudeBenchRoot, "apps", "server", "src", "mcp-server.ts")],
-				env: {
-					CLAUDEBENCH_RPC_URL: `${config.server}/rpc`,
-					NODE_ENV: "production"
-				}
+				type: "http",
+				url: `${config.server}/mcp`
 			}
 		}
 	};
