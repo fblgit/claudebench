@@ -47,6 +47,55 @@ You must review these files before implementation:
 {% endfor %}
 {% endif %}
 
+{% if attachments and attachments.length > 0 %}
+## Task Attachments
+The following attachments provide important context for this task:
+{% for attachment in attachments %}
+
+### {{ attachment.key }}
+- **Type:** {{ attachment.type }}
+- **Created:** {{ attachment.createdAt }}
+{% if attachment.type == "json" and attachment.value %}
+{% if attachment.key == "result" or attachment.key.startsWith("test-results") %}
+**Previous Results:**
+```json
+{{ attachment.value | dump(2) }}
+```
+{% elif attachment.key.startsWith("git-commit-") %}
+**Git Commit Information:**
+```json
+{{ attachment.value | dump(2) }}
+```
+{% elif attachment.key.startsWith("context_") %}
+**Previous Context Generation:**
+```json
+{{ attachment.value | dump(2) }}
+```
+{% elif attachment.key == "error-details" %}
+**Error Information:**
+```json
+{{ attachment.value | dump(2) }}
+```
+{% else %}
+**Content:**
+```json
+{{ attachment.value | dump(2) }}
+```
+{% endif %}
+{% elif attachment.type == "markdown" and attachment.content %}
+**Content:**
+{{ attachment.content }}
+{% elif attachment.type == "text" and attachment.content %}
+**Content:**
+```
+{{ attachment.content }}
+```
+{% elif attachment.type == "url" and attachment.url %}
+**URL:** {{ attachment.url }}
+{% endif %}
+{% endfor %}
+{% endif %}
+
 {% if relatedWork and relatedWork.length > 0 %}
 ## Related Work
 Other work in progress that may affect your implementation:

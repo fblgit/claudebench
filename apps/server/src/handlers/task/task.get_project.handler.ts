@@ -78,13 +78,24 @@ export class TaskGetProjectHandler {
 			throw new Error(`Parent task ${parentTaskId} not found`);
 		}
 		
-		// Fetch all subtasks for this project
+		// Fetch all subtasks for this project (excluding the parent task)
 		const subtasks = await ctx.prisma.task.findMany({
 			where: {
-				metadata: {
-					path: ["projectId"],
-					equals: projectId
-				}
+				AND: [
+					{
+						metadata: {
+							path: ["projectId"],
+							equals: projectId
+						}
+					},
+					{
+						// Only include actual subtasks - they have type: "subtask"
+						metadata: {
+							path: ["type"],
+							equals: "subtask"
+						}
+					}
+				]
 			},
 			include: {
 				attachments: {
@@ -99,8 +110,8 @@ export class TaskGetProjectHandler {
 			orderBy: { createdAt: "asc" }
 		});
 		
-		// Filter out the parent task from subtasks
-		const actualSubtasks = subtasks.filter(t => t.id !== parentTaskId);
+		// Subtasks are already filtered by type
+		const actualSubtasks = subtasks;
 		
 		// Get project metadata from Redis cache or attachments
 		const projectKey = `cb:project:${projectId}`;

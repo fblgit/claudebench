@@ -79,13 +79,16 @@ class PromptBuilder:
         description = subtask.get('description', 'No description provided')
         dependencies = subtask.get('dependencies', [])
         constraints = subtask.get('context', {}).get('constraints', [])
+        # Extract attachments from subtask data
+        attachments = subtask.get('attachments', [])
         
         return template.render(
             subtaskId=subtaskId,
             specialist=specialist,
             description=description,
             dependencies=dependencies,
-            constraints=constraints
+            constraints=constraints,
+            attachments=attachments
         )
     
     def build_conflict_prompt(self, solutions: List[ConflictSolution], context: ConflictContext) -> str:

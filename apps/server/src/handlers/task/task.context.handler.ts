@@ -89,6 +89,9 @@ export class TaskContextHandler {
 		const taskKey = `cb:task:${input.taskId}`;
 		const taskData = await redis.pub.hgetall(taskKey);
 		
+		// Store attachments separately since they come from DB
+		let taskAttachments: any[] = [];
+		
 		if (!taskData || Object.keys(taskData).length === 0) {
 			// Try to fetch from database
 			if (ctx.prisma) {
@@ -96,8 +99,8 @@ export class TaskContextHandler {
 					where: { id: input.taskId },
 					include: {
 						attachments: {
-							where: { type: "json" },
-							take: 5
+							orderBy: { createdAt: 'desc' },
+							take: 10  // Increased from 5 to get more context
 						}
 					}
 				});
@@ -105,6 +108,9 @@ export class TaskContextHandler {
 				if (!task) {
 					throw new Error(`Task ${input.taskId} not found`);
 				}
+				
+				// Store attachments for later use
+				taskAttachments = task.attachments || [];
 				
 				// Use database data
 				taskData.text = task.text;
@@ -115,7 +121,32 @@ export class TaskContextHandler {
 			} else {
 				throw new Error(`Task ${input.taskId} not found`);
 			}
+		} else {
+			// Task found in Redis, but we still need to fetch attachments from DB
+			if (ctx.prisma) {
+				const attachments = await ctx.prisma.taskAttachment.findMany({
+					where: { taskId: input.taskId },
+					orderBy: { createdAt: 'desc' },
+					take: 10
+				});
+				taskAttachments = attachments || [];
+			}
 		}
+		
+		// Process attachments to extract meaningful content
+		const processedAttachments = taskAttachments.map(att => ({
+			key: att.key,
+			type: att.type,
+			createdAt: att.createdAt,
+			// Parse JSON values for json type attachments
+			value: att.type === 'json' && att.value ? 
+				(typeof att.value === 'string' ? JSON.parse(att.value) : att.value) : 
+				att.value,
+			// Include content for text/markdown attachments
+			content: att.content || null,
+			// Include URL for url type attachments
+			url: att.url || null
+		}));
 		
 		// Prepare task info for context generation
 		const taskInfo = {
@@ -125,6 +156,7 @@ export class TaskContextHandler {
 			status: taskData.status,
 			priority: parseInt(taskData.priority || "50"),
 			metadata: taskData.metadata ? JSON.parse(taskData.metadata) : {},
+			attachments: processedAttachments,  // Include processed attachments
 			constraints: input.constraints || [],
 			requirements: input.requirements || [],
 			existingFiles: input.existingFiles || [],
@@ -164,6 +196,7 @@ export class TaskContextHandler {
 		// Generate the prompt for the specialist
 		const contextData = {
 			...response,
+			attachments: processedAttachments,  // Add attachments to context
 			customConstraints: input.constraints,
 			customRequirements: input.requirements,
 			existingFiles: input.existingFiles,
