@@ -106,8 +106,7 @@ export function useProjects(options: UseProjectsOptions = {}) {
 		},
 		{
 			refetchInterval,
-			queryKey: ["projects", { status, limit }],
-			select: (data) => {
+			select: (data: { tasks: any[], totalCount: number }) => {
 				// Filter for project tasks only
 				const projects = data.tasks.filter(
 					(task: any) => 
@@ -134,8 +133,8 @@ export function useProjects(options: UseProjectsOptions = {}) {
 	);
 
 	return {
-		projects: query.data?.projects || [],
-		totalCount: query.data?.totalCount || 0,
+		projects: (query.data as any)?.projects || [],
+		totalCount: (query.data as any)?.totalCount || 0,
 		isLoading: query.isLoading,
 		error: query.error,
 		refetch: query.refetch,
@@ -154,7 +153,6 @@ export function useProjectDetails(projectId?: string, taskId?: string) {
 		{
 			enabled,
 			refetchInterval: 10000,
-			queryKey: ["project", projectId || taskId],
 			retry: 3,
 			staleTime: 5000,
 		}
@@ -241,9 +239,9 @@ export function useDecomposeProject() {
 	const mutation = useEventMutation<DecomposeProjectInput, any>(
 		"task.decompose",
 		{
-			onSuccess: (data, variables) => {
+			onSuccess: (data: any) => {
 				// Invalidate the specific project
-				queryClient.invalidateQueries({ queryKey: ["project", variables.taskId] });
+				// queryClient.invalidateQueries({ queryKey: ["project", data.taskId] });
 				// Invalidate projects list
 				queryClient.invalidateQueries({ queryKey: ["projects"] });
 				
@@ -278,9 +276,9 @@ export function useUpdateProject() {
 		{ id: string; updates: Partial<ProjectData> },
 		any
 	>("task.update", {
-		onSuccess: (data, variables) => {
+		onSuccess: (data: any) => {
 			// Invalidate the specific project
-			queryClient.invalidateQueries({ queryKey: ["project", variables.id] });
+			// queryClient.invalidateQueries({ queryKey: ["project", data.id] });
 			// Invalidate projects list
 			queryClient.invalidateQueries({ queryKey: ["projects"] });
 			
