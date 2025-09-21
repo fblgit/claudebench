@@ -169,9 +169,11 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 	
 	// Filters
 	const [filterAssignee, setFilterAssignee] = useState<string>("all");
+	const [filterProject, setFilterProject] = useState<string>("all");
 	const [filterPriority, setFilterPriority] = useState<[number, number]>([0, 100]);
 	const [searchTerm, setSearchTerm] = useState("");
 	const [viewMode, setViewMode] = useState<"board" | "swimlanes">("board");
+	const [groupByProject, setGroupByProject] = useState<boolean>(false);
 	
 	// Drag state
 	const [activeId, setActiveId] = useState<string | null>(null);
