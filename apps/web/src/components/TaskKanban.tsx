@@ -346,11 +346,47 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 
 	// Get filtered columns
 	const filteredColumns = useMemo(() => {
-		return columns.map((column) => ({
-			...column,
-			tasks: filteredTasks.filter((task) => task.status === column.status),
-		}));
-	}, [columns, filteredTasks]);
+		if (groupByProject) {
+			// Group by project
+			const projectColumns: Column[] = [];
+			
+			// Add column for tasks without project
+			const unassignedTasks = filteredTasks.filter((task) => !task.metadata?.projectId);
+			if (unassignedTasks.length > 0) {
+				projectColumns.push({
+					id: "no-project",
+					title: "No Project",
+					status: "pending", // Default status for drag-drop compatibility
+					icon: <FolderOpen className="h-4 w-4" />,
+					color: "text-gray-500",
+					tasks: unassignedTasks,
+				});
+			}
+			
+			// Add column for each project
+			projects.forEach((project) => {
+				const projectTasks = filteredTasks.filter((task) => task.metadata?.projectId === project.id);
+				if (projectTasks.length > 0) {
+					projectColumns.push({
+						id: project.id,
+						title: project.name,
+						status: "pending", // Default status for drag-drop compatibility
+						icon: <FolderOpen className="h-4 w-4" />,
+						color: "text-blue-500",
+						tasks: projectTasks,
+					});
+				}
+			});
+			
+			return projectColumns;
+		} else {
+			// Group by status (default)
+			return columns.map((column) => ({
+				...column,
+				tasks: filteredTasks.filter((task) => task.status === column.status),
+			}));
+		}
+	}, [columns, filteredTasks, groupByProject, projects]);
 
 	// Get unique projects from tasks
 	const projects = useMemo(() => {
