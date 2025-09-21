@@ -78,16 +78,6 @@ export class TaskGetProjectHandler {
 			throw new Error(`Parent task ${parentTaskId} not found`);
 		}
 		
-		// Ensure we have projectId - get it from parent task if not set
-		if (!projectId && parentTask.metadata) {
-			const parentMetadata = parentTask.metadata as any;
-			projectId = parentMetadata.projectId;
-		}
-		
-		if (!projectId) {
-			throw new Error(`No projectId found for task ${parentTaskId}`);
-		}
-		
 		// Fetch all subtasks for this project
 		const subtasks = await ctx.prisma.task.findMany({
 			where: {
