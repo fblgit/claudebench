@@ -593,7 +593,7 @@ export function ProjectDetailView({
 			{/* Modals */}
 			{selectedTaskForContext && (
 				<ContextGenerationDialog
-					isOpen={!!selectedTaskForContext}
+					open={!!selectedTaskForContext}
 					onClose={() => setSelectedTaskForContext(null)}
 					taskId={selectedTaskForContext}
 				/>
@@ -602,7 +602,7 @@ export function ProjectDetailView({
 			{viewAttachments && (
 				<AttachmentViewer
 					taskId={viewAttachments.taskId}
-					attachmentKey={viewAttachments.key}
+					key={viewAttachments.key}
 					onClose={() => setViewAttachments(null)}
 				/>
 			)}
