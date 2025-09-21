@@ -78,6 +78,10 @@ export class TaskGetProjectHandler {
 			throw new Error(`Parent task ${parentTaskId} not found`);
 		}
 		
+		// Debug: Log what we're querying with
+		console.log(`[TaskGetProject] About to query subtasks with projectId: '${projectId}', parentTaskId: '${parentTaskId}'`);
+		console.log(`[TaskGetProject] projectId type: ${typeof projectId}, value: ${JSON.stringify(projectId)}`);
+		
 		// Fetch all subtasks for this project
 		const subtasks = await ctx.prisma.task.findMany({
 			where: {
