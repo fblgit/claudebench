@@ -351,45 +351,91 @@ export function ContextGenerationDialog({
 								</Card>
 							</div>
 							
-							<div className="space-y-2">
-								<Label htmlFor="specialist">Select Specialist Type</Label>
-								<Select value={specialist} onValueChange={setSpecialist}>
-									<SelectTrigger id="specialist">
-										<SelectValue placeholder="Choose a specialist..." />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value="general">
-											<div className="flex items-center gap-2">
-												<Brain className="h-4 w-4" />
-												General - Versatile implementation
-											</div>
-										</SelectItem>
-										<SelectItem value="frontend">
-											<div className="flex items-center gap-2">
-												<Code className="h-4 w-4" />
-												Frontend - UI/UX components
-											</div>
-										</SelectItem>
-										<SelectItem value="backend">
-											<div className="flex items-center gap-2">
-												<Zap className="h-4 w-4" />
-												Backend - API and services
-											</div>
-										</SelectItem>
-										<SelectItem value="testing">
-											<div className="flex items-center gap-2">
-												<TestTube className="h-4 w-4" />
-												Testing - Test implementation
-											</div>
-										</SelectItem>
-										<SelectItem value="docs">
-											<div className="flex items-center gap-2">
-												<BookOpen className="h-4 w-4" />
-												Documentation - Technical docs
-											</div>
-										</SelectItem>
-									</SelectContent>
-								</Select>
+							<div className="grid grid-cols-2 gap-4">
+								<div className="space-y-2">
+									<Label htmlFor="specialist">Select Specialist Type</Label>
+									<Select value={specialist} onValueChange={setSpecialist}>
+										<SelectTrigger id="specialist">
+											<SelectValue placeholder="Choose a specialist..." />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="general">
+												<div className="flex items-center gap-2">
+													<Brain className="h-4 w-4" />
+													General - Versatile implementation
+												</div>
+											</SelectItem>
+											<SelectItem value="frontend">
+												<div className="flex items-center gap-2">
+													<Code className="h-4 w-4" />
+													Frontend - UI/UX components
+												</div>
+											</SelectItem>
+											<SelectItem value="backend">
+												<div className="flex items-center gap-2">
+													<Zap className="h-4 w-4" />
+													Backend - API and services
+												</div>
+											</SelectItem>
+											<SelectItem value="testing">
+												<div className="flex items-center gap-2">
+													<TestTube className="h-4 w-4" />
+													Testing - Test implementation
+												</div>
+											</SelectItem>
+											<SelectItem value="docs">
+												<div className="flex items-center gap-2">
+													<BookOpen className="h-4 w-4" />
+													Documentation - Technical docs
+												</div>
+											</SelectItem>
+										</SelectContent>
+									</Select>
+								</div>
+								
+								<div className="space-y-2">
+									<Label htmlFor="worker">Select Worker Instance</Label>
+									<Select value={selectedWorker} onValueChange={setSelectedWorker}>
+										<SelectTrigger id="worker">
+											<SelectValue placeholder="Choose a worker..." />
+										</SelectTrigger>
+										<SelectContent>
+											{activeWorkers.length === 0 ? (
+												<div className="p-2 text-sm text-muted-foreground">
+													No active workers available
+												</div>
+											) : (
+												activeWorkers.map((worker: any) => {
+													// Try to extract working directory from metadata
+													const metadata = worker.metadata ? 
+														(typeof worker.metadata === 'string' ? 
+															JSON.parse(worker.metadata) : worker.metadata) : {};
+													const workingDir = metadata.workingDirectory || 'Unknown';
+													
+													return (
+														<SelectItem key={worker.id} value={worker.id}>
+															<div className="flex items-start gap-2">
+																<User className="h-4 w-4 mt-0.5" />
+																<div className="flex-1">
+																	<div className="font-medium">{worker.id}</div>
+																	<div className="text-xs text-muted-foreground flex items-center gap-1">
+																		<FolderOpen className="h-3 w-3" />
+																		{workingDir}
+																	</div>
+																</div>
+															</div>
+														</SelectItem>
+													);
+												})
+											)}
+										</SelectContent>
+									</Select>
+									{selectedWorker && (
+										<p className="text-xs text-muted-foreground">
+											Context will be generated using this worker's environment
+										</p>
+									)}
+								</div>
 							</div>
 							
 							<div className="space-y-2">
