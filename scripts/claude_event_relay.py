@@ -200,9 +200,15 @@ class ClaudeEventRelay:
             if self.debug:
                 self.log('INFO', f"Registering event relay with roles: {self.roles}")
             
+            # Include working directory in metadata
+            metadata = {
+                'workingDirectory': os.getcwd()
+            }
+            
             result = await self.make_jsonrpc_request('system.register', {
                 'id': self.instance_id,
-                'roles': self.roles
+                'roles': self.roles,
+                'metadata': metadata
             })
             
             if result.get('registered'):
