@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
 	Dialog,
 	DialogContent,
@@ -33,8 +33,10 @@ import {
 	Zap,
 	CheckCircle,
 	XCircle,
+	User,
+	FolderOpen,
 } from "lucide-react";
-import { useGenerateContext } from "@/services/event-client";
+import { useGenerateContext, useSystemState } from "@/services/event-client";
 
 interface Task {
 	id: string;
