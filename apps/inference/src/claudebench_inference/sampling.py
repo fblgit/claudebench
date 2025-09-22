@@ -140,7 +140,8 @@ class SamplingEngine:
         max_tokens: int = 2000,
         temperature: float = 0.7,
         system_prompt: Optional[str] = None,
-        max_turns: int = 50  # Allow extensive exploration
+        max_turns: int = 50,  # Allow extensive exploration
+        working_directory: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Sample and parse JSON response
@@ -151,6 +152,7 @@ class SamplingEngine:
             temperature: Sampling temperature
             system_prompt: Override the default system prompt
             max_turns: Maximum number of turns for tool usage
+            working_directory: Working directory to run the SDK in
             
         Returns:
             Parsed JSON response as dictionary
@@ -158,7 +160,7 @@ class SamplingEngine:
         Raises:
             Exception: If sampling or parsing fails
         """
-        response = await self.sample(prompt, max_tokens, temperature, system_prompt, max_turns)
+        response = await self.sample(prompt, max_tokens, temperature, system_prompt, max_turns, working_directory)
         return self.extract_json(response)
     
     def get_stats(self) -> Dict[str, Any]:
