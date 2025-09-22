@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCreateProject } from "@/hooks/useProjects";
+import { useSystemState } from "@/services/event-client";
 import {
 	Dialog,
 	DialogContent,
@@ -22,7 +23,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { X, Plus, AlertCircle, Loader2, FolderPlus } from "lucide-react";
+import { X, Plus, AlertCircle, Loader2, FolderPlus, User, FolderOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ProjectCreationDialogProps {
