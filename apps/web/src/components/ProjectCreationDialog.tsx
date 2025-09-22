@@ -45,9 +45,25 @@ export function ProjectCreationDialog({
 	const [currentConstraint, setCurrentConstraint] = useState("");
 	const [currentRequirement, setCurrentRequirement] = useState("");
 	const [estimatedComplexity, setEstimatedComplexity] = useState("medium");
+	const [selectedWorker, setSelectedWorker] = useState<string>("");
 
-	// API hook
+	// API hooks
 	const { createProjectAsync, isLoading, error, reset } = useCreateProject();
+	const { data: systemState } = useSystemState();
+	
+	// Extract active workers from system state
+	const activeWorkers = systemState?.instances?.filter((instance: any) => 
+		instance.roles?.includes("worker") || 
+		instance.roles?.includes("relay") ||
+		instance.id?.startsWith("worker-")
+	) || [];
+	
+	// Set default worker when available
+	useEffect(() => {
+		if (activeWorkers.length > 0 && !selectedWorker) {
+			setSelectedWorker(activeWorkers[0].id);
+		}
+	}, [activeWorkers, selectedWorker]);
 
 	// Handlers
 	const handleAddConstraint = () => {
