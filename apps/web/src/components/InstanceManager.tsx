@@ -115,6 +115,21 @@ export function InstanceManager({ onInstancesChange, className }: InstanceManage
 						}
 					}
 				}
+				
+				// Extract working directory from metadata
+				let workingDirectory: string | undefined;
+				let metadata = inst.metadata;
+				if (metadata) {
+					if (typeof metadata === 'string') {
+						try {
+							metadata = JSON.parse(metadata);
+						} catch {
+							// Keep as is if not valid JSON
+						}
+					}
+					workingDirectory = metadata?.workingDirectory;
+				}
+				
 				return {
 					id: inst.id || inst.instanceId,
 					roles,
@@ -122,6 +137,8 @@ export function InstanceManager({ onInstancesChange, className }: InstanceManage
 					health: inst.health || "healthy",
 					lastSeen: inst.lastSeen || inst.lastHeartbeat || new Date().toISOString(),
 					taskCount: inst.taskCount || 0,
+					workingDirectory,
+					metadata,
 				};
 			});
 			setInstances(instanceList);
