@@ -464,6 +464,14 @@ export function InstanceManager({ onInstancesChange, className }: InstanceManage
 															</div>
 														)}
 													</div>
+													{instance.workingDirectory && (
+														<div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+															<FolderOpen className="h-3 w-3" />
+															<span className="font-mono truncate max-w-[400px]" title={instance.workingDirectory}>
+																{instance.workingDirectory}
+															</span>
+														</div>
+													)}
 												</div>
 												<div className="flex gap-2">
 													<Button
