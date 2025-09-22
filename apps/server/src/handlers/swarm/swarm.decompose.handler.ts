@@ -84,6 +84,7 @@ export class SwarmDecomposeHandler {
 		}
 		
 		// Get worker's working directory from instance metadata
+		const redis = getRedis();
 		let workingDirectory: string | undefined;
 		if (ctx.instanceId) {
 			const instanceKey = `cb:instance:${ctx.instanceId}`;
