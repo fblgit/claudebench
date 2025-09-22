@@ -171,6 +171,27 @@ export class TaskContextHandler {
 			throw new Error("No session ID available for sampling");
 		}
 		
+		// Get worker's working directory from instance metadata
+		let workingDirectory: string | undefined;
+		if (ctx.instanceId) {
+			const instanceKey = `cb:instance:${ctx.instanceId}`;
+			const instanceMetadata = await redis.pub.hget(instanceKey, 'metadata');
+			if (instanceMetadata) {
+				try {
+					const metadata = JSON.parse(instanceMetadata);
+					workingDirectory = metadata.workingDirectory;
+					console.log(`[TaskContext] Using working directory from instance ${ctx.instanceId}: ${workingDirectory}`);
+				} catch (e) {
+					console.warn(`[TaskContext] Failed to parse instance metadata:`, e);
+				}
+			}
+		}
+		
+		// Add working directory to task info if available
+		if (workingDirectory) {
+			(taskInfo as any).workingDirectory = workingDirectory;
+		}
+		
 		// Call the context generation endpoint with task info
 		const response = await samplingService.generateContext(
 			sessionId,
