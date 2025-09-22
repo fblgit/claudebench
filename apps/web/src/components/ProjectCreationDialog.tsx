@@ -123,6 +123,7 @@ export function ProjectCreationDialog({
 		setCurrentConstraint("");
 		setCurrentRequirement("");
 		setEstimatedComplexity("medium");
+		setSelectedWorker("");
 		reset();
 		onClose();
 	};
