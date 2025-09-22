@@ -55,6 +55,8 @@ interface Instance {
 	health?: string;
 	lastSeen?: string;
 	taskCount?: number;
+	workingDirectory?: string;
+	metadata?: any;
 }
 
 interface InstanceManagerProps {
