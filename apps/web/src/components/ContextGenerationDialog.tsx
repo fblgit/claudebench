@@ -107,6 +107,9 @@ export function ContextGenerationDialog({
 				requirements: requirementsList,
 				existingFiles: filesList,
 				additionalContext: additionalContext || undefined,
+				metadata: {
+					workerId: selectedWorker || undefined,
+				},
 			});
 			
 			setGeneratedContext(result);
