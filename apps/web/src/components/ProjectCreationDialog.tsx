@@ -217,6 +217,49 @@ export function ProjectCreationDialog({
 						</Select>
 					</div>
 
+					{/* Worker Selection */}
+					<div className="space-y-2">
+						<Label htmlFor="worker">Worker Instance</Label>
+						<Select value={selectedWorker} onValueChange={setSelectedWorker} disabled={isLoading}>
+							<SelectTrigger id="worker">
+								<SelectValue placeholder="Select a worker..." />
+							</SelectTrigger>
+							<SelectContent>
+								{activeWorkers.length === 0 ? (
+									<div className="p-2 text-sm text-muted-foreground">
+										No active workers available
+									</div>
+								) : (
+									activeWorkers.map((worker: any) => {
+										// Extract working directory from metadata
+										const metadata = worker.metadata ? 
+											(typeof worker.metadata === 'string' ? 
+												JSON.parse(worker.metadata) : worker.metadata) : {};
+										const workingDir = metadata.workingDirectory || 'Unknown';
+										
+										return (
+											<SelectItem key={worker.id} value={worker.id}>
+												<div className="flex items-start gap-2">
+													<User className="h-4 w-4 mt-0.5" />
+													<div className="flex-1">
+														<div className="font-medium">{worker.id}</div>
+														<div className="text-xs text-muted-foreground flex items-center gap-1">
+															<FolderOpen className="h-3 w-3" />
+															{workingDir}
+														</div>
+													</div>
+												</div>
+											</SelectItem>
+										);
+									})
+								)}
+							</SelectContent>
+						</Select>
+						<p className="text-xs text-muted-foreground">
+							The project will be created and decomposed using this worker's environment.
+						</p>
+					</div>
+
 					{/* Constraints */}
 					<div className="space-y-2">
 						<Label htmlFor="constraints">
