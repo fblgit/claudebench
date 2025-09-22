@@ -222,6 +222,13 @@ async def generate_context(request: ContextRequest):
     logger.info(f"Context generation for subtask {request.subtaskId}")
     
     try:
+        # Extract working directory from subtask metadata if provided
+        working_directory = None
+        if request.subtask and isinstance(request.subtask, dict):
+            working_directory = request.subtask.get('workingDirectory')
+            if working_directory:
+                logger.info(f"Using working directory: {working_directory}")
+        
         # Build the prompt
         prompt = prompt_builder.build_context_prompt(
             subtaskId=request.subtaskId,
@@ -229,11 +236,12 @@ async def generate_context(request: ContextRequest):
             subtask=request.subtask
         )
         
-        # Perform sampling
+        # Perform sampling with working directory
         result = await sampling_engine.sample_json(
             prompt=prompt,
             max_tokens=16384,
-            temperature=0.5  # Lower temperature for more focused context
+            temperature=0.5,  # Lower temperature for more focused context
+            working_directory=working_directory
         )
         
         # Validate and return response
