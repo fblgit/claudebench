@@ -3,6 +3,7 @@ import type { EventContext } from "@/core/context";
 import { swarmDecomposeInput, swarmDecomposeOutput } from "@/schemas/swarm.schema";
 import type { SwarmDecomposeInput, SwarmDecomposeOutput } from "@/schemas/swarm.schema";
 import { redisScripts } from "@/core/redis-scripts";
+import { getRedis } from "@/core/redis";
 import { getSamplingService } from "@/core/sampling";
 import { registry } from "@/core/registry";
 
