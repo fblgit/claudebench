@@ -33,7 +33,8 @@ export class SystemRegisterHandler {
 		const result = await redisScripts.registerInstance(
 			input.id,
 			input.roles,
-			ttl
+			ttl,
+			input.metadata
 		);
 		
 		console.log(`[SystemRegister] Registration result for ${input.id}:`, result);
