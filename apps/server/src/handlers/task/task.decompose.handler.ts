@@ -140,7 +140,7 @@ export class TaskDecomposeHandler {
 				priority: input.priority,
 				constraints: input.constraints,
 				workingDirectory
-			} as any
+			}
 		);
 		
 		// Store decomposition in Redis for quick access
