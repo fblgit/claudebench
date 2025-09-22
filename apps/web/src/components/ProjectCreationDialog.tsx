@@ -101,6 +101,7 @@ export function ProjectCreationDialog({
 				requirements: requirements.length > 0 ? requirements : undefined,
 				metadata: {
 					estimatedComplexity,
+					workerId: selectedWorker || undefined,
 				},
 			});
 
