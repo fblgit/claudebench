@@ -148,21 +148,6 @@ export class TaskContextHandler {
 			url: att.url || null
 		}));
 		
-		// Prepare task info for context generation
-		const taskInfo = {
-			id: input.taskId,
-			description: input.customDescription || taskData.text || "No description",
-			specialist: input.specialist,
-			status: taskData.status,
-			priority: parseInt(taskData.priority || "50"),
-			metadata: taskData.metadata ? JSON.parse(taskData.metadata) : {},
-			attachments: processedAttachments,  // Include processed attachments
-			constraints: input.constraints || [],
-			requirements: input.requirements || [],
-			existingFiles: input.existingFiles || [],
-			additionalContext: input.additionalContext || ""
-		};
-		
 		// Generate context via sampling service
 		const samplingService = getSamplingService();
 		const sessionId = ctx.metadata?.sessionId || ctx.metadata?.clientId || ctx.instanceId;
@@ -193,10 +178,21 @@ export class TaskContextHandler {
 			}
 		}
 		
-		// Add working directory to task info if available
-		if (workingDirectory) {
-			(taskInfo as any).workingDirectory = workingDirectory;
-		}
+		// Prepare task info for context generation - include workingDirectory
+		const taskInfo = {
+			id: input.taskId,
+			description: input.customDescription || taskData.text || "No description",
+			specialist: input.specialist,
+			status: taskData.status,
+			priority: parseInt(taskData.priority || "50"),
+			metadata: taskData.metadata ? JSON.parse(taskData.metadata) : {},
+			attachments: processedAttachments,  // Include processed attachments
+			constraints: input.constraints || [],
+			requirements: input.requirements || [],
+			existingFiles: input.existingFiles || [],
+			additionalContext: input.additionalContext || "",
+			workingDirectory: workingDirectory  // Now properly typed in the object
+		};
 		
 		// Call the context generation endpoint with task info
 		const response = await samplingService.generateContext(
