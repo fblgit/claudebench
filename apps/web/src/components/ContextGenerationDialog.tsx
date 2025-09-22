@@ -59,6 +59,7 @@ export function ContextGenerationDialog({
 	onSuccess,
 }: ContextGenerationDialogProps) {
 	const [specialist, setSpecialist] = useState<string>("general");
+	const [selectedWorker, setSelectedWorker] = useState<string>("");
 	const [customDescription, setCustomDescription] = useState("");
 	const [constraints, setConstraints] = useState("");
 	const [requirements, setRequirements] = useState("");
@@ -69,6 +70,21 @@ export function ContextGenerationDialog({
 	const [error, setError] = useState<string | null>(null);
 	
 	const generateContextMutation = useGenerateContext();
+	const { data: systemState } = useSystemState();
+	
+	// Extract active workers from system state
+	const activeWorkers = systemState?.instances?.filter((instance: any) => 
+		instance.roles?.includes("worker") || 
+		instance.roles?.includes("relay") ||
+		instance.id?.startsWith("worker-")
+	) || [];
+	
+	// Set default worker when available
+	useEffect(() => {
+		if (activeWorkers.length > 0 && !selectedWorker) {
+			setSelectedWorker(activeWorkers[0].id);
+		}
+	}, [activeWorkers, selectedWorker]);
 
 	const handleGenerateContext = async () => {
 		if (!task) return;
