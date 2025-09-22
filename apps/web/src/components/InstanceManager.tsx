@@ -43,6 +43,7 @@ import {
 	Server,
 	Zap,
 	Heart,
+	FolderOpen,
 } from "lucide-react";
 import { useEventMutation, useEventQuery } from "@/services/event-client";
 import { formatDistanceToNow } from "date-fns";
