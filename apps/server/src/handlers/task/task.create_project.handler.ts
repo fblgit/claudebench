@@ -178,7 +178,8 @@ export class TaskCreateProjectHandler {
 				sessionId: sessionId,
 				metadata: {
 					projectId: projectId,
-					source: "task.create_project"
+					source: "task.create_project",
+					workerId: input.metadata?.workerId // Pass through the workerId
 				}
 			}, ctx.metadata?.clientId);
 			

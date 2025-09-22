@@ -354,7 +354,8 @@ export class RedisScriptExecutor {
 	async registerInstance(
 		instanceId: string,
 		roles: string[],
-		ttl: number
+		ttl: number,
+		metadata?: any
 	): Promise<{ success: boolean; becameLeader: boolean }> {
 		const result = await this.redis.stream.eval(
 			scripts.INSTANCE_REGISTER,
@@ -364,7 +365,8 @@ export class RedisScriptExecutor {
 			instanceId,
 			JSON.stringify(roles),
 			Date.now().toString(),
-			ttl.toString()
+			ttl.toString(),
+			JSON.stringify(metadata || {})
 		) as [number, number];
 		
 		return {

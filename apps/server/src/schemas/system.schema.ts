@@ -18,6 +18,9 @@ export const systemHealthOutput = z.object({
 export const systemRegisterInput = z.object({
 	id: z.string().min(1),
 	roles: z.array(z.string()),
+	metadata: z.object({
+		workingDirectory: z.string().optional(),
+	}).optional(),
 });
 
 export const systemRegisterOutput = z.object({

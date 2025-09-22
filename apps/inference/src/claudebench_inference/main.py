@@ -159,17 +159,25 @@ async def decompose_task(request: DecompositionRequest):
     logger.info(f"Decomposition request for session {request.sessionId}: {request.task[:50]}...")
     
     try:
+        # Extract working directory from context if provided
+        working_directory = None
+        if request.context and hasattr(request.context, 'workingDirectory'):
+            working_directory = request.context.workingDirectory
+            if working_directory:
+                logger.info(f"Using working directory for decomposition: {working_directory}")
+        
         # Build the prompt
         prompt = prompt_builder.build_decomposition_prompt(
             task=request.task,
             context=request.context
         )
         
-        # Perform sampling
+        # Perform sampling with working directory
         result = await sampling_engine.sample_json(
             prompt=prompt,
             max_tokens=8192,
-            temperature=0.7
+            temperature=0.7,
+            working_directory=working_directory
         )
         
         # Validate and return response
@@ -222,6 +230,13 @@ async def generate_context(request: ContextRequest):
     logger.info(f"Context generation for subtask {request.subtaskId}")
     
     try:
+        # Extract working directory from subtask metadata if provided
+        working_directory = None
+        if request.subtask and isinstance(request.subtask, dict):
+            working_directory = request.subtask.get('workingDirectory')
+            if working_directory:
+                logger.info(f"Using working directory: {working_directory}")
+        
         # Build the prompt
         prompt = prompt_builder.build_context_prompt(
             subtaskId=request.subtaskId,
@@ -229,11 +244,12 @@ async def generate_context(request: ContextRequest):
             subtask=request.subtask
         )
         
-        # Perform sampling
+        # Perform sampling with working directory
         result = await sampling_engine.sample_json(
             prompt=prompt,
             max_tokens=16384,
-            temperature=0.5  # Lower temperature for more focused context
+            temperature=0.5,  # Lower temperature for more focused context
+            working_directory=working_directory
         )
         
         # Validate and return response

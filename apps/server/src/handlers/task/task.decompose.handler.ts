@@ -115,6 +115,22 @@ export class TaskDecomposeHandler {
 			throw new Error("No session ID available for sampling");
 		}
 		
+		// Get worker's working directory from instance metadata
+		let workingDirectory: string | undefined;
+		if (ctx.instanceId) {
+			const instanceKey = `cb:instance:${ctx.instanceId}`;
+			const instanceMetadata = await redis.pub.hget(instanceKey, 'metadata');
+			if (instanceMetadata) {
+				try {
+					const metadata = JSON.parse(instanceMetadata);
+					workingDirectory = metadata.workingDirectory;
+					console.log(`[TaskDecompose] Using working directory from instance ${ctx.instanceId}: ${workingDirectory}`);
+				} catch (e) {
+					console.warn(`[TaskDecompose] Failed to parse instance metadata:`, e);
+				}
+			}
+		}
+		
 		// Request decomposition via sampling
 		const decomposition = await samplingService.requestDecomposition(
 			sessionId,
@@ -122,7 +138,8 @@ export class TaskDecomposeHandler {
 			{
 				specialists,
 				priority: input.priority,
-				constraints: input.constraints
+				constraints: input.constraints,
+				workingDirectory
 			}
 		);
 		

@@ -43,6 +43,7 @@ import {
 	Server,
 	Zap,
 	Heart,
+	FolderOpen,
 } from "lucide-react";
 import { useEventMutation, useEventQuery } from "@/services/event-client";
 import { formatDistanceToNow } from "date-fns";
@@ -54,6 +55,8 @@ interface Instance {
 	health?: string;
 	lastSeen?: string;
 	taskCount?: number;
+	workingDirectory?: string;
+	metadata?: any;
 }
 
 interface InstanceManagerProps {
@@ -112,6 +115,21 @@ export function InstanceManager({ onInstancesChange, className }: InstanceManage
 						}
 					}
 				}
+				
+				// Extract working directory from metadata
+				let workingDirectory: string | undefined;
+				let metadata = inst.metadata;
+				if (metadata) {
+					if (typeof metadata === 'string') {
+						try {
+							metadata = JSON.parse(metadata);
+						} catch {
+							// Keep as is if not valid JSON
+						}
+					}
+					workingDirectory = metadata?.workingDirectory;
+				}
+				
 				return {
 					id: inst.id || inst.instanceId,
 					roles,
@@ -119,6 +137,8 @@ export function InstanceManager({ onInstancesChange, className }: InstanceManage
 					health: inst.health || "healthy",
 					lastSeen: inst.lastSeen || inst.lastHeartbeat || new Date().toISOString(),
 					taskCount: inst.taskCount || 0,
+					workingDirectory,
+					metadata,
 				};
 			});
 			setInstances(instanceList);
@@ -444,6 +464,14 @@ export function InstanceManager({ onInstancesChange, className }: InstanceManage
 															</div>
 														)}
 													</div>
+													{instance.workingDirectory && (
+														<div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+															<FolderOpen className="h-3 w-3" />
+															<span className="font-mono truncate max-w-[400px]" title={instance.workingDirectory}>
+																{instance.workingDirectory}
+															</span>
+														</div>
+													)}
 												</div>
 												<div className="flex gap-2">
 													<Button

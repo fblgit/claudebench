@@ -50,7 +50,8 @@ class SamplingEngine:
         max_tokens: int = 2000,  # Note: not directly used by SDK
         temperature: float = 0.7,  # Note: not directly used by SDK
         system_prompt: Optional[str] = None,
-        max_turns: int = 50  # Allow extensive exploration
+        max_turns: int = 50,  # Allow extensive exploration
+        working_directory: Optional[str] = None  # Working directory for the context
     ) -> str:
         """
         Perform sampling using claude-code-sdk
@@ -61,6 +62,7 @@ class SamplingEngine:
             temperature: Sampling temperature (not used by SDK)
             system_prompt: Override the default system prompt
             max_turns: Maximum number of turns for tool usage
+            working_directory: Working directory to run the SDK in
             
         Returns:
             The response text from Claude
@@ -71,11 +73,16 @@ class SamplingEngine:
         try:
             self.stats["total_requests"] += 1
             
+            # Log the working directory if provided
+            if working_directory:
+                logger.info(f"Using working directory: {working_directory}")
+            
             options = ClaudeCodeOptions(
                 max_turns=max_turns,  # Allow multiple turns for exploration
                 system_prompt=system_prompt or self.default_system_prompt,
                 allowed_tools=self.allowed_tools,
-                permission_mode='bypassPermissions'  # Allow tool use without prompting
+                permission_mode='bypassPermissions',  # Allow tool use without prompting
+                cwd=working_directory  # Set the working directory for the SDK
             )
             
             response_text = ""
@@ -133,7 +140,8 @@ class SamplingEngine:
         max_tokens: int = 2000,
         temperature: float = 0.7,
         system_prompt: Optional[str] = None,
-        max_turns: int = 50  # Allow extensive exploration
+        max_turns: int = 50,  # Allow extensive exploration
+        working_directory: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Sample and parse JSON response
@@ -144,6 +152,7 @@ class SamplingEngine:
             temperature: Sampling temperature
             system_prompt: Override the default system prompt
             max_turns: Maximum number of turns for tool usage
+            working_directory: Working directory to run the SDK in
             
         Returns:
             Parsed JSON response as dictionary
@@ -151,7 +160,7 @@ class SamplingEngine:
         Raises:
             Exception: If sampling or parsing fails
         """
-        response = await self.sample(prompt, max_tokens, temperature, system_prompt, max_turns)
+        response = await self.sample(prompt, max_tokens, temperature, system_prompt, max_turns, working_directory)
         return self.extract_json(response)
     
     def get_stats(self) -> Dict[str, Any]:

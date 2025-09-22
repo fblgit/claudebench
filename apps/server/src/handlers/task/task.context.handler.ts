@@ -148,7 +148,37 @@ export class TaskContextHandler {
 			url: att.url || null
 		}));
 		
-		// Prepare task info for context generation
+		// Generate context via sampling service
+		const samplingService = getSamplingService();
+		const sessionId = ctx.metadata?.sessionId || ctx.metadata?.clientId || ctx.instanceId;
+		
+		if (!sessionId) {
+			throw new Error("No session ID available for sampling");
+		}
+		
+		// Get worker's working directory from instance metadata
+		let workingDirectory: string | undefined;
+		// First check if a specific worker was requested in the input metadata
+		const requestedWorkerId = input.metadata?.workerId;
+		const workerId = requestedWorkerId || ctx.instanceId;
+		
+		if (workerId) {
+			const instanceKey = `cb:instance:${workerId}`;
+			const instanceMetadata = await redis.pub.hget(instanceKey, 'metadata');
+			if (instanceMetadata) {
+				try {
+					const metadata = JSON.parse(instanceMetadata);
+					workingDirectory = metadata.workingDirectory;
+					console.log(`[TaskContext] Using working directory from instance ${workerId}: ${workingDirectory}`);
+				} catch (e) {
+					console.warn(`[TaskContext] Failed to parse instance metadata for ${workerId}:`, e);
+				}
+			} else if (requestedWorkerId) {
+				console.warn(`[TaskContext] Requested worker ${requestedWorkerId} not found or has no metadata`);
+			}
+		}
+		
+		// Prepare task info for context generation - include workingDirectory
 		const taskInfo = {
 			id: input.taskId,
 			description: input.customDescription || taskData.text || "No description",
@@ -160,16 +190,9 @@ export class TaskContextHandler {
 			constraints: input.constraints || [],
 			requirements: input.requirements || [],
 			existingFiles: input.existingFiles || [],
-			additionalContext: input.additionalContext || ""
+			additionalContext: input.additionalContext || "",
+			workingDirectory: workingDirectory  // Now properly typed in the object
 		};
-		
-		// Generate context via sampling service
-		const samplingService = getSamplingService();
-		const sessionId = ctx.metadata?.sessionId || ctx.metadata?.clientId || ctx.instanceId;
-		
-		if (!sessionId) {
-			throw new Error("No session ID available for sampling");
-		}
 		
 		// Call the context generation endpoint with task info
 		const response = await samplingService.generateContext(

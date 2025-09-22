@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCreateProject } from "@/hooks/useProjects";
+import { useSystemState } from "@/services/event-client";
 import {
 	Dialog,
 	DialogContent,
@@ -22,7 +23,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { X, Plus, AlertCircle, Loader2, FolderPlus } from "lucide-react";
+import { X, Plus, AlertCircle, Loader2, FolderPlus, User, FolderOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ProjectCreationDialogProps {
@@ -44,9 +45,25 @@ export function ProjectCreationDialog({
 	const [currentConstraint, setCurrentConstraint] = useState("");
 	const [currentRequirement, setCurrentRequirement] = useState("");
 	const [estimatedComplexity, setEstimatedComplexity] = useState("medium");
+	const [selectedWorker, setSelectedWorker] = useState<string>("");
 
-	// API hook
+	// API hooks
 	const { createProjectAsync, isLoading, error, reset } = useCreateProject();
+	const { data: systemState } = useSystemState();
+	
+	// Extract active workers from system state
+	const activeWorkers = systemState?.instances?.filter((instance: any) => 
+		instance.roles?.includes("worker") || 
+		instance.roles?.includes("relay") ||
+		instance.id?.startsWith("worker-")
+	) || [];
+	
+	// Set default worker when available
+	useEffect(() => {
+		if (activeWorkers.length > 0 && !selectedWorker) {
+			setSelectedWorker(activeWorkers[0].id);
+		}
+	}, [activeWorkers, selectedWorker]);
 
 	// Handlers
 	const handleAddConstraint = () => {
@@ -84,6 +101,7 @@ export function ProjectCreationDialog({
 				requirements: requirements.length > 0 ? requirements : undefined,
 				metadata: {
 					estimatedComplexity,
+					workerId: selectedWorker || undefined,
 				},
 			});
 
@@ -105,6 +123,7 @@ export function ProjectCreationDialog({
 		setCurrentConstraint("");
 		setCurrentRequirement("");
 		setEstimatedComplexity("medium");
+		setSelectedWorker("");
 		reset();
 		onClose();
 	};
@@ -196,6 +215,49 @@ export function ProjectCreationDialog({
 								<SelectItem value="very-complex">Very Complex (8+ hours)</SelectItem>
 							</SelectContent>
 						</Select>
+					</div>
+
+					{/* Worker Selection */}
+					<div className="space-y-2">
+						<Label htmlFor="worker">Worker Instance</Label>
+						<Select value={selectedWorker} onValueChange={setSelectedWorker} disabled={isLoading}>
+							<SelectTrigger id="worker">
+								<SelectValue placeholder="Select a worker..." />
+							</SelectTrigger>
+							<SelectContent>
+								{activeWorkers.length === 0 ? (
+									<div className="p-2 text-sm text-muted-foreground">
+										No active workers available
+									</div>
+								) : (
+									activeWorkers.map((worker: any) => {
+										// Extract working directory from metadata
+										const metadata = worker.metadata ? 
+											(typeof worker.metadata === 'string' ? 
+												JSON.parse(worker.metadata) : worker.metadata) : {};
+										const workingDir = metadata.workingDirectory || 'Unknown';
+										
+										return (
+											<SelectItem key={worker.id} value={worker.id}>
+												<div className="flex items-start gap-2">
+													<User className="h-4 w-4 mt-0.5" />
+													<div className="flex-1">
+														<div className="font-medium">{worker.id}</div>
+														<div className="text-xs text-muted-foreground flex items-center gap-1">
+															<FolderOpen className="h-3 w-3" />
+															{workingDir}
+														</div>
+													</div>
+												</div>
+											</SelectItem>
+										);
+									})
+								)}
+							</SelectContent>
+						</Select>
+						<p className="text-xs text-muted-foreground">
+							The project will be created and decomposed using this worker's environment.
+						</p>
 					</div>
 
 					{/* Constraints */}

@@ -842,6 +842,7 @@ local instance_id = ARGV[1]
 local roles_json = ARGV[2]
 local timestamp = ARGV[3]
 local ttl = tonumber(ARGV[4])
+local metadata_json = ARGV[5] or '{}'
 
 -- Register instance
 redis.call('hset', instance_key,
@@ -849,7 +850,8 @@ redis.call('hset', instance_key,
   'roles', roles_json,
   'health', 'healthy',
   'status', 'ACTIVE',
-  'lastSeen', timestamp
+  'lastSeen', timestamp,
+  'metadata', metadata_json
 )
 redis.call('expire', instance_key, ttl)
 

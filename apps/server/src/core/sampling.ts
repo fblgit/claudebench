@@ -16,6 +16,7 @@ export interface DecompositionContext {
 	}>;
 	priority: number;
 	constraints?: string[];
+	workingDirectory?: string;
 }
 
 export interface Decomposition {

@@ -52,6 +52,7 @@ class DecompositionContext(BaseModel):
     specialists: List[Specialist]
     priority: int = Field(ge=0, le=100)
     constraints: Optional[List[str]] = Field(default_factory=list)
+    workingDirectory: Optional[str] = None  # Working directory for codebase exploration
 
 
 class DecompositionRequest(BaseModel):
