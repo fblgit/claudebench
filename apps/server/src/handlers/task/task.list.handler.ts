@@ -81,7 +81,8 @@ export class TaskListHandler {
 				const attachmentsIndexKey = `cb:task:${task.id}:attachments`;
 				let attachmentCount = 0;
 				let attachmentKeys: string[] = [];
-				let resultAttachment = null;
+				let resultAttachment: any = null;
+				let resultAttachmentData: any = null;
 				
 				try {
 					// Get attachment count from Redis
@@ -106,12 +107,18 @@ export class TaskListHandler {
 						// Find and include the "result" attachment content if it exists
 						const resultAtt = attachments.find(a => a.key === 'result');
 						if (resultAtt) {
+							// Store the raw attachment data for later
+							resultAttachmentData = resultAtt;
 							resultAttachment = {
 								type: resultAtt.type,
 								value: resultAtt.value || undefined,
 								content: resultAtt.content || undefined,
-								// We'll add createdAt conditionally later based on includeTimestamps
 							};
+							
+							// Add timestamp only if requested
+							if (input.includeTimestamps) {
+								resultAttachment.createdAt = resultAtt.createdAt.toISOString();
+							}
 						}
 					}
 				} catch (error) {
