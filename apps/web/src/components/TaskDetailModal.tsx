@@ -63,6 +63,7 @@ interface TaskDetailModalProps {
 	onComplete?: (taskId: string) => void;
 	onDelete?: (taskId: string) => void;
 	onAssign?: (taskId: string, instanceId: string) => void;
+	onUnassign?: (taskId: string) => void;
 	instances?: Array<{ id: string; roles: string[]; status?: string; health?: string }>;
 }
 
@@ -74,6 +75,7 @@ export function TaskDetailModal({
 	onComplete,
 	onDelete,
 	onAssign,
+	onUnassign,
 	instances = [],
 }: TaskDetailModalProps) {
 	if (!task) return null;

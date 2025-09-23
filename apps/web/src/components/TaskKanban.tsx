@@ -221,6 +221,7 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 	const completeTaskMutation = useCompleteTask();
 	const deleteTaskMutation = useDeleteTask();
 	const assignTaskMutation = useEventMutation("task.assign");
+	const unassignTaskMutation = useEventMutation("task.unassign");
 	const generateContextMutation = useGenerateContext();
 
 	// WebSocket connection for real-time updates
@@ -587,6 +588,17 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 		}
 	};
 
+	const handleTaskUnassign = async (taskId: string) => {
+		try {
+			await unassignTaskMutation.mutateAsync({
+				taskId,
+			});
+			await refetchState();
+		} catch (error) {
+			console.error("Failed to unassign task:", error);
+		}
+	};
+
 	const handleGenerateContext = (taskId: string) => {
 		const task = tasks.find(t => t.id === taskId);
 		if (task) {
@@ -900,6 +912,7 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 																onDelete={handleTaskDelete}
 																onGenerateContext={handleGenerateContext}
 																onAssign={handleTaskAssign}
+																onUnassign={handleTaskUnassign}
 																onClick={handleTaskClick}
 																instances={instances}
 															/>
@@ -976,6 +989,7 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 				onComplete={handleTaskComplete}
 				onDelete={handleTaskDelete}
 				onAssign={handleTaskAssign}
+				onUnassign={handleTaskUnassign}
 				instances={instances}
 			/>
 			
