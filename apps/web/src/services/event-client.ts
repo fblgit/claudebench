@@ -115,8 +115,11 @@ export class EventClient {
 
 		let lastError: Error | undefined;
 		
+		// For long-running operations, don't retry automatically as they may not be idempotent
+		const maxAttempts = isLongRunning ? 1 : this.config.retries + 1;
+		
 		try {
-			for (let attempt = 0; attempt <= this.config.retries; attempt++) {
+			for (let attempt = 0; attempt < maxAttempts; attempt++) {
 				try {
 					const response = await this.sendRequest(request);
 					
