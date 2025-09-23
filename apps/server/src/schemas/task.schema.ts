@@ -117,6 +117,15 @@ export const taskClaimOutput = z.object({
 export type TaskClaimInput = z.infer<typeof taskClaimInput>;
 export type TaskClaimOutput = z.infer<typeof taskClaimOutput>;
 
+// Attachment type enum (moved before task.list to fix ordering)
+export const AttachmentType = z.enum([
+	"json",
+	"markdown",
+	"text",
+	"url",
+	"binary",
+]);
+
 // task.list - NEW for listing/filtering tasks
 export const taskListInput = z.object({
 	status: TaskStatus.optional(),
@@ -126,6 +135,7 @@ export const taskListInput = z.object({
 	offset: z.number().int().min(0).default(0),
 	orderBy: z.enum(["createdAt", "updatedAt", "priority", "status", "assignedTo"]).default("createdAt"),
 	order: z.enum(["asc", "desc"]).default("desc"),
+	includeTimestamps: z.boolean().optional().default(false),
 });
 
 export const taskListOutput = z.object({
@@ -138,11 +148,17 @@ export const taskListOutput = z.object({
 		metadata: z.record(z.string(), z.unknown()).nullable(),
 		result: z.unknown().nullable(),
 		error: z.string().nullable(),
-		createdAt: z.string().datetime(),
-		updatedAt: z.string().datetime(),
-		completedAt: z.string().datetime().nullable(),
+		createdAt: z.string().datetime().optional(),
+		updatedAt: z.string().datetime().optional(),
+		completedAt: z.string().datetime().nullable().optional(),
 		attachmentCount: z.number().int().min(0).default(0),
 		attachmentKeys: z.array(z.string()).optional(),
+		resultAttachment: z.object({
+			type: AttachmentType,
+			value: z.any().optional(),
+			content: z.string().optional(),
+			createdAt: z.string().datetime().optional()
+		}).nullable().optional(),
 	})),
 	totalCount: z.number(),
 	hasMore: z.boolean(),
@@ -150,15 +166,6 @@ export const taskListOutput = z.object({
 
 export type TaskListInput = z.infer<typeof taskListInput>;
 export type TaskListOutput = z.infer<typeof taskListOutput>;
-
-// Attachment type enum
-export const AttachmentType = z.enum([
-	"json",
-	"markdown",
-	"text",
-	"url",
-	"binary",
-]);
 
 // task.create_attachment
 export const taskCreateAttachmentInput = z.object({

@@ -634,9 +634,19 @@ local updates = cjson.decode(updates_json)
 local current_status = redis.call('hget', task_key, 'status')
 local current_priority = tonumber(redis.call('hget', task_key, 'priority'))
 
--- CRITICAL: Prevent regression of completed tasks (but allow retry of failed tasks)
+-- Check if this is a project task (has projectId or type='project' in metadata)
+local is_project_task = false
+local metadata_str = redis.call('hget', task_key, 'metadata')
+if metadata_str then
+  local metadata = cjson.decode(metadata_str)
+  if metadata.projectId or metadata.type == 'project' then
+    is_project_task = true
+  end
+end
+
+-- CRITICAL: Prevent regression of completed tasks (but allow retry of failed tasks and project tasks)
 if current_status == 'completed' and updates.status then
-  if updates.status ~= 'completed' then
+  if updates.status ~= 'completed' and not is_project_task then
     return {0, 'Cannot change status of completed task to ' .. updates.status}
   end
 end
