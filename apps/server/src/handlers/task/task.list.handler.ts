@@ -110,7 +110,7 @@ export class TaskListHandler {
 								type: resultAtt.type,
 								value: resultAtt.value || undefined,
 								content: resultAtt.content || undefined,
-								createdAt: resultAtt.createdAt.toISOString()
+								// We'll add createdAt conditionally later based on includeTimestamps
 							};
 						}
 					}
