@@ -117,6 +117,15 @@ export const taskClaimOutput = z.object({
 export type TaskClaimInput = z.infer<typeof taskClaimInput>;
 export type TaskClaimOutput = z.infer<typeof taskClaimOutput>;
 
+// Attachment type enum (moved before task.list to fix ordering)
+export const AttachmentType = z.enum([
+	"json",
+	"markdown",
+	"text",
+	"url",
+	"binary",
+]);
+
 // task.list - NEW for listing/filtering tasks
 export const taskListInput = z.object({
 	status: TaskStatus.optional(),
@@ -156,15 +165,6 @@ export const taskListOutput = z.object({
 
 export type TaskListInput = z.infer<typeof taskListInput>;
 export type TaskListOutput = z.infer<typeof taskListOutput>;
-
-// Attachment type enum
-export const AttachmentType = z.enum([
-	"json",
-	"markdown",
-	"text",
-	"url",
-	"binary",
-]);
 
 // task.create_attachment
 export const taskCreateAttachmentInput = z.object({
