@@ -81,24 +81,44 @@ export class TaskListHandler {
 				const attachmentsIndexKey = `cb:task:${task.id}:attachments`;
 				let attachmentCount = 0;
 				let attachmentKeys: string[] = [];
+				let resultAttachment = null;
 				
 				try {
 					// Get attachment count from Redis
 					attachmentCount = await ctx.redis.pub.zcard(attachmentsIndexKey);
 					
-					// Also get attachment keys for discovery
+					// Also get attachment keys for discovery and fetch result attachment
 					if (attachmentCount > 0 && ctx.prisma) {
 						const attachments = await ctx.prisma.taskAttachment.findMany({
 							where: { taskId: task.id },
-							select: { key: true },
+							select: { 
+								key: true,
+								type: true,
+								value: true,
+								content: true,
+								createdAt: true
+							},
 							take: 20 // Limit keys to prevent response bloat
 						});
+						
 						attachmentKeys = attachments.map(a => a.key);
+						
+						// Find and include the "result" attachment content if it exists
+						const resultAtt = attachments.find(a => a.key === 'result');
+						if (resultAtt) {
+							resultAttachment = {
+								type: resultAtt.type,
+								value: resultAtt.value,
+								content: resultAtt.content,
+								createdAt: resultAtt.createdAt.toISOString()
+							};
+						}
 					}
 				} catch (error) {
 					// Silently handle errors - attachment info is non-critical for listing
 					attachmentCount = 0;
 					attachmentKeys = [];
+					resultAttachment = null;
 				}
 				
 				return {
@@ -110,6 +130,7 @@ export class TaskListHandler {
 					completedAt: task.completedAt ? task.completedAt.toISOString() : null,
 					attachmentCount,
 					attachmentKeys, // Include keys for discovery
+					resultAttachment, // Include result attachment content
 				};
 			})
 		);
