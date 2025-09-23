@@ -121,17 +121,34 @@ export class TaskListHandler {
 					resultAttachment = null;
 				}
 				
-				return {
+				const taskData: any = {
 					...task,
 					metadata: task.metadata as Record<string, unknown> | null,
 					result: task.result as unknown,
-					createdAt: task.createdAt.toISOString(),
-					updatedAt: task.updatedAt.toISOString(),
-					completedAt: task.completedAt ? task.completedAt.toISOString() : null,
 					attachmentCount,
 					attachmentKeys, // Include keys for discovery
-					resultAttachment, // Include result attachment content
 				};
+
+				// Only include timestamps if requested
+				if (input.includeTimestamps) {
+					taskData.createdAt = task.createdAt.toISOString();
+					taskData.updatedAt = task.updatedAt.toISOString();
+					taskData.completedAt = task.completedAt ? task.completedAt.toISOString() : null;
+					
+					// Also include timestamp in result attachment if it exists
+					if (resultAttachment) {
+						resultAttachment.createdAt = resultAtt.createdAt.toISOString();
+					}
+				}
+
+				// Add result attachment (with or without timestamp based on above)
+				if (resultAttachment) {
+					taskData.resultAttachment = resultAttachment;
+				} else {
+					taskData.resultAttachment = null;
+				}
+
+				return taskData;
 			})
 		);
 
