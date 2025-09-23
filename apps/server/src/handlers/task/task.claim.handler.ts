@@ -46,8 +46,7 @@ export class TaskClaimHandler {
 			status: "pending",
 			orderBy: "priority",
 			order: "desc",
-			limit: 10,  // Check up to 10 pending tasks
-			includeTimestamps: true  // Need timestamps for the claimed task
+			limit: 10  // Check up to 10 pending tasks
 		}, ctx.metadata?.clientId);
 		
 		if (!pendingTasks || !pendingTasks.tasks || pendingTasks.tasks.length === 0) {

@@ -135,7 +135,6 @@ export const taskListInput = z.object({
 	offset: z.number().int().min(0).default(0),
 	orderBy: z.enum(["createdAt", "updatedAt", "priority", "status", "assignedTo"]).default("createdAt"),
 	order: z.enum(["asc", "desc"]).default("desc"),
-	includeTimestamps: z.boolean().optional().default(true),
 });
 
 export const taskListOutput = z.object({
@@ -148,16 +147,16 @@ export const taskListOutput = z.object({
 		metadata: z.record(z.string(), z.unknown()).nullable(),
 		result: z.unknown().nullable(),
 		error: z.string().nullable(),
-		createdAt: z.string().datetime().optional(),
-		updatedAt: z.string().datetime().optional(),
-		completedAt: z.string().datetime().nullable().optional(),
+		createdAt: z.string().datetime(),
+		updatedAt: z.string().datetime(),
+		completedAt: z.string().datetime().nullable(),
 		attachmentCount: z.number().int().min(0).default(0),
 		attachmentKeys: z.array(z.string()).optional(),
 		resultAttachment: z.object({
 			type: AttachmentType,
 			value: z.any().optional(),
 			content: z.string().optional(),
-			createdAt: z.string().datetime().optional()
+			createdAt: z.string().datetime()
 		}).nullable().optional(),
 	})),
 	totalCount: z.number(),

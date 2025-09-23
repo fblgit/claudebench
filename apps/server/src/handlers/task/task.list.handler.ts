@@ -81,8 +81,7 @@ export class TaskListHandler {
 				const attachmentsIndexKey = `cb:task:${task.id}:attachments`;
 				let attachmentCount = 0;
 				let attachmentKeys: string[] = [];
-				let resultAttachment: any = null;
-				let resultAttachmentData: any = null;
+				let resultAttachment = null;
 				
 				try {
 					// Get attachment count from Redis
@@ -107,18 +106,12 @@ export class TaskListHandler {
 						// Find and include the "result" attachment content if it exists
 						const resultAtt = attachments.find(a => a.key === 'result');
 						if (resultAtt) {
-							// Store the raw attachment data for later
-							resultAttachmentData = resultAtt;
 							resultAttachment = {
 								type: resultAtt.type,
 								value: resultAtt.value || undefined,
 								content: resultAtt.content || undefined,
+								createdAt: resultAtt.createdAt.toISOString()
 							};
-							
-							// Add timestamp only if requested
-							if (input.includeTimestamps) {
-								resultAttachment.createdAt = resultAtt.createdAt.toISOString();
-							}
 						}
 					}
 				} catch (error) {
@@ -128,35 +121,17 @@ export class TaskListHandler {
 					resultAttachment = null;
 				}
 				
-				// Build task data without including Date objects
-				const taskData: any = {
-					id: task.id,
-					text: task.text,
-					status: task.status,
-					priority: task.priority,
-					assignedTo: task.assignedTo,
+				return {
+					...task,
 					metadata: task.metadata as Record<string, unknown> | null,
 					result: task.result as unknown,
-					error: task.error,
+					createdAt: task.createdAt.toISOString(),
+					updatedAt: task.updatedAt.toISOString(),
+					completedAt: task.completedAt ? task.completedAt.toISOString() : null,
 					attachmentCount,
 					attachmentKeys, // Include keys for discovery
+					resultAttachment, // Include result attachment content
 				};
-
-				// Only include timestamps if requested
-				if (input.includeTimestamps) {
-					taskData.createdAt = task.createdAt.toISOString();
-					taskData.updatedAt = task.updatedAt.toISOString();
-					taskData.completedAt = task.completedAt ? task.completedAt.toISOString() : null;
-				}
-
-				// Add result attachment (with or without timestamp based on above)
-				if (resultAttachment) {
-					taskData.resultAttachment = resultAttachment;
-				} else {
-					taskData.resultAttachment = null;
-				}
-
-				return taskData;
 			})
 		);
 
