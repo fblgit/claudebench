@@ -83,7 +83,16 @@ export class EventClient {
 		const id = ++this.requestId;
 		
 		// Use longer timeout for context generation and other long-running operations
-		const longRunningMethods = ['task.context', 'swarm.context', 'swarm.decompose', 'swarm.synthesize', 'swarm.resolve'];
+		const longRunningMethods = [
+			'task.context', 
+			'task.decompose',
+			'task.create_project',
+			'swarm.context', 
+			'swarm.decompose', 
+			'swarm.synthesize', 
+			'swarm.resolve',
+			'swarm.create_project'
+		];
 		const isLongRunning = longRunningMethods.includes(method);
 		const originalTimeout = this.config.timeout;
 		
