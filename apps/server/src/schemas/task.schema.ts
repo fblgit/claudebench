@@ -135,7 +135,7 @@ export const taskListInput = z.object({
 	offset: z.number().int().min(0).default(0),
 	orderBy: z.enum(["createdAt", "updatedAt", "priority", "status", "assignedTo"]).default("createdAt"),
 	order: z.enum(["asc", "desc"]).default("desc"),
-	includeTimestamps: z.boolean().optional().default(false),
+	includeTimestamps: z.boolean().optional().default(true),
 });
 
 export const taskListOutput = z.object({
