@@ -108,8 +108,8 @@ export class TaskListHandler {
 						if (resultAtt) {
 							resultAttachment = {
 								type: resultAtt.type,
-								value: resultAtt.value,
-								content: resultAtt.content,
+								value: resultAtt.value || undefined,
+								content: resultAtt.content || undefined,
 								createdAt: resultAtt.createdAt.toISOString()
 							};
 						}
