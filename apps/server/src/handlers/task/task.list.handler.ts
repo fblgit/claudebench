@@ -128,10 +128,16 @@ export class TaskListHandler {
 					resultAttachment = null;
 				}
 				
+				// Build task data without including Date objects
 				const taskData: any = {
-					...task,
+					id: task.id,
+					text: task.text,
+					status: task.status,
+					priority: task.priority,
+					assignedTo: task.assignedTo,
 					metadata: task.metadata as Record<string, unknown> | null,
 					result: task.result as unknown,
+					error: task.error,
 					attachmentCount,
 					attachmentKeys, // Include keys for discovery
 				};
