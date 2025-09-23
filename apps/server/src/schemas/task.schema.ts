@@ -271,6 +271,20 @@ export const taskDeleteOutput = z.object({
 export type TaskDeleteInput = z.infer<typeof taskDeleteInput>;
 export type TaskDeleteOutput = z.infer<typeof taskDeleteOutput>;
 
+// task.unassign
+export const taskUnassignInput = z.object({
+	taskId: z.string().min(1),
+});
+
+export const taskUnassignOutput = z.object({
+	taskId: z.string(),
+	previousAssignment: z.string().nullable(),
+	unassignedAt: z.string().datetime(),
+});
+
+export type TaskUnassignInput = z.infer<typeof taskUnassignInput>;
+export type TaskUnassignOutput = z.infer<typeof taskUnassignOutput>;
+
 // task.context
 export const taskContextInput = z.object({
 	taskId: z.string().min(1),

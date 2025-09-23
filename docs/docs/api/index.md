@@ -37,6 +37,8 @@ ClaudeBench organizes events into domains:
 - [task.create](./task/create) - Create new task
 - [task.update](./task/update) - Update task
 - [task.complete](./task/complete) - Complete task
+- [task.assign](./task/assign) - Assign task to instance (backward compatibility)
+- [task.unassign](./task/unassign) - Remove assignment from task
 - [task.claim](./task/claim) - Claim tasks for processing
 - [task.list](./task/list) - List tasks with filters
 - [task.decompose](./task/decompose) - Decompose complex tasks into subtasks (replaces swarm.decompose)

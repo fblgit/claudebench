@@ -57,6 +57,7 @@ interface TaskCardProps {
 	onUpdate?: (taskId: string, updates: any) => void;
 	onComplete?: (taskId: string) => void;
 	onAssign?: (taskId: string, instanceId: string) => void;
+	onUnassign?: (taskId: string) => void;
 	onDelete?: (taskId: string) => void;
 	onGenerateContext?: (taskId: string) => void;
 	onClick?: (task: Task) => void;
@@ -69,6 +70,7 @@ export function TaskCard({
 	onUpdate,
 	onComplete,
 	onAssign,
+	onUnassign,
 	onDelete,
 	onGenerateContext,
 	onClick,
@@ -208,6 +210,17 @@ export function TaskCard({
 									>
 										<Brain className="h-4 w-4 mr-2" />
 										Generate Context
+									</DropdownMenuItem>
+								)}
+								{task.assignedTo && onUnassign && (
+									<DropdownMenuItem 
+										onClick={(e) => {
+											e.stopPropagation();
+											onUnassign(task.id);
+										}}
+									>
+										<User className="h-4 w-4 mr-2 text-orange-500" />
+										Unassign from {task.assignedTo}
 									</DropdownMenuItem>
 								)}
 								{instances.length > 0 && onAssign && (
