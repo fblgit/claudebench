@@ -186,6 +186,103 @@ describe("Contract Validation: task.update", () => {
 			await expect(registry.executeHandler("task.update", input)).rejects.toThrow();
 		});
 
+		it("should allow completed project tasks to transition back to pending", async () => {
+			// Create a project task
+			const projectTaskResult = await registry.executeHandler("task.create", {
+				text: "Project task for transition test",
+				priority: 80,
+				metadata: {
+					projectId: "proj-test-123",
+					type: "project"
+				}
+			});
+			const projectTaskId = projectTaskResult.id;
+
+			// Complete the project task
+			await registry.executeHandler("task.update", {
+				id: projectTaskId,
+				updates: { status: "completed" as const }
+			});
+
+			// Verify it's completed
+			const taskKey = `cb:task:${projectTaskId}`;
+			let storedTask = await redis.stream.hgetall(taskKey);
+			expect(storedTask.status).toBe("completed");
+
+			// Now transition back to pending (should succeed for project task)
+			const result = await registry.executeHandler("task.update", {
+				id: projectTaskId,
+				updates: { status: "pending" as const }
+			});
+
+			expect(result.status).toBe("pending");
+
+			// Verify in Redis
+			storedTask = await redis.stream.hgetall(taskKey);
+			expect(storedTask.status).toBe("pending");
+		});
+
+		it("should allow completed project tasks with only projectId to transition", async () => {
+			// Create a task with just projectId (not type: 'project')
+			const projectTaskResult = await registry.executeHandler("task.create", {
+				text: "Subtask with projectId",
+				priority: 70,
+				metadata: {
+					projectId: "proj-another-123",
+					type: "subtask"
+				}
+			});
+			const projectTaskId = projectTaskResult.id;
+
+			// Complete the task
+			await registry.executeHandler("task.update", {
+				id: projectTaskId,
+				updates: { status: "completed" as const }
+			});
+
+			// Transition back to in_progress (should succeed due to projectId)
+			const result = await registry.executeHandler("task.update", {
+				id: projectTaskId,
+				updates: { status: "in_progress" as const }
+			});
+
+			expect(result.status).toBe("in_progress");
+		});
+
+		it("should block completed non-project tasks from transitioning back", async () => {
+			// Create a regular task (no projectId or type='project')
+			const regularTaskResult = await registry.executeHandler("task.create", {
+				text: "Regular task - no transitions allowed",
+				priority: 60,
+				metadata: {
+					category: "regular"
+				}
+			});
+			const regularTaskId = regularTaskResult.id;
+
+			// Complete the regular task
+			await registry.executeHandler("task.update", {
+				id: regularTaskId,
+				updates: { status: "completed" as const }
+			});
+
+			// Try to transition back to pending (should fail for regular task)
+			await expect(
+				registry.executeHandler("task.update", {
+					id: regularTaskId,
+					updates: { status: "pending" as const }
+				})
+			).rejects.toThrow("Cannot change status of completed task to pending");
+
+			// Try to transition to in_progress (should also fail)
+			await expect(
+				registry.executeHandler("task.update", {
+					id: regularTaskId,
+					updates: { status: "in_progress" as const }
+				})
+			).rejects.toThrow("Cannot change status of completed task to in_progress");
+		});
+
 		it("should publish update event to Redis stream", async () => {
 			const input = {
 				id: testTaskId,
