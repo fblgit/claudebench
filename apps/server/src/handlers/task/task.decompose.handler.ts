@@ -117,17 +117,23 @@ export class TaskDecomposeHandler {
 		
 		// Get worker's working directory from instance metadata
 		let workingDirectory: string | undefined;
-		if (ctx.instanceId) {
-			const instanceKey = `cb:instance:${ctx.instanceId}`;
+		// First check if a specific worker was requested in the input metadata
+		const requestedWorkerId = input.metadata?.workerId;
+		const workerId = requestedWorkerId || ctx.instanceId;
+		
+		if (workerId) {
+			const instanceKey = `cb:instance:${workerId}`;
 			const instanceMetadata = await redis.pub.hget(instanceKey, 'metadata');
 			if (instanceMetadata) {
 				try {
 					const metadata = JSON.parse(instanceMetadata);
 					workingDirectory = metadata.workingDirectory;
-					console.log(`[TaskDecompose] Using working directory from instance ${ctx.instanceId}: ${workingDirectory}`);
+					console.log(`[TaskDecompose] Using working directory from instance ${workerId}: ${workingDirectory}`);
 				} catch (e) {
-					console.warn(`[TaskDecompose] Failed to parse instance metadata:`, e);
+					console.warn(`[TaskDecompose] Failed to parse instance metadata for ${workerId}:`, e);
 				}
+			} else if (requestedWorkerId) {
+				console.warn(`[TaskDecompose] Requested worker ${requestedWorkerId} not found or has no metadata`);
 			}
 		}
 		
