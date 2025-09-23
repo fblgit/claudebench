@@ -54,8 +54,10 @@ ClaudeBench is a Redis-first event-driven AI workbench that provides a powerful 
 - [x] AutoCommit for hooks write with context commit message
 - [x] Rich view of Attachments in the tasks (context and commit types)
 - [x] Task.context generation from Kanban
+- [x] Install CLI (setup hooks, agents, mcp, config, etc)
+- [x] Projects page at `/projects` for project creation
+- [x] Multi Project tenancy (including context/decompose workdir propagation)
 - [ ] Improve processing and rehydration rich/efficient context
-- [ ] Install CLI (setup hooks, agents, mcp, config, etc)
 - [ ] MCP reconnect session-resume mechanism (messy, low priority)
 
 ### Prerequisites
