@@ -134,11 +134,6 @@ export class TaskListHandler {
 					taskData.createdAt = task.createdAt.toISOString();
 					taskData.updatedAt = task.updatedAt.toISOString();
 					taskData.completedAt = task.completedAt ? task.completedAt.toISOString() : null;
-					
-					// Also include timestamp in result attachment if it exists
-					if (resultAttachment) {
-						resultAttachment.createdAt = resultAtt.createdAt.toISOString();
-					}
 				}
 
 				// Add result attachment (with or without timestamp based on above)
