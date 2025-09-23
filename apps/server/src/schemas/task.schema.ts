@@ -144,10 +144,10 @@ export const taskListOutput = z.object({
 		attachmentCount: z.number().int().min(0).default(0),
 		attachmentKeys: z.array(z.string()).optional(),
 		resultAttachment: z.object({
-			type: z.string(),
-			value: z.unknown().optional(),
+			type: AttachmentType,
+			value: z.any().optional(),
 			content: z.string().optional(),
-			createdAt: z.string()
+			createdAt: z.string().datetime()
 		}).nullable().optional(),
 	})),
 	totalCount: z.number(),
