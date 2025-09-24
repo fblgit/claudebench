@@ -46,11 +46,21 @@ export class TaskClaimHandler {
 			status: "pending",
 			orderBy: "priority",
 			order: "desc",
-			limit: 10  // Check up to 10 pending tasks
+			limit: 20  // Get more tasks to account for filtering
 		}, ctx.metadata?.clientId);
 		
 		if (!pendingTasks || !pendingTasks.tasks || pendingTasks.tasks.length === 0) {
 			// No pending tasks available
+			return {
+				claimed: false,
+			};
+		}
+
+		// Filter out already assigned tasks since task.list doesn't handle assignedTo: null properly
+		const unassignedTasks = pendingTasks.tasks.filter(task => !task.assignedTo);
+		
+		if (unassignedTasks.length === 0) {
+			// No unassigned pending tasks available
 			return {
 				claimed: false,
 			};
