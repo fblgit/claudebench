@@ -68,9 +68,9 @@ export class TaskClaimHandler {
 			};
 		}
 		
-		// Try to claim the highest priority pending task
+		// Try to claim the highest priority available task
 		let claimedTask = null;
-		for (const task of pendingTasks.tasks) {
+		for (const task of availableTasks) {
 			try {
 				// First assign the task to the worker
 				await registry.executeHandler("task.assign", {
