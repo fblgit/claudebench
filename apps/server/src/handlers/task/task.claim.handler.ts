@@ -56,11 +56,13 @@ export class TaskClaimHandler {
 			};
 		}
 
-		// Filter out already assigned tasks since task.list doesn't handle assignedTo: null properly
-		const unassignedTasks = pendingTasks.tasks.filter(task => !task.assignedTo);
+		// Filter out tasks assigned to other workers (but allow tasks assigned to this worker or unassigned)
+		const availableTasks = pendingTasks.tasks.filter(task => 
+			!task.assignedTo || task.assignedTo === input.workerId
+		);
 		
-		if (unassignedTasks.length === 0) {
-			// No unassigned pending tasks available
+		if (availableTasks.length === 0) {
+			// No available pending tasks for this worker
 			return {
 				claimed: false,
 			};
