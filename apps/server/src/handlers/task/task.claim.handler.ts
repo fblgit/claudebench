@@ -1,6 +1,6 @@
 import { EventHandler, Instrumented, Resilient } from "@/core/decorator";
 import type { EventContext } from "@/core/context";
-import { taskClaimInput, taskClaimOutput } from "@/schemas/task.schema";
+import { taskClaimInput, taskClaimOutput, taskListOutput } from "@/schemas/task.schema";
 import type { TaskClaimInput, TaskClaimOutput } from "@/schemas/task.schema";
 import { redisKey } from "@/core/redis";
 import { registry } from "@/core/registry";
