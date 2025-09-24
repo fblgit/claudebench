@@ -57,7 +57,7 @@ export class TaskClaimHandler {
 		}
 
 		// Filter out tasks assigned to other workers (but allow tasks assigned to this worker or unassigned)
-		const availableTasks = pendingTasks.tasks.filter(task => 
+		const availableTasks = pendingTasks.tasks.filter((task) => 
 			!task.assignedTo || task.assignedTo === input.workerId
 		);
 		
