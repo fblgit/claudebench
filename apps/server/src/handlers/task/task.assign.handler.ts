@@ -51,9 +51,9 @@ export class TaskAssignHandler {
 			throw new Error(`Instance ${input.instanceId} is not available (status: ${status})`);
 		}
 		
-		// Check if task is already assigned
+		// Check if task is already assigned to a different worker
 		const previousAssignment = taskData.assignedTo || null;
-		if (previousAssignment) {
+		if (previousAssignment && previousAssignment !== input.instanceId) {
 			throw new Error(`Task ${input.taskId} is already assigned to ${previousAssignment}.`);
 		}
 		
