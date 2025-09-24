@@ -1,6 +1,6 @@
 import { EventHandler, Instrumented, Resilient } from "@/core/decorator";
 import type { EventContext } from "@/core/context";
-import { taskClaimInput, taskClaimOutput, taskListOutput } from "@/schemas/task.schema";
+import { taskClaimInput, taskClaimOutput } from "@/schemas/task.schema";
 import type { TaskClaimInput, TaskClaimOutput } from "@/schemas/task.schema";
 import { redisKey } from "@/core/redis";
 import { registry } from "@/core/registry";
@@ -46,7 +46,7 @@ export class TaskClaimHandler {
 			status: "pending",
 			orderBy: "priority",
 			order: "desc",
-			limit: 20  // Get more tasks to account for filtering
+			limit: 10  // Check up to 10 pending tasks
 		}, ctx.metadata?.clientId);
 		
 		if (!pendingTasks || !pendingTasks.tasks || pendingTasks.tasks.length === 0) {
@@ -55,22 +55,10 @@ export class TaskClaimHandler {
 				claimed: false,
 			};
 		}
-
-		// Filter out tasks assigned to other workers (but allow tasks assigned to this worker or unassigned)
-		const availableTasks = pendingTasks.tasks.filter((task) => 
-			!task.assignedTo || task.assignedTo === input.workerId
-		);
 		
-		if (availableTasks.length === 0) {
-			// No available pending tasks for this worker
-			return {
-				claimed: false,
-			};
-		}
-		
-		// Try to claim the highest priority available task
+		// Try to claim the highest priority pending task
 		let claimedTask = null;
-		for (const task of availableTasks) {
+		for (const task of pendingTasks.tasks) {
 			try {
 				// First assign the task to the worker
 				await registry.executeHandler("task.assign", {
