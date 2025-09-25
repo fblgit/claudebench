@@ -203,7 +203,7 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 		"task.list",
 		{
 			limit: 1000, // Get all tasks for kanban
-			orderBy: "createdAt",
+			orderBy: "priority",
 			order: "desc"
 		},
 		{ refetchInterval: 10000 }
