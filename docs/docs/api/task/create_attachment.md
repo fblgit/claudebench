@@ -196,5 +196,6 @@ When an attachment is successfully created, an event is published:
 - [task.get_attachment](./get_attachment) - Get specific attachment by key
 - [task.list_attachments](./list_attachments) - List all attachments for a task
 - [task.get_attachments_batch](./get_attachments_batch) - Batch retrieval of attachments
+- [task.delete_attachment](./delete_attachment) - Delete an attachment from a task
 - [task.create](./create) - Create a new task
 - [task.complete](./complete) - Mark task as completed

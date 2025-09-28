@@ -352,3 +352,4 @@ const { attachments } = await get_attachments_batch({
 - [task.create_attachment](./create_attachment) - Create or update attachments
 - [task.get_attachment](./get_attachment) - Retrieve single attachment
 - [task.list_attachments](./list_attachments) - List and filter attachments
+- [task.delete_attachment](./delete_attachment) - Delete an attachment from a task

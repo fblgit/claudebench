@@ -48,7 +48,7 @@ import { z } from "zod";
 export class TaskListAttachmentsHandler {
 	@Instrumented(1)
 	@Resilient({
-		rateLimit: { limit: 100, windowMs: 60000 },
+		rateLimit: { limit: 500, windowMs: 60000 },
 		timeout: 5000,
 		circuitBreaker: { 
 			threshold: 5, 

@@ -11,7 +11,7 @@ import "./handlers";
 // Import core modules
 import { registry } from "./core/registry";
 import { eventBus } from "./core/bus";
-import { connectRedis, disconnectRedis } from "./core/redis";
+import { connectRedis, disconnectRedis, getRedis } from "./core/redis";
 import { metrics } from "./core/metrics";
 import { instanceManager } from "./core/instance-manager";
 import { jobScheduler } from "./core/jobs";
@@ -29,6 +29,79 @@ import { handleMcpPost, handleMcpGet, handleMcpDelete, handleMcpHealth } from ".
 import { prometheusMiddleware, getMetrics } from "./middleware/prometheus";
 
 const app = new Hono();
+
+// Hydrate Redis attachment indices by using task.list then task.list_attachments
+async function hydrateAttachmentIndices() {
+	try {
+		console.log("💧 Getting all tasks...");
+		
+		// First get all tasks using task.list handler
+		const taskList = await registry.executeHandler("task.list", {
+			limit: 1000, // Get a large batch
+			offset: 0,
+			orderBy: "createdAt",
+			order: "desc"
+		});
+
+		let totalTasks = taskList.totalCount;
+		let processed = 0;
+		let errors = 0;
+		let offset = 0;
+		const batchSize = 1000;
+
+		console.log(`💧 Found ${totalTasks} total tasks to process`);
+
+		// Process all tasks in batches
+		while (offset < totalTasks) {
+			const batch = await registry.executeHandler("task.list", {
+				limit: batchSize,
+				offset: offset,
+				orderBy: "createdAt", 
+				order: "desc"
+			});
+
+			// For each task, clear Redis cache and call list_attachments to populate from PostgreSQL
+			for (const task of batch.tasks) {
+				try {
+					// Get Redis instance
+					const redis = getRedis();
+					
+					// Clear Redis attachment index to force PostgreSQL fallback
+					const attachmentsIndexKey = `cb:task:${task.id}:attachments`;
+					await redis.pub.del(attachmentsIndexKey);
+					
+					// Also clear any individual attachment keys that might exist
+					const existingKeys = await redis.pub.keys(`cb:task:${task.id}:attachment:*`);
+					if (existingKeys.length > 0) {
+						await redis.pub.del(...existingKeys);
+					}
+					
+					// Now call list_attachments which will fallback to PostgreSQL and populate Redis
+					await registry.executeHandler("task.list_attachments", {
+						taskId: task.id,
+						limit: 100  // Get all attachments to populate Redis properly
+					});
+					processed++;
+				} catch (error) {
+					errors++;
+					// Silently continue
+				}
+			}
+
+			offset += batchSize;
+			
+			if (processed % 500 === 0) {
+				console.log(`💧 Hydrated ${processed}/${totalTasks} tasks`);
+			}
+		}
+
+		console.log(`💧 Attachment hydration complete: ${processed} tasks processed, ${errors} errors`);
+		
+	} catch (error) {
+		console.error("❌ Failed to hydrate attachments:", error);
+		// Don't fail startup for this
+	}
+}
 
 // Middleware setup
 app.use(logger());
@@ -135,6 +208,10 @@ async function initialize() {
 		
 		// MCP servers are created per-session, not globally
 		console.log("🎯 MCP endpoint ready at /mcp");
+		
+		// Hydrate Redis attachment indices from PostgreSQL
+		console.log("💧 Hydrating Redis attachment indices...");
+		await hydrateAttachmentIndices();
 		
 		console.log("✅ Server initialized successfully");
 		

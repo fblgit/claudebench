@@ -242,6 +242,23 @@ export type TaskListAttachmentsOutput = z.infer<typeof taskListAttachmentsOutput
 export type TaskGetAttachmentInput = z.infer<typeof taskGetAttachmentInput>;
 export type TaskGetAttachmentOutput = z.infer<typeof taskGetAttachmentOutput>;
 
+// task.delete_attachment
+export const taskDeleteAttachmentInput = z.object({
+	taskId: z.string().min(1),
+	key: z.string().min(1),
+});
+
+export const taskDeleteAttachmentOutput = z.object({
+	id: z.string(),
+	taskId: z.string(),
+	key: z.string(),
+	deleted: z.boolean(),
+	deletedAt: z.string().datetime(),
+});
+
+export type TaskDeleteAttachmentInput = z.infer<typeof taskDeleteAttachmentInput>;
+export type TaskDeleteAttachmentOutput = z.infer<typeof taskDeleteAttachmentOutput>;
+
 // Batch attachment operations
 export const taskGetAttachmentsBatchInput = z.object({
 	requests: z.array(z.object({

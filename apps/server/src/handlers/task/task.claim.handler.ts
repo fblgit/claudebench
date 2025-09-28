@@ -121,11 +121,21 @@ export class TaskClaimHandler {
 				
 				if (batchResult && batchResult.attachments) {
 					for (const attachment of batchResult.attachments) {
-						attachments[attachment.key] = {
-							type: attachment.type,
-							value: attachment.value,
-							createdAt: attachment.createdAt
-						};
+						// For git-* attachments, exclude the value/content to reduce payload size
+						if (attachment.key.startsWith('git-commit-') || attachment.key.startsWith('git-ref-')) {
+							attachments[attachment.key] = {
+								type: attachment.type,
+								value: null, // Exclude content for git attachments
+								createdAt: attachment.createdAt,
+								contentExcluded: true // Flag to indicate content was excluded
+							};
+						} else {
+							attachments[attachment.key] = {
+								type: attachment.type,
+								value: attachment.value,
+								createdAt: attachment.createdAt
+							};
+						}
 					}
 				}
 			}

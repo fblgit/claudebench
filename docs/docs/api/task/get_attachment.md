@@ -197,5 +197,6 @@ Get a specific task attachment by its key. This method retrieves attachment data
 - [task.create_attachment](./create_attachment) - Create a new attachment
 - [task.list_attachments](./list_attachments) - List all attachments for a task
 - [task.get_attachments_batch](./get_attachments_batch) - Batch retrieval of attachments
+- [task.delete_attachment](./delete_attachment) - Delete an attachment from a task
 - [task.create](./create) - Create a new task
 - [task.update](./update) - Update task details

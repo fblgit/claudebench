@@ -56,12 +56,46 @@ export class TaskDeleteHandler {
 		// Delete from Redis atomically
 		const result = await redisScripts.deleteTask(taskId);
 		
-		if (!result.deleted) {
-			throw new Error(result.error || "Failed to delete task");
+		let deletedFromRedis = result.deleted;
+		let deletedFromPostgres = false;
+		
+		// If Redis deletion failed, check if task exists in PostgreSQL only (data inconsistency case)
+		if (!result.deleted && ctx.persist) {
+			try {
+				const postgresTask = await ctx.prisma.task.findUnique({
+					where: { id: taskId },
+				});
+				
+				if (postgresTask) {
+					// Task exists in PostgreSQL but not in Redis - clean up PostgreSQL
+					console.warn(`Task ${taskId} exists in PostgreSQL but not in Redis. Cleaning up PostgreSQL.`);
+					
+					// Delete attachments first (foreign key constraint)
+					await ctx.prisma.taskAttachment.deleteMany({
+						where: { taskId },
+					});
+					
+					// Delete the task
+					await ctx.prisma.task.delete({
+						where: { id: taskId },
+					});
+					
+					deletedFromPostgres = true;
+				} else {
+					// Task doesn't exist in either Redis or PostgreSQL
+					throw new Error(result.error || "Task not found in Redis or PostgreSQL");
+				}
+			} catch (error) {
+				if (error.message.includes("Task not found")) {
+					throw error;
+				}
+				console.error("Failed to check/delete task from PostgreSQL:", error);
+				throw new Error(result.error || "Failed to delete task");
+			}
 		}
 		
-		// Delete from PostgreSQL if persistence is enabled
-		if (ctx.persist) {
+		// Delete from PostgreSQL if persistence is enabled and Redis deletion succeeded
+		if (ctx.persist && deletedFromRedis) {
 			try {
 				// Delete attachments first (foreign key constraint)
 				await ctx.prisma.taskAttachment.deleteMany({
@@ -72,6 +106,7 @@ export class TaskDeleteHandler {
 				await ctx.prisma.task.delete({
 					where: { id: taskId },
 				});
+				deletedFromPostgres = true;
 			} catch (error) {
 				// Log error but don't fail - Redis is source of truth
 				console.error("Failed to delete task from PostgreSQL:", error);

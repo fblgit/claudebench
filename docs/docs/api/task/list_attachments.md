@@ -236,5 +236,6 @@ List and filter task attachments with pagination support. This method provides c
 - [task.create_attachment](./create_attachment) - Create a new attachment
 - [task.get_attachment](./get_attachment) - Get specific attachment by key
 - [task.get_attachments_batch](./get_attachments_batch) - Batch retrieval of attachments
+- [task.delete_attachment](./delete_attachment) - Delete an attachment from a task
 - [task.create](./create) - Create a new task
 - [task.list](./list) - List tasks with filters
