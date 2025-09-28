@@ -30,6 +30,104 @@ import { prometheusMiddleware, getMetrics } from "./middleware/prometheus";
 
 const app = new Hono();
 
+// Hydrate Redis task data and queues from PostgreSQL
+async function hydrateTasksFromPostgreSQL() {
+	try {
+		console.log("🔄 Rehydrating tasks from PostgreSQL to Redis...");
+		
+		// Clear existing task data in Redis to force clean rebuild
+		const redis = getRedis();
+		
+		// Clear all task-related keys (but preserve other cb: keys)
+		const taskKeys = await redis.pub.keys("cb:task:*");
+		const queueKeys = await redis.pub.keys("cb:queue:*");
+		
+		if (taskKeys.length > 0) {
+			console.log(`🧹 Clearing ${taskKeys.length} existing task keys from Redis`);
+			await redis.pub.del(...taskKeys);
+		}
+		
+		if (queueKeys.length > 0) {
+			console.log(`🧹 Clearing ${queueKeys.length} existing queue keys from Redis`);
+			await redis.pub.del(...queueKeys);
+		}
+		
+		// Use task.list to rebuild all task data and queues
+		let totalTasks = 0;
+		let processed = 0;
+		let offset = 0;
+		const batchSize = 1000;
+		
+		// First call to get total count
+		const initialBatch = await registry.executeHandler("task.list", {
+			limit: 1,
+			offset: 0,
+			orderBy: "createdAt",
+			order: "desc"
+		});
+		
+		totalTasks = initialBatch.totalCount;
+		console.log(`🔄 Found ${totalTasks} tasks to rehydrate from PostgreSQL`);
+		
+		// Process all tasks in batches
+		while (offset < totalTasks) {
+			const batch = await registry.executeHandler("task.list", {
+				limit: batchSize,
+				offset: offset,
+				orderBy: "createdAt",
+				order: "desc"
+			});
+			
+			// For each task, use Redis scripts directly (bypass rate limiting)
+			// Import redis scripts once per batch
+			const { redisScripts } = await import("./core/redis-scripts");
+			
+			for (const task of batch.tasks) {
+				try {
+					// Use Lua script directly to create task structures with existing assignment
+					await redisScripts.createTask(
+						task.id,
+						task.text,
+						task.priority,
+						task.status,  // Status already reflects assignment state
+						task.createdAt,
+						task.metadata
+					);
+					
+					// If task is assigned, manually set the assignment in Redis (post-creation)
+					if (task.assignedTo) {
+						const taskKey = `cb:task:${task.id}`;
+						await redis.pub.hset(taskKey, {
+							assignedTo: task.assignedTo,
+							assignedAt: task.updatedAt
+						});
+						
+						// Add to instance queue
+						const instanceQueueKey = `cb:queue:instance:${task.assignedTo}`;
+						await redis.pub.rpush(instanceQueueKey, task.id);
+					}
+					
+				} catch (error) {
+					console.warn(`⚠️  Failed to rehydrate task ${task.id}:`, error.message);
+				}
+			}
+			
+			processed += batch.tasks.length;
+			offset += batchSize;
+			
+			if (processed % 500 === 0) {
+				console.log(`🔄 Rehydrated ${processed}/${totalTasks} tasks`);
+			}
+		}
+		
+		console.log(`✅ Task rehydration complete: ${totalTasks} tasks rehydrated`);
+		
+	} catch (error) {
+		console.error("❌ Failed to rehydrate tasks:", error);
+		// Don't fail startup for this
+	}
+}
+
 // Hydrate Redis attachment indices by using task.list then task.list_attachments
 async function hydrateAttachmentIndices() {
 	try {
@@ -209,7 +307,11 @@ async function initialize() {
 		// MCP servers are created per-session, not globally
 		console.log("🎯 MCP endpoint ready at /mcp");
 		
-		// Hydrate Redis attachment indices from PostgreSQL
+		// Rehydrate Redis task data and queues from PostgreSQL first
+		console.log("🔄 Rehydrating Redis task data from PostgreSQL...");
+		await hydrateTasksFromPostgreSQL();
+		
+		// Then hydrate Redis attachment indices from PostgreSQL
 		console.log("💧 Hydrating Redis attachment indices...");
 		await hydrateAttachmentIndices();
 		
