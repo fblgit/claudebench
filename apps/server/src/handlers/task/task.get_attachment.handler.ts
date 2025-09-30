@@ -119,7 +119,6 @@ export class TaskGetAttachmentHandler {
 			};
 			
 			await ctx.redis.pub.hset(attachmentKey, dataToCache);
-			await ctx.redis.pub.expire(attachmentKey, 3600); // 1 hour TTL
 			
 			// Also update the index
 			const attachmentsIndexKey = `cb:task:${input.taskId}:attachments`;

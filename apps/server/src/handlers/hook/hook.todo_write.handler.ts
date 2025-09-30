@@ -64,15 +64,27 @@ export class TodoWriteHookHandler {
 		await todoManager.trackStatusChanges(changes, instanceId);
 		const stats = await todoManager.setStatistics(input.todos, instanceId);
 		
-		// 4. Process new todos into tasks (always create tasks from new todos)
-		if (changes.newTodos.length > 0) {
+		// 4. Process new todos into tasks (check config first)
+		// Get config to see if auto-creation is enabled
+		const autoCreateConfig = await ctx.redis.stream.get("cb:config:todowrite.autocreate");
+		const autoCreateEnabled = autoCreateConfig === null ? true : autoCreateConfig === "true";
+
+		if (changes.newTodos.length > 0 && autoCreateEnabled) {
 			for (const todo of changes.newTodos) {
 				// Skip completed todos
 				if (todo.status === "completed") continue;
 				
-				// Check if task already exists for this todo
+				// Check if task already exists for this todo (session-specific)
 				const existingTaskId = await todoManager.getTaskForTodo(todo.content, sessionId);
 				if (existingTaskId) continue;
+				
+				// Check for existing pending task across all sessions (global deduplication)
+				const existingPendingTaskId = await todoManager.findExistingPendingTask(todo.content);
+				if (existingPendingTaskId) {
+					// Map this todo to the existing task in this session
+					await todoManager.mapTodoToTask(todo.content, existingPendingTaskId, sessionId);
+					continue;
+				}
 				
 				try {
 					// Create task via the task.create handler
@@ -129,10 +141,21 @@ export class TodoWriteHookHandler {
 		// 4b. Process status changes for existing todos (update tasks)
 		if (changes.statusChanges.length > 0) {
 			for (const todo of changes.statusChanges) {
-				// Get the task ID for this todo
-				const taskId = await todoManager.getTaskForTodo(todo.content, sessionId);
+				// Get the task ID for this todo (session-specific)
+				let taskId = await todoManager.getTaskForTodo(todo.content, sessionId);
+				
+				// If no task in this session, check global deduplication
 				if (!taskId) {
-					// If no task exists for this todo, create one
+					const existingPendingTaskId = await todoManager.findExistingPendingTask(todo.content);
+					if (existingPendingTaskId) {
+						// Map this todo to the existing task in this session
+						await todoManager.mapTodoToTask(todo.content, existingPendingTaskId, sessionId);
+						taskId = existingPendingTaskId;
+					}
+				}
+				
+				if (!taskId && autoCreateEnabled) {
+					// If no task exists for this todo, create one (if auto-create is enabled)
 					try {
 						const taskResult = await registry.executeHandler("task.create", {
 							text: todo.content,

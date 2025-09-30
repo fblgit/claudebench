@@ -18,3 +18,6 @@ export * from "./session";
 
 // Git integration handlers
 export * from "./git";
+
+// Config domain handlers
+export * from "./config";

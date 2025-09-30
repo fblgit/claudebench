@@ -152,7 +152,6 @@ export class TaskListAttachmentsHandler {
 					pipeline.hset(attachmentKey, dataToStore);
 					pipeline.zadd(attachmentsIndexKey, Date.parse(attachment.createdAt), attachment.key);
 				}
-				pipeline.expire(attachmentsIndexKey, 3600); // 1 hour TTL
 				await pipeline.exec();
 			}
 		}

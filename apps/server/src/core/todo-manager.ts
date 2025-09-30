@@ -216,20 +216,70 @@ export class TodoManager {
 	}
 
 	/**
-	 * Create or update todo-to-task mapping
+	 * Create or update todo-to-task mapping (session-specific)
 	 */
 	async mapTodoToTask(todoContent: string, taskId: string, sessionId: string): Promise<void> {
 		const mappingKey = `cb:mapping:todo-task:${sessionId}`;
 		await this.redis.stream.hset(mappingKey, todoContent, taskId);
 		await this.redis.stream.expire(mappingKey, 86400);
+		
+		// Also create global mapping for deduplication across sessions
+		await this.mapTodoToTaskGlobal(todoContent, taskId);
 	}
 
 	/**
-	 * Get task ID for a todo
+	 * Get task ID for a todo (session-specific)
 	 */
 	async getTaskForTodo(todoContent: string, sessionId: string): Promise<string | null> {
 		const mappingKey = `cb:mapping:todo-task:${sessionId}`;
 		return await this.redis.stream.hget(mappingKey, todoContent);
+	}
+
+	/**
+	 * Create global todo-to-task mapping for deduplication across sessions
+	 */
+	async mapTodoToTaskGlobal(todoContent: string, taskId: string): Promise<void> {
+		const globalMappingKey = "cb:mapping:todo-task:global";
+		await this.redis.stream.hset(globalMappingKey, todoContent, taskId);
+		await this.redis.stream.expire(globalMappingKey, 86400);
+	}
+
+	/**
+	 * Get task ID for a todo from global mapping (for deduplication)
+	 */
+	async getTaskForTodoGlobal(todoContent: string): Promise<string | null> {
+		const globalMappingKey = "cb:mapping:todo-task:global";
+		return await this.redis.stream.hget(globalMappingKey, todoContent);
+	}
+
+	/**
+	 * Check if task exists and is still pending (for deduplication)
+	 */
+	async isTaskStillPending(taskId: string): Promise<boolean> {
+		if (!taskId) return false;
+		
+		const taskKey = redisKey("task", taskId);
+		const status = await this.redis.stream.hget(taskKey, "status");
+		return status === "pending";
+	}
+
+	/**
+	 * Find existing pending task with identical content (cross-session deduplication)
+	 */
+	async findExistingPendingTask(todoContent: string): Promise<string | null> {
+		// First check the global mapping
+		const globalTaskId = await this.getTaskForTodoGlobal(todoContent);
+		if (globalTaskId && await this.isTaskStillPending(globalTaskId)) {
+			return globalTaskId;
+		}
+		
+		// If global mapping doesn't have a pending task, remove stale mapping
+		if (globalTaskId) {
+			const globalMappingKey = "cb:mapping:todo-task:global";
+			await this.redis.stream.hdel(globalMappingKey, todoContent);
+		}
+		
+		return null;
 	}
 
 	/**

@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
@@ -177,6 +178,9 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [viewMode, setViewMode] = useState<"board" | "swimlanes">("board");
 	const [groupByProject, setGroupByProject] = useState<boolean>(false);
+
+	// TodoWrite auto-creation toggle
+	const [todoWriteAutoCreate, setTodoWriteAutoCreate] = useState<boolean>(true);
 	
 	// Drag state
 	const [activeId, setActiveId] = useState<string | null>(null);
@@ -223,6 +227,28 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 	const assignTaskMutation = useEventMutation("task.assign");
 	const unassignTaskMutation = useEventMutation("task.unassign");
 	const generateContextMutation = useGenerateContext();
+
+	// Load TodoWrite auto-creation config on mount
+	useEffect(() => {
+		const loadConfig = async () => {
+			try {
+				const response = await getEventClient().request("config.get", { key: "todowrite.autocreate" });
+				if (response.exists) {
+					setTodoWriteAutoCreate(response.value === "true" || response.value === true);
+				}
+				// If config doesn't exist, initialize it to true (default enabled)
+				else {
+					await getEventClient().request("config.set", {
+						key: "todowrite.autocreate",
+						value: "true"
+					});
+				}
+			} catch (error) {
+				console.error("Failed to load TodoWrite config:", error);
+			}
+		};
+		loadConfig();
+	}, []);
 
 	// WebSocket connection for real-time updates
 	useEffect(() => {
@@ -607,6 +633,20 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 		}
 	};
 
+	const handleTodoWriteToggle = async (checked: boolean) => {
+		setTodoWriteAutoCreate(checked);
+		try {
+			await getEventClient().request("config.set", {
+				key: "todowrite.autocreate",
+				value: String(checked),
+			});
+		} catch (error) {
+			console.error("Failed to update TodoWrite config:", error);
+			// Revert on error
+			setTodoWriteAutoCreate(!checked);
+		}
+	};
+
 	// Handle task click
 	const handleTaskClick = (task: Task) => {
 		setSelectedTask(task);
@@ -692,6 +732,16 @@ export function TaskKanban({ className }: TaskKanbanProps) {
 						</div>
 
 						{/* Actions */}
+						<div className="flex items-center gap-2 mr-2 border rounded-md px-3 py-1">
+							<Label htmlFor="todowrite-toggle" className="text-xs text-muted-foreground cursor-pointer">
+								Auto-create tasks
+							</Label>
+							<Switch
+								id="todowrite-toggle"
+								checked={todoWriteAutoCreate}
+								onCheckedChange={handleTodoWriteToggle}
+							/>
+						</div>
 						<Button onClick={() => refetchState()} variant="outline" size="sm">
 							<RefreshCw className="h-4 w-4 mr-2" />
 							Refresh
