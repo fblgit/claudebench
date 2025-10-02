@@ -13,6 +13,23 @@ ClaudeBench is a Redis-first event-driven AI workbench that provides a powerful 
 - **📊 Real-Time Metrics**: Comprehensive monitoring and telemetry
 
 ## 🏗️ Architecture
+Kanban Board for Tasks (Drag and Drop) with automatic TodoWrite integration:
+<img width="2518" height="1184" alt="Screenshot 2025-10-02 at 4 49 14 PM" src="https://github.com/user-attachments/assets/91fad587-a12b-4b02-a17c-3f4c7be727c1" />
+
+Comprehensive Task details and automatic commit tracking:
+<img width="2497" height="1272" alt="Screenshot 2025-10-02 at 4 49 30 PM" src="https://github.com/user-attachments/assets/9870ba82-e903-4cf3-83ec-23612fcf7e5f" />
+<img width="2295" height="994" alt="Screenshot 2025-10-02 at 4 57 13 PM" src="https://github.com/user-attachments/assets/b7872a12-0428-408c-89e1-c8943a820f25" />
+
+Refine and generate tasks context for agent execution, or decompose full projects or large tasks:
+<img width="760" height="819" alt="Screenshot 2025-10-02 at 4 49 41 PM" src="https://github.com/user-attachments/assets/079e93b4-5ea6-4268-94ee-cdd2c1259798" />
+<img width="1598" height="1186" alt="Screenshot 2025-10-02 at 4 56 31 PM" src="https://github.com/user-attachments/assets/950b5814-ae66-4263-8230-f0532dab33ce" />
+
+Track the Events Stream with details
+<img width="2548" height="1302" alt="Screenshot 2025-10-02 at 4 51 05 PM" src="https://github.com/user-attachments/assets/0c4ce81e-29a6-4bea-a7ea-6186d94919fe" />
+<img width="1640" height="1208" alt="Screenshot 2025-10-02 at 4 51 13 PM" src="https://github.com/user-attachments/assets/9d89ee3e-2f3b-4623-ab74-2e833bf32bb7" />
+
+Comprehensive Metrics
+<img width="1488" height="1276" alt="Screenshot 2025-10-02 at 4 51 35 PM" src="https://github.com/user-attachments/assets/766d6b5d-0447-49c6-9e36-cfddb9320128" />
 
 ```
 ┌─────────────────────────────────────────────────┐
