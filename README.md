@@ -3,7 +3,6 @@
 ClaudeBench is a Redis-first event-driven AI workbench that provides a powerful development platform for Claude and AI agents. Built with a focus on simplicity and performance, it features swarm intelligence for complex task decomposition.
 
 ## Key Features
-<img width="2283" height="980" alt="Screenshot 2025-10-02 at 4 59 20 PM" src="https://github.com/user-attachments/assets/9d2f84fd-4d3b-4eee-ab8c-df05c032bdcf" />
 
 - **🔴 Redis-First Architecture**: Direct use of Redis primitives for all coordination
 - **🐝 Swarm Intelligence**: Automatic task decomposition and specialist assignment
