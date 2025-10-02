@@ -3,6 +3,7 @@
 ClaudeBench is a Redis-first event-driven AI workbench that provides a powerful development platform for Claude and AI agents. Built with a focus on simplicity and performance, it features swarm intelligence for complex task decomposition.
 
 ## Key Features
+<img width="2283" height="980" alt="Screenshot 2025-10-02 at 4 59 20 PM" src="https://github.com/user-attachments/assets/9d2f84fd-4d3b-4eee-ab8c-df05c032bdcf" />
 
 - **🔴 Redis-First Architecture**: Direct use of Redis primitives for all coordination
 - **🐝 Swarm Intelligence**: Automatic task decomposition and specialist assignment
@@ -12,24 +13,34 @@ ClaudeBench is a Redis-first event-driven AI workbench that provides a powerful 
 - **🚀 High Performance**: Built on Bun runtime for maximum speed
 - **📊 Real-Time Metrics**: Comprehensive monitoring and telemetry
 
-## 🏗️ Architecture
-Kanban Board for Tasks (Drag and Drop) with automatic TodoWrite integration:
+**Kanban Board for Tasks (Drag and Drop) with automatic TodoWrite integration**
+
 <img width="2518" height="1184" alt="Screenshot 2025-10-02 at 4 49 14 PM" src="https://github.com/user-attachments/assets/91fad587-a12b-4b02-a17c-3f4c7be727c1" />
 
-Comprehensive Task details and automatic commit tracking:
+**Comprehensive Task details and automatic commit tracking**
+
 <img width="2497" height="1272" alt="Screenshot 2025-10-02 at 4 49 30 PM" src="https://github.com/user-attachments/assets/9870ba82-e903-4cf3-83ec-23612fcf7e5f" />
 <img width="2295" height="994" alt="Screenshot 2025-10-02 at 4 57 13 PM" src="https://github.com/user-attachments/assets/b7872a12-0428-408c-89e1-c8943a820f25" />
 
-Refine and generate tasks context for agent execution, or decompose full projects or large tasks:
+**Refine and generate tasks context for agent execution, or decompose full projects or large tasks**
+
 <img width="760" height="819" alt="Screenshot 2025-10-02 at 4 49 41 PM" src="https://github.com/user-attachments/assets/079e93b4-5ea6-4268-94ee-cdd2c1259798" />
 <img width="1598" height="1186" alt="Screenshot 2025-10-02 at 4 56 31 PM" src="https://github.com/user-attachments/assets/950b5814-ae66-4263-8230-f0532dab33ce" />
 
-Track the Events Stream with details
+**Produce robust task implementation and context guidelines**
+
+<img width="2283" height="980" alt="Screenshot 2025-10-02 at 4 59 20 PM" src="https://github.com/user-attachments/assets/a4fc37a1-f923-48a6-9b80-c37351733b4c" />
+
+**Track the Events Stream with details**
+
 <img width="2548" height="1302" alt="Screenshot 2025-10-02 at 4 51 05 PM" src="https://github.com/user-attachments/assets/0c4ce81e-29a6-4bea-a7ea-6186d94919fe" />
 <img width="1640" height="1208" alt="Screenshot 2025-10-02 at 4 51 13 PM" src="https://github.com/user-attachments/assets/9d89ee3e-2f3b-4623-ab74-2e833bf32bb7" />
 
-Comprehensive Metrics
+**Comprehensive Metrics**
+
 <img width="1488" height="1276" alt="Screenshot 2025-10-02 at 4 51 35 PM" src="https://github.com/user-attachments/assets/766d6b5d-0447-49c6-9e36-cfddb9320128" />
+
+## 🏗️ Architecture
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -54,28 +65,9 @@ Comprehensive Metrics
 ```
 
 ## 🚀 Quick Start
-### What can be done so far?
-- [x] TodoWrite goes into ClaudeBench and is accessible thru tasks
-- [x] Tasks domain (list, create, claim, update, attachments, etc)
-- [x] Hooks domain (preTool, postTool, preCompaction, agentStop, userPrompt, notification, todoWrite)
-- [x] Swarm domain (assign, context, decompose, resolve, synthetise,  createProject)
-- [x] Docs domain (list, get)
-- [x] System domain (register, discover, getState, metrics, heartbeat, quorum, redis & postgres tools)
-- [x] MCP to Handler (access handlers via MCP: task, swarm, docs, system, etc)
-- [x] RPC to Handler (access handlers via `/rpc` endpoint)
-- [x] Swarm Project Creation (Tasks and Subtasks with LLM Context & Prompt generation)
-- [x] Circuit Breaker, RateLimit, Timeout, Metrics (decorators EventHandler, Instrumented, Resilient)
-- [x] Migrate task metadata to task attachments
-- [x] State session rehydration (persist hook events, labeling and processing, fetch optimised worker state MCP resource)
-- [x] Consolidate better Prisma schemas and persisted data quality
-- [x] AutoCommit for hooks write with context commit message
-- [x] Rich view of Attachments in the tasks (context and commit types)
-- [x] Task.context generation from Kanban
-- [x] Install CLI (setup hooks, agents, mcp, config, etc)
-- [x] Projects page at `/projects` for project creation
-- [x] Multi Project tenancy (including context/decompose workdir propagation)
-- [ ] Improve processing and rehydration rich/efficient context
-- [ ] MCP reconnect session-resume mechanism (messy, low priority)
+1. Install Claudebench from this repo
+2. Go to your project folder and run `bun run {CLAUDEBENCH_FOLDER}/scripts/claudebench-init.ts` to onboard your repository
+3. Launch `claude` and say `hi`, he should carry on and you should be good to use tasking system of claudebench
 
 ### Prerequisites
 
